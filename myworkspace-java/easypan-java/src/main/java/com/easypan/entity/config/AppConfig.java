@@ -1,12 +1,14 @@
 package com.easypan.entity.config;
 
 import com.easypan.utils.StringTools;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component("appConfig")
+@Data
 public class AppConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(AppConfig.class);
@@ -67,43 +69,4 @@ public class AppConfig {
         return projectFolder;
     }
 
-    public static Logger getLogger() {
-        return logger;
-    }
-
-    public String getSendUserName() {
-        return sendUserName;
-    }
-
-    public Boolean getDev() {
-        return dev;
-    }
-
-    public String getQqAppId() {
-        return qqAppId;
-    }
-
-    public String getQqAppKey() {
-        return qqAppKey;
-    }
-
-    public String getQqUrlAuthorization() {
-        return qqUrlAuthorization;
-    }
-
-    public String getQqUrlAccessToken() {
-        return qqUrlAccessToken;
-    }
-
-    public String getQqUrlOpenId() {
-        return qqUrlOpenId;
-    }
-
-    public String getQqUrlUserInfo() {
-        return qqUrlUserInfo;
-    }
-
-    public String getQqUrlRedirect() {
-        return qqUrlRedirect;
-    }
 }

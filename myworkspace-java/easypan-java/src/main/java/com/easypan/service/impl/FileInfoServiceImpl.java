@@ -151,7 +151,9 @@ public class FileInfoServiceImpl implements FileInfoService {
     public Integer deleteFileInfoByFileIdAndUserId(String fileId, String userId) {
         return this.fileInfoMapper.deleteByFileIdAndUserId(fileId, userId);
     }
-
+    /**
+    *  上传文件
+    * */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -278,7 +280,9 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
         }
     }
-
+    /**
+     *  更新用户空间使用
+     * */
     private void updateUserSpace(SessionWebUserDto webUserDto, Long totalSize) {
         Integer count = userInfoMapper.updateUserSpace(webUserDto.getUserId(), totalSize, null);
         if (count == 0) {
@@ -288,7 +292,9 @@ public class FileInfoServiceImpl implements FileInfoService {
         spaceDto.setUseSpace(spaceDto.getUseSpace() + totalSize);
         redisComponent.saveUserSpaceUse(webUserDto.getUserId(), spaceDto);
     }
-
+    /**
+     *  自动重命名
+     * */
     private String autoRename(String filePid, String userId, String fileName) {
         FileInfoQuery fileInfoQuery = new FileInfoQuery();
         fileInfoQuery.setUserId(userId);
@@ -302,7 +308,9 @@ public class FileInfoServiceImpl implements FileInfoService {
 
         return fileName;
     }
-
+    /**
+     * 转码
+     */
     @Async
     public void transferFile(String fileId, SessionWebUserDto webUserDto) {
         Boolean transferSuccess = true;
@@ -364,7 +372,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             fileInfoMapper.updateFileStatusWithOldStatus(fileId, webUserDto.getUserId(), updateInfo, FileStatusEnums.TRANSFER.getStatus());
         }
     }
-
+    /**
+     *
+     *  合并文件
+     * */
     public static void union(String dirPath, String toFilePath, String fileName, boolean delSource) throws BusinessException {
         File dir = new File(dirPath);
         if (!dir.exists()) {
@@ -423,7 +434,9 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
         }
     }
-
+    /**
+     *  切割视频文件
+     * */
     private void cutFile4Video(String fileId, String videoFilePath) {
         //创建同名切片目录
         File tsFolder = new File(videoFilePath.substring(0, videoFilePath.lastIndexOf(".")));
@@ -626,7 +639,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                 findAllSubFolderFileIdList(delFileSubFolderFileIdList, userId, fileInfo.getFileId(), FileDelFlagEnums.DEL.getFlag());
             }
         }
-        //查询所有跟目录的文件
+        //查询所有根目录的文件
         query = new FileInfoQuery();
         query.setUserId(userId);
         query.setDelFlag(FileDelFlagEnums.USING.getFlag());

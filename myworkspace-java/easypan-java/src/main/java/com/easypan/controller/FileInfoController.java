@@ -49,7 +49,9 @@ public class FileInfoController extends CommonFileController {
         PaginationResultVO result = fileInfoService.findListByPage(query);
         return getSuccessResponseVO(convert2PaginationVO(result, FileInfoVO.class));
     }
-
+    /**
+     *  上传文件
+     * */
     @RequestMapping("/uploadFile")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO uploadFile(HttpSession session,
@@ -66,24 +68,32 @@ public class FileInfoController extends CommonFileController {
         return getSuccessResponseVO(resultDto);
     }
 
-
+    /**
+     * 获取图片
+    * */
     @RequestMapping("/getImage/{imageFolder}/{imageName}")
     public void getImage(HttpServletResponse response, @PathVariable("imageFolder") String imageFolder, @PathVariable("imageName") String imageName) {
         super.getImage(response, imageFolder, imageName);
     }
-
+    /**
+     *  根据视频id获取视频分片
+     * */
     @RequestMapping("/ts/getVideoInfo/{fileId}")
     public void getVideoInfo(HttpServletResponse response, HttpSession session, @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         super.getFile(response, fileId, webUserDto.getUserId());
     }
-
+    /**
+     *  根据文件id获取文件
+     * */
     @RequestMapping("/getFile/{fileId}")
     public void getFile(HttpServletResponse response, HttpSession session, @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         super.getFile(response, fileId, webUserDto.getUserId());
     }
-
+    /**
+     *  新建文件夹
+     * */
     @RequestMapping("/newFoloder")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO newFoloder(HttpSession session,
@@ -93,14 +103,18 @@ public class FileInfoController extends CommonFileController {
         FileInfo fileInfo = fileInfoService.newFolder(filePid, webUserDto.getUserId(), fileName);
         return getSuccessResponseVO(fileInfo);
     }
-
+    /**
+     *  获取文件夹信息
+     * */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO getFolderInfo(HttpSession session, @VerifyParam(required = true) String path) {
         return super.getFolderInfo(path, getUserInfoFromSession(session).getUserId());
     }
 
-
+    /**
+     *  重命名
+    * */
     @RequestMapping("/rename")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO rename(HttpSession session,
@@ -110,7 +124,9 @@ public class FileInfoController extends CommonFileController {
         FileInfo fileInfo = fileInfoService.rename(fileId, webUserDto.getUserId(), fileName);
         return getSuccessResponseVO(CopyTools.copy(fileInfo, FileInfoVO.class));
     }
-
+    /**
+     *  加载所有文件
+     * */
     @RequestMapping("/loadAllFolder")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO loadAllFolder(HttpSession session, @VerifyParam(required = true) String filePid, String currentFileIds) {
@@ -126,7 +142,9 @@ public class FileInfoController extends CommonFileController {
         List<FileInfo> fileInfoList = fileInfoService.findListByParam(query);
         return getSuccessResponseVO(CopyTools.copyList(fileInfoList, FileInfoVO.class));
     }
-
+    /**
+    *  更改文件目录
+    * */
     @RequestMapping("/changeFileFolder")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO changeFileFolder(HttpSession session,
@@ -136,13 +154,17 @@ public class FileInfoController extends CommonFileController {
         fileInfoService.changeFileFolder(fileIds, filePid, webUserDto.getUserId());
         return getSuccessResponseVO(null);
     }
-
+    /**
+     *  创建下载链接
+     * */
     @RequestMapping("/createDownloadUrl/{fileId}")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO createDownloadUrl(HttpSession session, @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         return super.createDownloadUrl(fileId, getUserInfoFromSession(session).getUserId());
     }
-
+    /**
+     *  下载
+     * */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     public void download(HttpServletRequest request, HttpServletResponse response, @PathVariable("code") @VerifyParam(required = true) String code) throws Exception {

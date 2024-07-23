@@ -12,7 +12,9 @@ import java.math.BigDecimal;
 public class ScaleFilter {
     private static final Logger logger = LoggerFactory.getLogger(ScaleFilter.class);
 
-
+    /**
+     *  判断是否需要生成缩略图
+     * */
     public static Boolean createThumbnailWidthFFmpeg(File file, int thumbnailWidth, File targetFile, Boolean delSource) {
         try {
             BufferedImage src = ImageIO.read(file);
@@ -30,7 +32,9 @@ public class ScaleFilter {
         }
         return false;
     }
-
+    /**
+     *  按指定宽度百分比压缩图片
+     * */
     public static void compressImageWidthPercentage(File sourceFile, BigDecimal widthPercentage, File targetFile) {
         try {
             BigDecimal widthResult = widthPercentage.multiply(new BigDecimal(ImageIO.read(sourceFile).getWidth()));
@@ -39,7 +43,9 @@ public class ScaleFilter {
             logger.error("压缩图片失败");
         }
     }
-
+    /**
+     *  生成视频封面
+     * */
     public static void createCover4Video(File sourceFile, Integer width, File targetFile) {
         try {
             String cmd = "ffmpeg -i %s -y -vframes 1 -vf scale=%d:%d/a %s";
@@ -48,7 +54,9 @@ public class ScaleFilter {
             logger.error("生成视频封面失败", e);
         }
     }
-
+    /**
+     *  压缩图片
+     * */
     public static void compressImage(File sourceFile, Integer width, File targetFile, Boolean delSource) {
         try {
             String cmd = "ffmpeg -i %s -vf scale=%d:-1 %s -y";
