@@ -1,113 +1,114 @@
 <template>
-  <div class="uploader-panel">
-    <div class="uploader-title">
-      <span>上传任务</span>
-      <span class="tips">（仅展示本次上传任务）</span>
-    </div>
-    <div class="file-list">
-      <div v-for="(item, index) in fileList" class="file-item">
-        <div class="upload-panel">
-          <div class="file-name">
-            {{ item.fileName }}
-          </div>
-          <div class="progress">
-            <!-- 上传 -->
-            <el-progress
-              :percentage="item.uploadProgress"
-              v-if="
+    <div class="uploader-panel">
+        <div class="uploader-title">
+            <span>上传任务</span>
+            <span class="tips">（仅展示本次上传任务）</span>
+        </div>
+        <div class="file-list">
+            <div v-for="(item, index) in fileList" class="file-item">
+                <div class="upload-panel">
+                    <div class="file-name">
+                        {{ item.fileName }}
+                    </div>
+                    <div class="progress">
+                        <!-- 上传 -->
+                        <el-progress
+                                :percentage="item.uploadProgress"
+                                v-if="
                 item.status == STATUS.uploading.value ||
                 item.status == STATUS.upload_seconds.value ||
                 item.status == STATUS.upload_finish.value
               "
-            />
-          </div>
-          <div class="upload-status">
-            <!-- 图标 -->
-            <span
-              :class="['iconfont', 'icon-' + STATUS[item.status].icon]"
-              :style="{ color: STATUS[item.status].color }"
-            ></span>
-            <!-- 状态描述 -->
-            <span class="status" :style="{ color: STATUS[item.status].color }">
-              {{ 
-                item.status == "fail" ? item.errorMsg : STATUS[item.status].desc
-              }}
+                        />
+                    </div>
+                    <div class="upload-status">
+                        <!-- 图标 -->
+                        <span
+                                :class="['iconfont', 'icon-' + STATUS[item.status].icon]"
+                                :style="{ color: STATUS[item.status].color }"
+                        ></span>
+                        <!-- 状态描述 -->
+                        <span class="status" :style="{ color: STATUS[item.status].color }">
+              {{
+                            item.status == "fail" ? item.errorMsg : STATUS[item.status].desc
+                            }}
             </span>
-            <!-- 上传中 -->
-            <span
-              class="upload-info"
-              v-if="item.status == STATUS.uploading.value"
-            >
-              {{ proxy.Utils.size2Str(item.uploadSize) }} / {{ 
-                 proxy.Utils.size2Str(item.totalSize)
-              }}
+                        <!-- 上传中 -->
+                        <span
+                                class="upload-info"
+                                v-if="item.status == STATUS.uploading.value"
+                        >
+              {{ proxy.Utils.size2Str(item.uploadSize) }} / {{
+                            proxy.Utils.size2Str(item.totalSize)
+                            }}
             </span>
-          </div>
-        </div>
-        <div class="op">
-          <!-- MD5 -->
-          <el-progress
-            type="circle"
-            :width="50"
-            :percentage="item.md5Progress"
-            v-if="item.status == STATUS.init.value"
-          />
-          <div class="op-btn">
+                    </div>
+                </div>
+                <div class="op">
+                    <!-- MD5 -->
+                    <el-progress
+                            type="circle"
+                            :width="50"
+                            :percentage="item.md5Progress"
+                            v-if="item.status == STATUS.init.value"
+                    />
+                    <div class="op-btn">
             <span v-if="item.status === STATUS.uploading.value">
               <Icon
-                :width="28"
-                class="btn-item"
-                iconName="upload"
-                v-if="item.pause"
-                title="上传"
-                @click="startUpload(item.uid)"
+                      :width="28"
+                      class="btn-item"
+                      iconName="upload"
+                      v-if="item.pause"
+                      title="上传"
+                      @click="startUpload(item.uid)"
               ></Icon>
               <Icon
-                v-else
-                :width="28"
-                class="btn-item"
-                iconName="pause"
-                title="暂停"
-                @click="pauseUpload(item.uid)"
+                      v-else
+                      :width="28"
+                      class="btn-item"
+                      iconName="pause"
+                      title="暂停"
+                      @click="pauseUpload(item.uid)"
               ></Icon>
             </span>
-            <Icon
-                :width="28"
-                class="del btn-item"
-                iconName="del"
-                title="删除"
-                v-if="
+                        <Icon
+                                :width="28"
+                                class="del btn-item"
+                                iconName="del"
+                                title="删除"
+                                v-if="
                   item.status != STATUS.init.value &&
                   item.status != STATUS.upload_finish.value &&
                   item.status != STATUS.upload_seconds.value
                 "
-                @click="delUpload(item.uid, index)"
-              ></Icon>
-              <Icon
-                :width="28"
-                class="clean btn-item"
-                iconName="clean"
-                title="清除"
-                v-if="
+                                @click="delUpload(item.uid, index)"
+                        ></Icon>
+                        <Icon
+                                :width="28"
+                                class="clean btn-item"
+                                iconName="clean"
+                                title="清除"
+                                v-if="
                   item.status == STATUS.upload_finish.value ||
                   item.status == STATUS.upload_seconds.value
                 "
-                @click="delUpload(item.uid, index)"
-              ></Icon>
-          </div>
+                                @click="delUpload(item.uid, index)"
+                        ></Icon>
+                    </div>
+                </div>
+            </div>
+            <div v-if="fileList.length == 0">
+                <NoData msg="暂无上传任务"></NoData>
+            </div>
         </div>
-      </div>
-      <div v-if="fileList.length == 0">
-        <NoData msg="暂无上传任务"></NoData>
-      </div>
     </div>
-  </div>
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import {ref, reactive, getCurrentInstance, nextTick} from "vue";
 import SparkMD5 from "spark-md5";
-const { proxy } = getCurrentInstance();
+
+const {proxy} = getCurrentInstance();
 
 const api = {
     upload: "/file/uploadFile",
@@ -197,32 +198,32 @@ const addFile = async (file, filePid) => {
     }
     uploadFile(md5FileUid);
 };
-defineExpose({ addFile });
+defineExpose({addFile});
 
 //开始上传
 const startUpload = (uid) => {
-  let currentFile = getFileByUid(uid);
-  currentFile.pause = false;
-  uploadFile(uid, currentFile.chunkIndex);
+    let currentFile = getFileByUid(uid);
+    currentFile.pause = false;
+    uploadFile(uid, currentFile.chunkIndex);
 };
 //暂停上传
 const pauseUpload = (uid) => {
-  let currentFile = getFileByUid(uid);
-  currentFile.pause = true;
+    let currentFile = getFileByUid(uid);
+    currentFile.pause = true;
 };
 //删除文件
 const delUpload = (uid, index) => {
-  delList.value.push(uid);
-  fileList.value.splice(index, 1);
+    delList.value.push(uid);
+    fileList.value.splice(index, 1);
 };
 
 // 计算MD5
 const computeMd5 = (fileItem) => {
     let file = fileItem.file;
     let blobSlice =
-      File.prototype.slice ||
-      File.prototype.mozSlice ||
-      File.prototype.webkitSlice;
+        File.prototype.slice ||
+        File.prototype.mozSlice ||
+        File.prototype.webkitSlice;
     let chunks = Math.ceil(file.size / chunkSize);
     let currentChunk = 0;
     let spark = new SparkMD5.ArrayBuffer();
@@ -294,7 +295,8 @@ const uploadFile = async (uid, chunkIndex) => {
         currentFile = getFileByUid(uid);
         if (currentFile.pause) {
             break;
-        };
+        }
+        ;
         let start = i * chunkSize;
         let end = start + chunkSize >= fileSize ? fileSize : start + chunkSize;
         let chunkFile = file.slice(start, end);
@@ -347,74 +349,88 @@ const uploadFile = async (uid, chunkIndex) => {
 
 <style lang="scss" scoped>
 .uploader-panel {
-    .uploader-title {
-        border-bottom: 1px solid #ddd;
-        line-height: 40px;
-        padding: 0px 10px;
-        font-size: 15px;
-        .tips {
-            font-size: 13px;
-            color: rgb(169, 169, 169);
-        }
+  .uploader-title {
+    border-bottom: 1px solid #ddd;
+    line-height: 40px;
+    padding: 0px 10px;
+    font-size: 15px;
+
+    .tips {
+      font-size: 13px;
+      color: rgb(169, 169, 169);
     }
-    .file-list {
-        overflow: auto;
-        padding: 10px 0px;
-        min-height: calc(100vh / 2);
-        max-height: calc(100vh - 120px);
-        .file-item {
-            position: relative;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 3px 10px;
-            background-color: #fff;
-            border-bottom: 1px solid #ddd;
-        }
-        .file-item:nth-child(even) {
-            background-color: #fcf8f4;
-        }
-        .upload-panel {
-            flex: 1;
-            .file-name {
-                color: rgb(64, 62, 62);
-            }
-            .upload-status {
-                display: flex;
-                align-items: center;
-                margin-top: 5px;
-                .iconfont {
-                    margin-right: 3px;
-                }
-                .status {
-                    color: red;
-                    font-size: 13px;
-                }
-                .upload-info {
-                    margin-left: 5px;
-                    font-size: 12px;
-                    color: rgb(112, 111, 111);
-                }
-            }
-            .progress {
-                height: 10px;
-            }
-        }
-        .op {
-            width: 100px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            .op-btn {
-                .btn-item {
-                    cursor: pointer;
-                }
-                .del,
-                .clean {
-                    margin-left: 5px;
-                }
-            }
-        }
+  }
+
+  .file-list {
+    overflow: auto;
+    padding: 10px 0px;
+    min-height: calc(100vh / 2);
+    max-height: calc(100vh - 120px);
+
+    .file-item {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 3px 10px;
+      background-color: #fff;
+      border-bottom: 1px solid #ddd;
     }
+
+    .file-item:nth-child(even) {
+      background-color: #fcf8f4;
+    }
+
+    .upload-panel {
+      flex: 1;
+
+      .file-name {
+        color: rgb(64, 62, 62);
+      }
+
+      .upload-status {
+        display: flex;
+        align-items: center;
+        margin-top: 5px;
+
+        .iconfont {
+          margin-right: 3px;
+        }
+
+        .status {
+          color: red;
+          font-size: 13px;
+        }
+
+        .upload-info {
+          margin-left: 5px;
+          font-size: 12px;
+          color: rgb(112, 111, 111);
+        }
+      }
+
+      .progress {
+        height: 10px;
+      }
+    }
+
+    .op {
+      width: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+
+      .op-btn {
+        .btn-item {
+          cursor: pointer;
+        }
+
+        .del,
+        .clean {
+          margin-left: 5px;
+        }
+      }
+    }
+  }
 }
 </style>
