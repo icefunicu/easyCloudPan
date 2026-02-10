@@ -28,7 +28,6 @@ import javax.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.List;
 
-
 /**
  * 邮箱验证码 业务接口实现
  */
@@ -79,7 +78,8 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         SimplePage page = new SimplePage(param.getPageNo(), count, pageSize);
         param.setSimplePage(page);
         List<EmailCode> list = this.findListByParam(param);
-        PaginationResultVO<EmailCode> result = new PaginationResultVO(count, page.getPageSize(), page.getPageNo(), page.getPageTotal(), list);
+        PaginationResultVO<EmailCode> result = new PaginationResultVO<>(count, page.getPageSize(), page.getPageNo(),
+                page.getPageTotal(), list);
         return result;
     }
 
@@ -142,18 +142,18 @@ public class EmailCodeServiceImpl implements EmailCodeService {
             MimeMessage message = javaMailSender.createMimeMessage();
 
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            //邮件发件人
+            // 邮件发件人
             helper.setFrom(appConfig.getSendUserName());
-            //邮件收件人 1或多个
+            // 邮件收件人 1或多个
             helper.setTo(toEmail);
 
             SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
 
-            //邮件主题
+            // 邮件主题
             helper.setSubject(sysSettingsDto.getRegisterEmailTitle());
-            //邮件内容
+            // 邮件内容
             helper.setText(String.format(sysSettingsDto.getRegisterEmailContent(), code));
-            //邮件发送时间
+            // 邮件发送时间
             helper.setSentDate(new Date());
             javaMailSender.send(message);
         } catch (Exception e) {
@@ -165,7 +165,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendEmailCode(String toEmail, Integer type) {
-        //如果是注册，校验邮箱是否已存在
+        // 如果是注册，校验邮箱是否已存在
         if (type == Constants.ZERO) {
             UserInfo userInfo = userInfoMapper.selectByEmail(toEmail);
             if (null != userInfo) {
@@ -191,7 +191,8 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         if (null == emailCode) {
             throw new BusinessException("邮箱验证码不正确");
         }
-        if (emailCode.getStatus() == 1 || System.currentTimeMillis() - emailCode.getCreateTime().getTime() > Constants.LENGTH_15 * 1000 * 60) {
+        if (emailCode.getStatus() == 1
+                || System.currentTimeMillis() - emailCode.getCreateTime().getTime() > Constants.LENGTH_15 * 1000 * 60) {
             throw new BusinessException("邮箱验证码已失效");
         }
         emailCodeMapper.disableEmailCode(email);

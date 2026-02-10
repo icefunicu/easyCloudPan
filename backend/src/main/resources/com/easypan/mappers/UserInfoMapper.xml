@@ -123,9 +123,13 @@
         <include refid="base_column_list"/>
         FROM user_info
         <include refid="query_condition"/>
-        <if test="query.orderBy!=null">
-            order by ${query.orderBy}
+        <if test="query.orderBy!=null and query.orderBy=='last_login_time desc'">
+            order by last_login_time desc
         </if>
+        <if test="query.orderBy!=null and query.orderBy=='create_time desc'">
+            order by create_time desc
+        </if>
+        <!-- Add more safe allowlisted sorts as needed, or default to checking in Java -->
         <if test="query.simplePage!=null">
             limit #{query.simplePage.start},#{query.simplePage.end}
         </if>

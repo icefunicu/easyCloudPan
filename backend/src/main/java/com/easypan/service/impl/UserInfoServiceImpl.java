@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
@@ -34,7 +35,6 @@ import java.net.URLEncoder;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
 
 /**
  * 用户信息 业务接口实现
@@ -56,6 +56,9 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private PasswordEncoder passwordEncoder;
 
     private static final Logger logger = LoggerFactory.getLogger(UserInfoServiceImpl.class);
 
@@ -86,7 +89,8 @@ public class UserInfoServiceImpl implements UserInfoService {
         SimplePage page = new SimplePage(param.getPageNo(), count, pageSize);
         param.setSimplePage(page);
         List<UserInfo> list = this.findListByParam(param);
-        PaginationResultVO<UserInfo> result = new PaginationResultVO(count, page.getPageSize(), page.getPageNo(), page.getPageTotal(), list);
+        PaginationResultVO<UserInfo> result = new PaginationResultVO(count, page.getPageSize(), page.getPageNo(),
+                page.getPageTotal(), list);
         return result;
     }
 
@@ -216,18 +220,46 @@ public class UserInfoServiceImpl implements UserInfoService {
         return this.userInfoMapper.deleteByQqOpenId(qqOpenId);
     }
 
-
     @Override
     public SessionWebUserDto login(String email, String password) {
         UserInfo userInfo = this.userInfoMapper.selectByEmail(email);
-        if (null == userInfo || !userInfo.getPassword().equals(password)) {
+        if (null == userInfo) {
             throw new BusinessException("账号或者密码错误");
         }
+
+        // Password verification with lazy migration (MD5 -> BCrypt)
+        String dbPassword = userInfo.getPassword();
+        boolean passwordMatch = false;
+        boolean needUpgrade = false;
+
+        if (dbPassword.length() == 32 && !dbPassword.startsWith("$")) {
+            // Assume MD5
+            if (dbPassword.equals(StringTools.encodeByMD5(password))) {
+                passwordMatch = true;
+                needUpgrade = true; // Flag for upgrade
+            }
+        } else {
+            // Assume BCrypt or other
+            if (passwordEncoder.matches(password, dbPassword)) {
+                passwordMatch = true;
+            }
+        }
+
+        if (!passwordMatch) {
+            throw new BusinessException("账号或者密码错误");
+        }
+
         if (UserStatusEnum.DISABLE.getStatus().equals(userInfo.getStatus())) {
             throw new BusinessException("账号已禁用");
         }
+
         UserInfo updateInfo = new UserInfo();
         updateInfo.setLastLoginTime(new Date());
+
+        if (needUpgrade) {
+            updateInfo.setPassword(passwordEncoder.encode(password));
+        }
+
         this.userInfoMapper.updateByUserId(updateInfo, userInfo.getUserId());
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
@@ -237,7 +269,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         } else {
             sessionWebUserDto.setAdmin(false);
         }
-        //用户空间
+        // 用户空间
         UserSpaceDto userSpaceDto = new UserSpaceDto();
         userSpaceDto.setUseSpace(fileInfoService.getUserUseSpace(userInfo.getUserId()));
         userSpaceDto.setTotalSpace(userInfo.getTotalSpace());
@@ -256,14 +288,14 @@ public class UserInfoServiceImpl implements UserInfoService {
         if (null != nickNameUser) {
             throw new BusinessException("昵称已经存在");
         }
-        //校验邮箱验证码
+        // 校验邮箱验证码
         emailCodeService.checkCode(email, emailCode);
         String userId = StringTools.getRandomNumber(Constants.LENGTH_10);
         userInfo = new UserInfo();
         userInfo.setUserId(userId);
         userInfo.setNickName(nickName);
         userInfo.setEmail(email);
-        userInfo.setPassword(StringTools.encodeByMD5(password));
+        userInfo.setPassword(passwordEncoder.encode(password));
         userInfo.setJoinTime(new Date());
         userInfo.setStatus(UserStatusEnum.ENABLE.getStatus());
         SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
@@ -279,14 +311,13 @@ public class UserInfoServiceImpl implements UserInfoService {
         if (null == userInfo) {
             throw new BusinessException("邮箱账号不存在");
         }
-        //校验邮箱验证码
+        // 校验邮箱验证码
         emailCodeService.checkCode(email, emailCode);
 
         UserInfo updateInfo = new UserInfo();
-        updateInfo.setPassword(StringTools.encodeByMD5(password));
+        updateInfo.setPassword(passwordEncoder.encode(password));
         this.userInfoMapper.updateByEmail(updateInfo, email);
     }
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -312,10 +343,11 @@ public class UserInfoServiceImpl implements UserInfoService {
 
             String nickName = qqInfo.getNickname();
             nickName = nickName.length() > Constants.LENGTH_150 ? nickName.substring(0, 150) : nickName;
-            avatar = StringTools.isEmpty(qqInfo.getFigureurl_qq_2()) ? qqInfo.getFigureurl_qq_1() : qqInfo.getFigureurl_qq_2();
+            avatar = StringTools.isEmpty(qqInfo.getFigureurl_qq_2()) ? qqInfo.getFigureurl_qq_1()
+                    : qqInfo.getFigureurl_qq_2();
             Date curDate = new Date();
 
-            //上传头像到本地
+            // 上传头像到本地
             user.setQqOpenId(openId);
             user.setJoinTime(curDate);
             user.setNickName(nickName);
@@ -340,7 +372,8 @@ public class UserInfoServiceImpl implements UserInfoService {
         sessionWebUserDto.setUserId(user.getUserId());
         sessionWebUserDto.setNickName(user.getNickName());
         sessionWebUserDto.setAvatar(avatar);
-        if (ArrayUtils.contains(appConfig.getAdminEmails().split(","), user.getEmail() == null ? "" : user.getEmail())) {
+        if (ArrayUtils.contains(appConfig.getAdminEmails().split(","),
+                user.getEmail() == null ? "" : user.getEmail())) {
             sessionWebUserDto.setAdmin(true);
         } else {
             sessionWebUserDto.setAdmin(false);
@@ -355,13 +388,16 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     private String getQQAccessToken(String code) {
         /**
-         * 返回结果是字符串 access_token=*&expires_in=7776000&refresh_token=* 返回错误 callback({UcWebConstants.VIEW_OBJ_RESULT_KEY:111,error_description:"error msg"})
+         * 返回结果是字符串 access_token=*&expires_in=7776000&refresh_token=* 返回错误
+         * callback({UcWebConstants.VIEW_OBJ_RESULT_KEY:111,error_description:"error
+         * msg"})
          */
         String accessToken = null;
         String url = null;
         try {
-            url = String.format(appConfig.getQqUrlAccessToken(), appConfig.getQqAppId(), appConfig.getQqAppKey(), code, URLEncoder.encode(appConfig
-                    .getQqUrlRedirect(), "utf-8"));
+            url = String.format(appConfig.getQqUrlAccessToken(), appConfig.getQqAppId(), appConfig.getQqAppKey(), code,
+                    URLEncoder.encode(appConfig
+                            .getQqUrlRedirect(), "utf-8"));
         } catch (UnsupportedEncodingException e) {
             logger.error("encode失败");
         }
@@ -382,7 +418,6 @@ public class UserInfoServiceImpl implements UserInfoService {
         return accessToken;
     }
 
-
     private String getQQOpenId(String accessToken) throws BusinessException {
         // 获取openId
         String url = String.format(appConfig.getQqUrlOpenId(), accessToken);
@@ -399,7 +434,6 @@ public class UserInfoServiceImpl implements UserInfoService {
         }
         return String.valueOf(jsonData.get("openid"));
     }
-
 
     private QQInfoDto getQQUserInfo(String accessToken, String qqOpenId) throws BusinessException {
         String url = String.format(appConfig.getQqUrlUserInfo(), accessToken, appConfig.getQqAppId(), qqOpenId);

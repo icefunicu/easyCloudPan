@@ -18,7 +18,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-
 public class ABaseController {
 
     private static final Logger logger = LoggerFactory.getLogger(ABaseController.class);
@@ -27,7 +26,7 @@ public class ABaseController {
 
     protected static final String STATUC_ERROR = "error";
 
-    protected <T> ResponseVO getSuccessResponseVO(T t) {
+    protected <T> ResponseVO<T> getSuccessResponseVO(T t) {
         ResponseVO<T> responseVO = new ResponseVO<>();
         responseVO.setStatus(STATUC_SUCCESS);
         responseVO.setCode(ResponseCodeEnum.CODE_200.getCode());
@@ -51,12 +50,10 @@ public class ABaseController {
         return sessionWebUserDto;
     }
 
-
     protected SessionShareDto getSessionShareFromSession(HttpSession session, String shareId) {
         SessionShareDto sessionShareDto = (SessionShareDto) session.getAttribute(Constants.SESSION_SHARE_KEY + shareId);
         return sessionShareDto;
     }
-
 
     protected void readFile(HttpServletResponse response, String filePath) {
         if (!StringTools.pathIsOk(filePath)) {

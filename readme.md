@@ -44,6 +44,7 @@
 - **UI 组件库**: Element Plus
 - **网络请求**: Axios
 - **文件处理**: Spark-MD5 (哈希计算), APlayer/DPlayer (媒体播放)
+- **API 文档**: Springfox Swagger 3.0 (访问地址: `/api/swagger-ui/index.html`)
 
 ## 📂 项目结构
 
@@ -69,32 +70,23 @@ easyCloudPan/
 
 ## 🚀 快速开始
 
-### 环境依赖
-- JDK 1.8+
-- Node.js 16+
-- MySQL 8.0+
-- Redis 6.0+
-- FFmpeg (需配置环境变量)
+> **新手推荐**：请直接查看 [快速启动指南 (Windows)](QUICK_START.md)，使用一键脚本配置并启动。
 
-### 1. 数据库初始化
-创建数据库 `easypan`，并导入 [database/easypan.sql](database/easypan.sql) 脚本。
+### 手动启动 (高级用户)
 
-### 2. 后端启动
-```bash
-cd backend
-# 建议修改 application.properties 中的 datasource 与 redis 配置
-mvn clean package
-java -jar target/easypan-1.0.jar
-# 服务默认运行在 7090 端口
-```
-
-### 3. 前端启动
-```bash
-cd frontend
-npm install
-npm run dev
-# 服务默认运行在 5173 端口
-```
+1.  **数据库初始化**: 导入 [database/easypan.sql](database/easypan.sql)。
+2.  **配置修改**: 修改 `backend/src/main/resources/application.properties`。
+3.  **后端启动**:
+    ```bash
+    cd backend
+    mvn spring-boot:run
+    ```
+4.  **前端启动**:
+    ```bash
+    cd frontend
+    npm install
+    npm run dev
+    ```
 
 ## 📸 系统截图
 

@@ -21,7 +21,6 @@ import javax.annotation.Resource;
 import java.util.Date;
 import java.util.List;
 
-
 /**
  * 分享信息 业务接口实现
  */
@@ -58,7 +57,8 @@ public class FileShareServiceImpl implements FileShareService {
         SimplePage page = new SimplePage(param.getPageNo(), count, pageSize);
         param.setSimplePage(page);
         List<FileShare> list = this.findListByParam(param);
-        PaginationResultVO<FileShare> result = new PaginationResultVO(count, page.getPageSize(), page.getPageNo(), page.getPageTotal(), list);
+        PaginationResultVO<FileShare> result = new PaginationResultVO<>(count, page.getPageSize(), page.getPageNo(),
+                page.getPageTotal(), list);
         return result;
     }
 
@@ -153,7 +153,7 @@ public class FileShareServiceImpl implements FileShareService {
             throw new BusinessException("提取码错误");
         }
 
-        //更新浏览次数
+        // 更新浏览次数
         this.fileShareMapper.updateShareShowCount(shareId);
         SessionShareDto shareSessionDto = new SessionShareDto();
         shareSessionDto.setShareId(shareId);

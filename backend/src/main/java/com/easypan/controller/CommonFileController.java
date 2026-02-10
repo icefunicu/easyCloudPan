@@ -35,8 +35,7 @@ public class CommonFileController extends ABaseController {
     @Resource
     private RedisComponent redisComponent;
 
-
-    public ResponseVO getFolderInfo(String path, String userId) {
+    public ResponseVO<List<FolderVO>> getFolderInfo(String path, String userId) {
         String[] pathArray = path.split("/");
         FileInfoQuery infoQuery = new FileInfoQuery();
         infoQuery.setUserId(userId);
@@ -66,10 +65,10 @@ public class CommonFileController extends ABaseController {
         if (fileId.endsWith(".ts")) {
             String[] tsAarray = fileId.split("_");
             String realFileId = tsAarray[0];
-            //根据原文件的id查询出一个文件集合
+            // 根据原文件的id查询出一个文件集合
             FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(realFileId, userId);
             if (fileInfo == null) {
-                //分享的视频，ts路径记录的是原视频的id,这里通过id直接取出原视频
+                // 分享的视频，ts路径记录的是原视频的id,这里通过id直接取出原视频
                 FileInfoQuery fileInfoQuery = new FileInfoQuery();
                 fileInfoQuery.setFileId(realFileId);
                 List<FileInfo> fileInfoList = fileInfoService.findListByParam(fileInfoQuery);
@@ -78,7 +77,7 @@ public class CommonFileController extends ABaseController {
                     return;
                 }
 
-                //根据当前用户id和路径去查询当前用户是否有该文件，如果没有直接返回
+                // 根据当前用户id和路径去查询当前用户是否有该文件，如果没有直接返回
                 fileInfoQuery = new FileInfoQuery();
                 fileInfoQuery.setFilePath(fileInfo.getFilePath());
                 fileInfoQuery.setUserId(userId);
@@ -95,11 +94,12 @@ public class CommonFileController extends ABaseController {
             if (fileInfo == null) {
                 return;
             }
-            //视频文件读取.m3u8文件
+            // 视频文件读取.m3u8文件
             if (FileCategoryEnums.VIDEO.getCategory().equals(fileInfo.getFileCategory())) {
-                //重新设置文件路径
+                // 重新设置文件路径
                 String fileNameNoSuffix = StringTools.getFileNameNoSuffix(fileInfo.getFilePath());
-                filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + fileNameNoSuffix + "/" + Constants.M3U8_NAME;
+                filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + fileNameNoSuffix + "/"
+                        + Constants.M3U8_NAME;
             } else {
                 filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + fileInfo.getFilePath();
             }
@@ -138,7 +138,7 @@ public class CommonFileController extends ABaseController {
         String filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + downloadFileDto.getFilePath();
         String fileName = downloadFileDto.getFileName();
         response.setContentType("application/x-msdownload; charset=UTF-8");
-        if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {//IE浏览器
+        if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {// IE浏览器
             fileName = URLEncoder.encode(fileName, "UTF-8");
         } else {
             fileName = new String(fileName.getBytes("UTF-8"), "ISO8859-1");
