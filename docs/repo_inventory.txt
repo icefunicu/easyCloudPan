@@ -1,0 +1,65 @@
+# Repo Inventory
+
+Repo: E:\Project\easyCloudPan
+Generated: 2026-02-10T21:52:01
+
+Total files: 290
+Total size: 130.3 MB
+
+## Top-Level Directories
+- myworkspace-java: 200 files, 122.2 MB
+- myworkspace-front: 84 files, 6.3 MB
+- img: 4 files, 1.7 MB
+- .: 2 files, 4.0 KB
+
+## Top Extensions
+- .class: 83
+- .java: 79
+- .vue: 34
+- .png: 28
+- .xml: 13
+- .js: 11
+- .ts: 8
+- .jpg: 7
+- .json: 3
+- .properties: 3
+- .md: 2
+- .html: 2
+- .scss: 2
+- .css: 2
+- .lst: 2
+- .zip: 1
+- .ico: 1
+- .svg: 1
+- .ttf: 1
+- .woff: 1
+
+## Key Files
+- AGENTS.md
+- myworkspace-front\easypan-front\package.json
+- readme.md
+
+## Entry Points
+- myworkspace-front\easypan-front\src\router\index.js
+
+## Largest Files
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP.mp4 (38.0 MB)
+- myworkspace-java\easypan-java\target\easypan-1.0.jar (35.4 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0004.ts (7.7 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0006.ts (7.2 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0005.ts (6.5 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0002.ts (5.7 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0003.ts (4.7 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0001.ts (4.1 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0000.ts (4.0 MB)
+- myworkspace-front\easypan-front\dist.zip (3.2 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074N8Fps0hPf6.jpg (2.1 MB)
+- myworkspace-java\easypan-java\file\avatar\8546374074.jpg (2.1 MB)
+- myworkspace-java\easypan-java\file\202403\1147240164OSg5iEf7Eu.jpg (1.8 MB)
+- myworkspace-java\easypan-java\file\202403\8546374074QKBal8x8gy.jpg (1.8 MB)
+- img\img2.png (1.5 MB)
+- myworkspace-front\easypan-front\src\assets\music_cover.png (1.2 MB)
+- myworkspace-front\easypan-front\public\hls.min.js (784.9 KB)
+- myworkspace-front\easypan-front\src\assets\share_bg.png (357.8 KB)
+- myworkspace-front\easypan-front\src\assets\login_bg.jpg (265.7 KB)
+- myworkspace-java\easypan-java\file\202403\8546374074iLlL5nAfGP\iLlL5nAfGP_0007.ts (166.5 KB)
