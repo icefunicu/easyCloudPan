@@ -1,7 +1,5 @@
 package com.easypan.entity.query;
 
-import java.util.Date;
-
 
 /**
  * 

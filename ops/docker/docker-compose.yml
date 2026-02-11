@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: easypan-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-easypan}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-easypan}"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: easypan-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-password123}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-password123} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: easypan-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: easypan-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadminpassword}; do
+        echo 'waiting for minio...'; sleep 2;
+      done;
+      mc mb --ignore-existing local/${MINIO_BUCKET:-easypan};
+      mc anonymous set none local/${MINIO_BUCKET:-easypan};
+      echo 'minio bucket is ready';
+      "
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: easypan-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-easypan}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-password123}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+      MINIO_BUCKET_NAME: ${MINIO_BUCKET:-easypan}
+      PROJECT_FOLDER: /data/easypan/
+      QQ_APP_ID: ${QQ_APP_ID:-dummy_app_id}
+      QQ_APP_KEY: ${QQ_APP_KEY:-dummy_app_key}
+      QQ_URL_REDIRECT: ${QQ_URL_REDIRECT:-http://localhost:8080/qqlogincallback}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.qq.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-2041487752@qq.com}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-dummy_mail_password}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
+      LOG_ROOT_LEVEL: ${LOG_ROOT_LEVEL:-info}
+      DEV_MODE: "false"
+      SERVER_PORT: 7090
+    ports:
+      - "7090:7090"
+    volumes:
+      - easypan_data:/data/easypan
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: easypan-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  easypan_data:

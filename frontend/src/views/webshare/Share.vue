@@ -126,8 +126,10 @@
 import { ref, reactive, getCurrentInstance, nextTick } from "vue";
 const { proxy } = getCurrentInstance();
 import { useRouter, useRoute } from "vue-router";
+import { useUserInfoStore } from "@/stores/userInfoStore";
 const router = useRouter();
 const route = useRoute();
+const userInfoStore = useUserInfoStore();
 
 const api = {
     getShareLoginInfo: "/showShare/getShareLoginInfo",
@@ -258,7 +260,7 @@ const save2MyPan = () => {
     if (selectIdList.value.length == 0) {
         return;
     }
-    if (!proxy.VueCookies.get("userInfo")) {
+    if (!userInfoStore.userInfo) {
         router.push("/login?redirectUrl=" + route.path);
         return;
     }
@@ -267,7 +269,7 @@ const save2MyPan = () => {
 };
 
 const save2MyPanSingle = (row) => {
-    if (!proxy.VueCookies.get("userInfo")) {
+    if (!userInfoStore.userInfo) {
         router.push("/login?redirectUrl=" + route.path);
         return;
     }

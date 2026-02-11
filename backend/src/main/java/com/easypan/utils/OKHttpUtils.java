@@ -43,24 +43,6 @@ public class OKHttpUtils {
         return requestBuilder;
     }
 
-    private static FormBody.Builder getBuilder(Map<String, String> params) {
-        FormBody.Builder builder = new FormBody.Builder();
-        if (params == null) {
-            return builder;
-        }
-        for (Map.Entry<String, String> map : params.entrySet()) {
-            String key = map.getKey();
-            String value;
-            if (map.getValue() == null) {
-                value = "";
-            } else {
-                value = map.getValue();
-            }
-            builder.add(key, value);
-        }
-        return builder;
-    }
-
     public static String getRequest(String url) throws BusinessException {
         ResponseBody responseBody = null;
         try {

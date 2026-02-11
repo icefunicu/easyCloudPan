@@ -2,16 +2,12 @@ package com.easypan.entity.config;
 
 import com.easypan.utils.StringTools;
 import lombok.Data;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component("appConfig")
 @Data
 public class AppConfig {
-
-    private static final Logger logger = LoggerFactory.getLogger(AppConfig.class);
 
     /**
      * 文件目录
@@ -55,6 +51,13 @@ public class AppConfig {
 
     @Value("${qq.url.redirect:}")
     private String qqUrlRedirect;
+
+    // Jackson configuration
+    @Value("${spring.jackson.date-format:yyyy-MM-dd HH:mm:ss}")
+    private String jsonDateFormat;
+
+    @Value("${spring.jackson.time-zone:GMT+8}")
+    private String jsonTimeZone;
 
     public String getProjectFolder() {
         if (!StringTools.isEmpty(projectFolder) && !projectFolder.endsWith("/")) {

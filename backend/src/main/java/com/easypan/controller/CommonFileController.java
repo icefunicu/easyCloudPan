@@ -15,15 +15,17 @@ import com.easypan.exception.BusinessException;
 import com.easypan.service.FileInfoService;
 import com.easypan.utils.CopyTools;
 import com.easypan.utils.StringTools;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.net.URLEncoder;
 import java.util.List;
 
+@Slf4j
 public class CommonFileController extends ABaseController {
 
     @Resource
@@ -111,7 +113,7 @@ public class CommonFileController extends ABaseController {
         readFile(response, filePath);
     }
 
-    protected ResponseVO createDownloadUrl(String fileId, String userId) {
+    protected ResponseVO<String> createDownloadUrl(String fileId, String userId) {
         FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, userId);
         if (fileInfo == null) {
             throw new BusinessException(ResponseCodeEnum.CODE_600);
@@ -131,19 +133,52 @@ public class CommonFileController extends ABaseController {
     }
 
     protected void download(HttpServletRequest request, HttpServletResponse response, String code) throws Exception {
-        DownloadFileDto downloadFileDto = redisComponent.getDownloadCode(code);
-        if (null == downloadFileDto) {
-            return;
+        long startTime = System.currentTimeMillis();
+        String fileName = "unknown";
+        
+        try {
+            DownloadFileDto downloadFileDto = redisComponent.getDownloadCode(code);
+            if (null == downloadFileDto) {
+                log.warn("[DOWNLOAD] Invalid download code: {}", code);
+                return;
+            }
+            
+            fileName = downloadFileDto.getFileName();
+            String filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + downloadFileDto.getFilePath();
+            
+            log.info("[DOWNLOAD] Start downloading file: {} (code: {})", fileName, code);
+            
+            // 优化响应头设置
+            response.setContentType("application/octet-stream");
+            response.setCharacterEncoding("UTF-8");
+            
+            // 设置缓冲区大小（8KB）
+            response.setBufferSize(8192);
+            
+            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {// IE浏览器
+                fileName = URLEncoder.encode(fileName, "UTF-8");
+            } else {
+                fileName = new String(fileName.getBytes("UTF-8"), "ISO8859-1");
+            }
+            response.setHeader("Content-Disposition", "attachment;filename=\"" + fileName + "\"");
+            
+            // 支持断点续传
+            File file = new File(filePath);
+            if (file.exists()) {
+                response.setHeader("Accept-Ranges", "bytes");
+                response.setContentLengthLong(file.length());
+            }
+            
+            readFile(response, filePath);
+            
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("[DOWNLOAD] Successfully downloaded file: {} in {}ms", fileName, duration);
+            
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("[DOWNLOAD] Failed to download file: {} after {}ms, error: {}", 
+                fileName, duration, e.getMessage(), e);
+            throw e;
         }
-        String filePath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + downloadFileDto.getFilePath();
-        String fileName = downloadFileDto.getFileName();
-        response.setContentType("application/x-msdownload; charset=UTF-8");
-        if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {// IE浏览器
-            fileName = URLEncoder.encode(fileName, "UTF-8");
-        } else {
-            fileName = new String(fileName.getBytes("UTF-8"), "ISO8859-1");
-        }
-        response.setHeader("Content-Disposition", "attachment;filename=\"" + fileName + "\"");
-        readFile(response, filePath);
     }
 }

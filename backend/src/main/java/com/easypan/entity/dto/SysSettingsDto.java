@@ -1,9 +1,10 @@
 package com.easypan.entity.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
+import lombok.Data;
 import java.io.Serializable;
 
+@Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SysSettingsDto implements Serializable {
     /**
@@ -20,28 +21,4 @@ public class SysSettingsDto implements Serializable {
      * 用户初始化空间大小 1024M
      */
     private Integer userInitUseSpace = 1024;
-
-    public String getRegisterEmailTitle() {
-        return registerEmailTitle;
-    }
-
-    public void setRegisterEmailTitle(String registerEmailTitle) {
-        this.registerEmailTitle = registerEmailTitle;
-    }
-
-    public String getRegisterEmailContent() {
-        return registerEmailContent;
-    }
-
-    public void setRegisterEmailContent(String registerEmailContent) {
-        this.registerEmailContent = registerEmailContent;
-    }
-
-    public Integer getUserInitUseSpace() {
-        return userInitUseSpace;
-    }
-
-    public void setUserInitUseSpace(Integer userInitUseSpace) {
-        this.userInitUseSpace = userInitUseSpace;
-    }
 }

@@ -3,17 +3,22 @@ package com.easypan.controller;
 import com.easypan.annotation.GlobalInterceptor;
 import com.easypan.annotation.VerifyParam;
 import com.easypan.entity.dto.SessionWebUserDto;
+import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.entity.po.FileShare;
 import com.easypan.entity.query.FileShareQuery;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
 import com.easypan.service.FileShareService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpSession;
+import java.util.HashMap;
+import java.util.Map;
 
+@Slf4j
 @RestController("shareController")
 @RequestMapping("/share")
 public class ShareController extends ABaseController {
@@ -23,18 +28,18 @@ public class ShareController extends ABaseController {
 
     @RequestMapping("/loadShareList")
     @GlobalInterceptor(checkParams = true)
-    public ResponseVO loadShareList(HttpSession session, FileShareQuery query) {
+    public ResponseVO<PaginationResultVO<FileShare>> loadShareList(HttpSession session, FileShareQuery query) {
         query.setOrderBy("share_time desc");
         SessionWebUserDto userDto = getUserInfoFromSession(session);
         query.setUserId(userDto.getUserId());
         query.setQueryFileName(true);
-        PaginationResultVO resultVO = this.fileShareService.findListByPage(query);
+        PaginationResultVO<FileShare> resultVO = this.fileShareService.findListByPage(query);
         return getSuccessResponseVO(resultVO);
     }
 
     @RequestMapping("/shareFile")
     @GlobalInterceptor(checkParams = true)
-    public ResponseVO shareFile(HttpSession session,
+    public ResponseVO<FileShare> shareFile(HttpSession session,
                                 @VerifyParam(required = true) String fileId,
                                 @VerifyParam(required = true) Integer validType,
                                 String code) {
@@ -44,15 +49,92 @@ public class ShareController extends ABaseController {
         share.setValidType(validType);
         share.setCode(code);
         share.setUserId(userDto.getUserId());
+        
+        log.info("[SHARE] User {} creating share for file: {}, validType: {}", 
+            userDto.getUserId(), fileId, validType);
+        
         fileShareService.saveShare(share);
+        
+        log.info("[SHARE] Share created successfully: shareId={}", share.getShareId());
         return getSuccessResponseVO(share);
     }
 
     @RequestMapping("/cancelShare")
     @GlobalInterceptor(checkParams = true)
-    public ResponseVO cancelShare(HttpSession session, @VerifyParam(required = true) String shareIds) {
+    public ResponseVO<Void> cancelShare(HttpSession session, @VerifyParam(required = true) String shareIds) {
         SessionWebUserDto userDto = getUserInfoFromSession(session);
+        
+        log.info("[SHARE] User {} cancelling shares: {}", userDto.getUserId(), shareIds);
+        
         fileShareService.deleteFileShareBatch(shareIds.split(","), userDto.getUserId());
+        
+        log.info("[SHARE] Shares cancelled successfully");
         return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 获取分享链接
+     */
+    @RequestMapping("/getShareUrl")
+    @GlobalInterceptor(checkParams = true)
+    public ResponseVO<Map<String, String>> getShareUrl(HttpSession session, 
+                                                        @VerifyParam(required = true) String shareId) {
+        SessionWebUserDto userDto = getUserInfoFromSession(session);
+        FileShare share = fileShareService.getFileShareByShareId(shareId);
+        
+        if (share == null || !share.getUserId().equals(userDto.getUserId())) {
+            ResponseVO<Map<String, String>> errorResponse = new ResponseVO<>();
+            errorResponse.setStatus(STATUC_ERROR);
+            errorResponse.setCode(ResponseCodeEnum.CODE_600.getCode());
+            errorResponse.setInfo("分享不存在");
+            return errorResponse;
+        }
+        
+        // 构建分享链接（实际项目中应该从配置读取域名）
+        String shareUrl = "http://localhost:8080/share/" + shareId;
+        
+        Map<String, String> result = new HashMap<>();
+        result.put("shareUrl", shareUrl);
+        result.put("code", share.getCode());
+        result.put("shareId", shareId);
+        
+        log.info("[SHARE] Generated share URL for shareId: {}", shareId);
+        return getSuccessResponseVO(result);
+    }
+
+    /**
+     * 检查分享状态
+     */
+    @RequestMapping("/checkShareStatus")
+    @GlobalInterceptor(checkParams = true)
+    public ResponseVO<Map<String, Object>> checkShareStatus(HttpSession session, 
+                                                             @VerifyParam(required = true) String shareId) {
+        SessionWebUserDto userDto = getUserInfoFromSession(session);
+        FileShare share = fileShareService.getFileShareByShareId(shareId);
+        
+        if (share == null || !share.getUserId().equals(userDto.getUserId())) {
+            ResponseVO<Map<String, Object>> errorResponse = new ResponseVO<>();
+            errorResponse.setStatus(STATUC_ERROR);
+            errorResponse.setCode(ResponseCodeEnum.CODE_600.getCode());
+            errorResponse.setInfo("分享不存在");
+            return errorResponse;
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("shareId", shareId);
+        result.put("fileName", share.getFileName());
+        result.put("shareTime", share.getShareTime());
+        result.put("expireTime", share.getExpireTime());
+        result.put("showCount", share.getShowCount());
+        result.put("validType", share.getValidType());
+        
+        // 判断分享状态
+        String status = "valid";
+        if (share.getExpireTime() != null && share.getExpireTime().before(new java.util.Date())) {
+            status = "expired";
+        }
+        result.put("status", status);
+        
+        return getSuccessResponseVO(result);
     }
 }

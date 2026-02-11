@@ -37,17 +37,18 @@
 </template>
 
 <script setup>
-import PreviewVideo from "@/components/preview/PreviewVideo.vue";
-import PreviewDoc from "@/components/preview/PreviewDoc.vue";
-import PreviewExcel from "@/components/preview/PreviewExcel.vue";
-import PreviewPdf from "@/components/preview/PreviewPdf.vue";
-import PreviewTxt from "@/components/preview/PreviewTxt.vue";
-import PreviewMusic from "@/components/preview/PreviewMusic.vue";
-import PreviewDownload from "@/components/preview/PreviewDownload.vue";
+import { ref, reactive, getCurrentInstance, computed, nextTick, defineAsyncComponent } from "vue";
+const PreviewVideo = defineAsyncComponent(() => import("@/components/preview/PreviewVideo.vue"));
+const PreviewDoc = defineAsyncComponent(() => import("@/components/preview/PreviewDoc.vue"));
+const PreviewExcel = defineAsyncComponent(() => import("@/components/preview/PreviewExcel.vue"));
+const PreviewPdf = defineAsyncComponent(() => import("@/components/preview/PreviewPdf.vue"));
+const PreviewTxt = defineAsyncComponent(() => import("@/components/preview/PreviewTxt.vue"));
+const PreviewMusic = defineAsyncComponent(() => import("@/components/preview/PreviewMusic.vue"));
+const PreviewDownload = defineAsyncComponent(() => import("@/components/preview/PreviewDownload.vue"));
 
-import { ref, reactive, getCurrentInstance, computed, nextTick } from "vue";
-const { proxy } = getCurrentInstance();
 import PreviewImage from "./PreviewImage.vue";
+
+const { proxy } = getCurrentInstance();
 
 const imageUrl = computed( () => {
     return (

@@ -211,9 +211,11 @@
 import { ref, reactive, getCurrentInstance, nextTick, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import md5 from "js-md5";
+import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
+const userInfoStore = useUserInfoStore();
 const api = {
     checkCode: "/api/checkCode",
     sendEmailCode: "/sendEmailCode",
@@ -405,7 +407,7 @@ const doSubmit = ()=> {
             }
             proxy.Message.success("登录成功");
             // 存储cookie
-            proxy.VueCookies.set("userInfo", result.data, 0);
+            userInfoStore.setUserInfo(result.data);
             // 重定向到原始页面
             const redirectUrl = route.query.redirectUrl || "/";
             router.push(redirectUrl);
@@ -428,7 +430,7 @@ const qqLogin = async () => {
     if (!result) {
         return;
     }
-    proxy.VueCookies.remove("userInfo");
+    userInfoStore.clearUserInfo();
     document.location.href = result.data;
 };
 </script>

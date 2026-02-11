@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.1</version>
+        <version>3.5.10</version>
         <relativePath/>
     </parent>
 
@@ -20,22 +20,23 @@
     <description>easypan</description>
 
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <skipTests>false</skipTests>
 
-        <springboot.version>2.6.1</springboot.version>
-        <mybatis.version>2.2.2</mybatis.version>
-        <logback.version>1.2.10</logback.version>
-        <mysql.version>8.0.23</mysql.version>
-        <aspectjweaver.version>1.9.4</aspectjweaver.version>
-        <okhttp3.version>3.2.0</okhttp3.version>
-        <fastjson.version>1.2.66</fastjson.version>
-        <commons.lang3.version>3.4</commons.lang3.version>
-        <commons.codec.version>1.9</commons.codec.version>
-        <commons.io.version>2.5</commons.io.version>
+        <mybatis.version>1.11.6</mybatis.version>
+        <flyway.version>11.20.3</flyway.version>
+        <logback.version>1.4.14</logback.version>
+        <postgresql.version>42.7.2</postgresql.version>
+        <aws.java.sdk.version>2.25.10</aws.java.sdk.version>
+        <aspectjweaver.version>1.9.21</aspectjweaver.version>
+        <okhttp3.version>4.12.0</okhttp3.version>
+        <fastjson.version>2.0.43</fastjson.version>
+        <commons.lang3.version>3.14.0</commons.lang3.version>
+        <commons.codec.version>1.16.0</commons.codec.version>
+        <commons.io.version>2.15.1</commons.io.version>
     </properties>
 
     <dependencies>
@@ -62,31 +63,42 @@
         </dependency>
 	
 	    <!--邮件发送-->
-	    <dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
-            <version>${springboot.version}</version>
         </dependency>
 	    <!--redis -->
-	    <dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
-            <version>${springboot.version}</version>
         </dependency>
 	
-	    <!--mybatis-->
-	    <dependency>
-            <groupId>org.mybatis.spring.boot</groupId>
-            <artifactId>mybatis-spring-boot-starter</artifactId>
+	    <!--MyBatis-Flex-->
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-spring-boot-starter</artifactId>
             <version>${mybatis.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.mybatis-flex</groupId>
+            <artifactId>mybatis-flex-processor</artifactId>
+            <version>${mybatis.version}</version>
+            <scope>provided</scope>
         </dependency>
 	
 	
 	    <!-- 数据库-->
 	    <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>${mysql.version}</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+
+        <!-- S3 SDK (MinIO) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws.java.sdk.version}</version>
         </dependency>
 	
 	
@@ -116,7 +128,6 @@
             <version>${okhttp3.version}</version>
         </dependency>
 	
-
 	
 	    <!--apache common-->
 	    <dependency>
@@ -136,19 +147,51 @@
             <artifactId>commons-io</artifactId>
             <version>${commons.io.version}</version>
         </dependency>
+        
+        <!-- Jackson for JSON -->
+        <dependency>
+             <groupId>com.fasterxml.jackson.core</groupId>
+             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.20</version>
+            <version>1.18.30</version>
+        </dependency>
+        
+        <!-- Swagger/OpenAPI for Spring Boot 3 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
+
+        <!-- Flyway Database Migration -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-boot-starter</artifactId>
-            <version>3.0.0</version>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Actuator Monitoring -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
     </dependencies>
 
@@ -157,7 +200,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>2.2.6.RELEASE</version>
                 <executions>
                     <execution>
                         <goals>
@@ -169,6 +211,32 @@
                 </executions>
                 <configuration>
                     <mainClass>com.easypan.EasyPanApplication</mainClass>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                    <encoding>UTF-8</encoding>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                        <arg>-proc:full</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.30</version>
+                        </path>
+                        <path>
+                            <groupId>com.mybatis-flex</groupId>
+                            <artifactId>mybatis-flex-processor</artifactId>
+                            <version>${mybatis.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>

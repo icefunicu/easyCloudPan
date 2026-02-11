@@ -1,63 +1,25 @@
-# AGENTS.md
+# EasyCloudPan Agent 协作规范 (AGENTS.md)
 
-> 本文件由仓库扫描自动生成，默认覆盖旧内容。面向自动化 Agent 与人工协作者。
+## 1. 技术栈底座
+- **JDK**: 21+ (必须支持 Virtual Threads)
+- **Node.js**: 18+
+- **DB**: PostgreSQL 15+
+- **Migration**: Flyway (严禁手动修改本地 DB 结构而不同步脚本)
 
-## 1. 目标与适用范围
-- 保持改动可回滚、可验证、可审计。
-- 适用于所有协作者：自动化 Agent、开发者、审阅者。
-- 高风险或不确定需求先缩小范围，再执行。
+## 2. 编码规约 (Lombok 强制)
+为了保持代码整洁，所有实体类遵循以下规范：
+- **PO/DTO/VO**: 必须使用 Lombok `@Data` 或 `@Getter/@Setter` 注解，移除手动生成的样板代码。
+- **字段命名**: 布尔类型字段避免以 `is` 开头（若必须，请手动配置属性名以确保兼容性，如 `private Boolean admin` 处理 `isAdmin` 逻辑）。
+- **构造函数**: 优先使用 `@NoArgsConstructor` 和 `@AllArgsConstructor`。
 
-## 2. 仓库画像（扫描结果）
-- 项目标识：`easyCloudPan`
-- 项目结构：
-  - `frontend/`: Vue 前端项目
-  - `backend/`: Java 后端项目
-  - `database/`: 数据库脚本
-  - `docs/`: 项目文档与资源
-- 技术栈：Java, Vue, MySQL
-- 仓库形态：`monorepo` (frontend + backend)
-- 关键路径：
-  - `README.md`
-  - `AGENTS.md`
-  - `docs/STAR_REPO_HIGHLIGHTS.md`
-  - `docs/STAR_REPO_INVENTORY.md`
-- 部署关注点：
-  - 前后端分离部署，需分别构建。
-  - 数据库脚本位于 `database/easypan.sql`。
+## 3. 数据库变更规范
+- 每一次数据库结构的修改，必须在 `backend/src/main/resources/db/migration` 下创建新的版本脚本（格式：`V[时间戳/版本]__描述.sql`）。
 
-## 3. 协作原则
-- 先读后改：先确认边界、影响范围、回滚点。
-- 小步提交：单次改动聚焦单一问题，禁止无关重构混入。
-- 优先复用：优先使用现有组件、脚本、约定。
-- 禁止猜测：结论必须有命令输出或测试结果支撑。
+## 4. Agent 协作流程 (System Spec)
+- **计划先行**: Agent 在处理大型任务（涉及多文件修改）前，必须产出 `implementation_plan.md`。
+- **用户确认**: 只有在用户确认后方可执行。
+- **收尾清理**: 任务结束后，Agent 负责更新 `walkthrough.md`。
 
-## 4. 实施规范
-- 保持命名、目录结构、错误处理风格一致。
-- 边界输入做校验（空值、类型、范围、格式）。
-- 避免明显性能风险（N+1、无界循环、全量扫描）。
-- 日志禁止输出敏感信息，禁止提交密钥和令牌。
-
-## 5. 安全红线
-- 禁止执行破坏性操作（清库、覆盖生产配置、强推受保护分支）。
-- 禁止执行来源不明脚本或未审计下载命令。
-- 涉及权限、支付、用户数据时先写威胁模型与防护措施。
-
-## 6. 质量门禁
-- 未自动识别到可执行门禁命令。请补充后再发布。
-
-## 7. 提交与评审
-- Commit message 使用 Conventional Commits：`feat|fix|refactor|docs|test|chore|ci`。
-- 提交说明必须包含 What、Why、How to verify（命令 + 预期结果）。
-- 评审优先检查行为回归、边界条件、测试充分性、部署兼容性。
-
-## 8. Agent 执行清单
-开始前：
-- 明确需求边界、影响文件、回滚方案。
-- 标记是否影响构建、测试、部署、外部接口。
-修改中：
-- 每修完一个问题立即做最小验证，不累计风险。
-- 发现异常改动时立即暂停并与用户确认。
-结束前：
-- 汇总改动文件、验证命令、验证结果。
-- 明确说明构建、测试、部署基线是否通过。
-- 列出剩余风险和可选后续优化。
+## 5. 项目结构认知
+- `ops/local/setup.bat` 是环境一致性的唯一入口。
+- `ops/docker/docker-compose.yml` 包含 Redis, MinIO, PostgreSQL 的标准联调环境。

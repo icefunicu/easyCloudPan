@@ -8,14 +8,12 @@ public enum FileCategoryEnums {
     DOC(4, "doc", "文档"),
     OTHERS(5, "others", "其他");
 
-    private Integer category;
-    private String code;
-    private String desc;
+    private final Integer category;
+    private final String code;
 
     FileCategoryEnums(Integer category, String code, String desc) {
         this.category = category;
         this.code = code;
-        this.desc = desc;
     }
 
     public static FileCategoryEnums getByCode(String code) {

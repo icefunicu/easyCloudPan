@@ -4,27 +4,24 @@ import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.DownloadFileDto;
 import com.easypan.entity.dto.SysSettingsDto;
 import com.easypan.entity.dto.UserSpaceDto;
-import com.easypan.entity.po.FileInfo;
 import com.easypan.entity.po.UserInfo;
-import com.easypan.entity.query.FileInfoQuery;
-import com.easypan.entity.query.UserInfoQuery;
 import com.easypan.mappers.FileInfoMapper;
 import com.easypan.mappers.UserInfoMapper;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 @Component("redisComponent")
 public class RedisComponent {
 
     @Resource
-    private RedisUtils redisUtils;
+    private RedisUtils<Object> redisUtils;
 
     @Resource
-    private UserInfoMapper<UserInfo, UserInfoQuery> userInfoMapper;
+    private UserInfoMapper userInfoMapper;
 
     @Resource
-    private FileInfoMapper<FileInfo, FileInfoQuery> fileInfoMapper;
+    private FileInfoMapper fileInfoMapper;
 
     /**
      * 获取系统设置
@@ -56,7 +53,6 @@ public class RedisComponent {
     public DownloadFileDto getDownloadCode(String code) {
         return (DownloadFileDto) redisUtils.get(Constants.REDIS_KEY_DOWNLOAD + code);
     }
-
 
     /**
      * 获取用户使用的空间
@@ -96,10 +92,11 @@ public class RedisComponent {
         return spaceDto;
     }
 
-    //保存文件临时大小
+    // 保存文件临时大小
     public void saveFileTempSize(String userId, String fileId, Long fileSize) {
         Long currentSize = getFileTempSize(userId, fileId);
-        redisUtils.setex(Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + userId + fileId, currentSize + fileSize, Constants.REDIS_KEY_EXPIRES_ONE_HOUR);
+        redisUtils.setex(Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + userId + fileId, currentSize + fileSize,
+                Constants.REDIS_KEY_EXPIRES_ONE_HOUR);
     }
 
     public Long getFileTempSize(String userId, String fileId) {

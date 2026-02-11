@@ -19,7 +19,22 @@ const videoInfo = ref({
 
 const player = ref();
 
-const initPlayer = () => {
+const loadHlsScript = () => {
+    return new Promise((resolve, reject) => {
+        if (window.Hls) {
+            resolve();
+            return;
+        }
+        const script = document.createElement("script");
+        script.src = "/hls.min.js";
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("Failed to load HLS script"));
+        document.head.appendChild(script);
+    });
+};
+
+const initPlayer = async () => {
+    await loadHlsScript();
     const dp = new DPlayer({
         element: player.value,
         theme: "#b7daff",
@@ -29,7 +44,7 @@ const initPlayer = () => {
             type: "customHls",
             customType: {
                 customHls: function(video, player) {
-                    const hls = new Hls();
+                    const hls = new window.Hls();
                     hls.loadSource(video.src);
                     hls.attachMedia(video);
                 },

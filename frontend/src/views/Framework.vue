@@ -135,9 +135,11 @@ import UpdatePassword from "./UpdatePassword.vue";
 
 import { ref, reactive, getCurrentInstance, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
+const userInfoStore = useUserInfoStore();
 
 const api = {
     logout: "/logout",
@@ -165,7 +167,7 @@ const uploadCallbackHandler = () => {
 };
 const timestamp = ref(0);
 //获取用户信息
-const userInfo = ref(proxy.VueCookies.get("userInfo"));
+const userInfo = ref(userInfoStore.userInfo);
 
 const menus = [
     {
@@ -296,7 +298,7 @@ const updateAvatar = () => {
 };
 
 const reloadAvatar = () => {
-    userInfo.value = proxy.VueCookies.get("userInfo");
+    userInfo.value = userInfoStore.userInfo;
     timestamp.value = new Date().getTime();
 };
 
@@ -315,7 +317,7 @@ const logout = async () => {
         if (!result){
             return;
         }
-        proxy.VueCookies.remove("userInfo");
+        userInfoStore.clearUserInfo();
         router.push("/login");
     });
 };

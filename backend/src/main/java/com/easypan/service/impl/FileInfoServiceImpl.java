@@ -11,15 +11,13 @@ import com.easypan.entity.po.FileInfo;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.entity.query.FileInfoQuery;
 import com.easypan.entity.query.SimplePage;
-import com.easypan.entity.query.UserInfoQuery;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.exception.BusinessException;
 import com.easypan.mappers.FileInfoMapper;
 import com.easypan.mappers.UserInfoMapper;
 import com.easypan.service.FileInfoService;
+import com.easypan.service.MediaTranscodeService;
 import com.easypan.utils.DateUtil;
-import com.easypan.utils.ProcessUtils;
-import com.easypan.utils.ScaleFilter;
 import com.easypan.utils.StringTools;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -32,9 +30,10 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.util.*;
 import java.util.function.Function;
@@ -56,13 +55,19 @@ public class FileInfoServiceImpl implements FileInfoService {
     private AppConfig appConfig;
 
     @Resource
-    private FileInfoMapper<FileInfo, FileInfoQuery> fileInfoMapper;
+    private FileInfoMapper fileInfoMapper;
 
     @Resource
-    private UserInfoMapper<UserInfo, UserInfoQuery> userInfoMapper;
+    private UserInfoMapper userInfoMapper;
 
     @Resource
     private RedisComponent redisComponent;
+
+    @Resource
+    private MediaTranscodeService mediaTranscodeService;
+
+    @Resource
+    private com.easypan.component.S3Component s3Component;
 
     /**
      * 根据条件查询列表
@@ -162,6 +167,27 @@ public class FileInfoServiceImpl implements FileInfoService {
         File tempFileFolder = null;
         Boolean uploadSuccess = true;
         try {
+            // 文件类型安全校验（第一个分片时检查）
+            if (chunkIndex == 0) {
+                String fileSuffix = StringTools.getFileSuffix(fileName);
+                
+                // 检查是否为危险文件类型
+                if (com.easypan.utils.FileTypeValidator.isDangerousFileType(fileSuffix)) {
+                    throw new BusinessException("不允许上传可执行文件类型");
+                }
+                
+                // 验证文件真实类型
+                try (InputStream inputStream = file.getInputStream()) {
+                    if (!com.easypan.utils.FileTypeValidator.validateFileType(inputStream, fileSuffix)) {
+                        logger.warn("File type validation failed: fileName={}, suffix={}", fileName, fileSuffix);
+                        throw new BusinessException("文件类型不匹配，请上传正确的文件");
+                    }
+                } catch (IOException e) {
+                    logger.error("Error validating file type", e);
+                    throw new BusinessException("文件类型校验失败");
+                }
+            }
+            
             UploadResultDto resultDto = new UploadResultDto();
             if (StringTools.isEmpty(fileId)) {
                 fileId = StringTools.getRandomString(Constants.LENGTH_10);
@@ -347,6 +373,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             targetFilePath = targetFolder.getPath() + "/" + realFileName;
             // 合并文件
             union(fileFolder.getPath(), targetFilePath, fileInfo.getFileName(), true);
+
+            // 上传原始文件到 S3
+            s3Component.uploadFile(fileInfo.getFilePath(), new File(targetFilePath));
+
             // 视频文件切割
             fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
             if (FileTypeEnums.VIDEO == fileTypeEnum) {
@@ -354,28 +384,51 @@ public class FileInfoServiceImpl implements FileInfoService {
                 // 视频生成缩略图
                 cover = month + "/" + currentUserFolderName + Constants.IMAGE_PNG_SUFFIX;
                 String coverPath = targetFolderName + "/" + cover;
-                ScaleFilter.createCover4Video(new File(targetFilePath), Constants.LENGTH_150, new File(coverPath));
+                File coverFile = new File(coverPath);
+                mediaTranscodeService.createVideoCover(new File(targetFilePath), Constants.LENGTH_150, coverFile);
+                // 上传封面到 S3
+                if (coverFile.exists()) {
+                    s3Component.uploadFile(cover, coverFile);
+                }
+                // 上传切片目录到 S3
+                String tsFolderName = targetFilePath.substring(0, targetFilePath.lastIndexOf("."));
+                File tsFolder = new File(tsFolderName);
+                if (tsFolder.exists()) {
+                    s3Component.uploadDirectory(
+                            fileInfo.getFilePath().substring(0, fileInfo.getFilePath().lastIndexOf(".")), tsFolder);
+                }
             } else if (FileTypeEnums.IMAGE == fileTypeEnum) {
                 // 生成缩略图
                 cover = month + "/" + realFileName.replace(".", "_.");
                 String coverPath = targetFolderName + "/" + cover;
-                Boolean created = ScaleFilter.createThumbnailWidthFFmpeg(new File(targetFilePath), Constants.LENGTH_150,
-                        new File(coverPath), false);
+                File coverFile = new File(coverPath);
+                Boolean created = mediaTranscodeService.createThumbnail(new File(targetFilePath), Constants.LENGTH_150,
+                        coverFile, false);
                 if (!created) {
-                    FileUtils.copyFile(new File(targetFilePath), new File(coverPath));
+                    FileUtils.copyFile(new File(targetFilePath), coverFile);
                 }
+                // 上传封面到 S3
+                s3Component.uploadFile(cover, coverFile);
             }
         } catch (Exception e) {
             logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
             transferSuccess = false;
         } finally {
             FileInfo updateInfo = new FileInfo();
-            updateInfo.setFileSize(new File(targetFilePath).length());
+            File targetFile = new File(targetFilePath);
+            updateInfo.setFileSize(targetFile.exists() ? targetFile.length() : 0L);
             updateInfo.setFileCover(cover);
             updateInfo.setStatus(
                     transferSuccess ? FileStatusEnums.USING.getStatus() : FileStatusEnums.TRANSFER_FAIL.getStatus());
             fileInfoMapper.updateFileStatusWithOldStatus(fileId, webUserDto.getUserId(), updateInfo,
                     FileStatusEnums.TRANSFER.getStatus());
+
+            // 清理本地文件 (可选，但在云原生架构中通常清理本地缓存)
+            if (targetFilePath != null) {
+                FileUtils.deleteQuietly(new File(targetFilePath));
+                String tsFolderName = targetFilePath.substring(0, targetFilePath.lastIndexOf("."));
+                FileUtils.deleteQuietly(new File(tsFolderName));
+            }
         }
     }
 
@@ -397,8 +450,8 @@ public class FileInfoServiceImpl implements FileInfoService {
         try {
             // 创建随机访问文件对象用于写入
             writeFile = new RandomAccessFile(targetFile, "rw");
-            // 定义字节数组，用于读取文件内容
-            byte[] b = new byte[1024 * 10];
+            // 优化：增大缓冲区到 1MB，提升 I/O 性能
+            byte[] b = new byte[1024 * 1024];
             // 遍历目录下的文件列表
             for (int i = 0; i < fileList.length; i++) {
                 int len = -1;
@@ -416,7 +469,9 @@ public class FileInfoServiceImpl implements FileInfoService {
                     logger.error("合并分片失败", e);
                     throw new BusinessException("合并文件失败");
                 } finally {
-                    readFile.close();
+                    if (readFile != null) {
+                        readFile.close();
+                    }
                 }
             }
         } catch (Exception e) {
@@ -436,7 +491,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     try {
                         FileUtils.deleteDirectory(dir);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.error("删除临时目录失败: {}", dir.getPath(), e);
                     }
                 }
             }
@@ -452,17 +507,12 @@ public class FileInfoServiceImpl implements FileInfoService {
         if (!tsFolder.exists()) {
             tsFolder.mkdirs();
         }
-        final String CMD_TRANSFER_2TS = "ffmpeg -y -i %s  -vcodec copy -acodec copy -vbsf h264_mp4toannexb %s";
-        final String CMD_CUT_TS = "ffmpeg -i %s -c copy -map 0 -f segment -segment_list %s -segment_time 30 %s/%s_%%4d.ts";
 
         String tsPath = tsFolder + "/" + Constants.TS_NAME;
         // 生成.ts
-        String cmd = String.format(CMD_TRANSFER_2TS, videoFilePath, tsPath);
-        ProcessUtils.executeCommand(cmd, false);
+        mediaTranscodeService.transcodeToTs(videoFilePath, tsPath);
         // 生成索引文件.m3u8 和切片.ts
-        cmd = String.format(CMD_CUT_TS, tsPath, tsFolder.getPath() + "/" + Constants.M3U8_NAME, tsFolder.getPath(),
-                fileId);
-        ProcessUtils.executeCommand(cmd, false);
+        mediaTranscodeService.cutToM3u8(tsPath, tsFolder.getPath(), fileId);
         // 删除index.ts
         new File(tsPath).delete();
     }
@@ -601,9 +651,15 @@ public class FileInfoServiceImpl implements FileInfoService {
             return;
         }
         List<String> delFilePidList = new ArrayList<>();
-        for (FileInfo fileInfo : fileInfoList) {
-            findAllSubFolderFileIdList(delFilePidList, userId, fileInfo.getFileId(), FileDelFlagEnums.USING.getFlag());
+        List<String> folderIds = fileInfoList.stream()
+                .filter(item -> FileFolderTypeEnums.FOLDER.getType().equals(item.getFolderType()))
+                .map(FileInfo::getFileId)
+                .collect(Collectors.toList());
+        if (!folderIds.isEmpty()) {
+            delFilePidList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
+                    FileDelFlagEnums.USING.getFlag());
         }
+
         // 将目录下的所有文件更新为已删除
         if (!delFilePidList.isEmpty()) {
             FileInfo updateInfo = new FileInfo();
@@ -621,19 +677,6 @@ public class FileInfoServiceImpl implements FileInfoService {
                 FileDelFlagEnums.USING.getFlag());
     }
 
-    private void findAllSubFolderFileIdList(List<String> fileIdList, String userId, String fileId, Integer delFlag) {
-        fileIdList.add(fileId);
-        FileInfoQuery query = new FileInfoQuery();
-        query.setUserId(userId);
-        query.setFilePid(fileId);
-        query.setDelFlag(delFlag);
-        query.setFolderType(FileFolderTypeEnums.FOLDER.getType());
-        List<FileInfo> fileInfoList = this.fileInfoMapper.selectList(query);
-        for (FileInfo fileInfo : fileInfoList) {
-            findAllSubFolderFileIdList(fileIdList, userId, fileInfo.getFileId(), delFlag);
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void recoverFileBatch(String userId, String fileIds) {
@@ -646,11 +689,13 @@ public class FileInfoServiceImpl implements FileInfoService {
 
         List<String> delFileSubFolderFileIdList = new ArrayList<>();
         // 找到所选文件子目录文件ID
-        for (FileInfo fileInfo : fileInfoList) {
-            if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
-                findAllSubFolderFileIdList(delFileSubFolderFileIdList, userId, fileInfo.getFileId(),
-                        FileDelFlagEnums.DEL.getFlag());
-            }
+        List<String> folderIds = fileInfoList.stream()
+                .filter(item -> FileFolderTypeEnums.FOLDER.getType().equals(item.getFolderType()))
+                .map(FileInfo::getFileId)
+                .collect(Collectors.toList());
+        if (!folderIds.isEmpty()) {
+            delFileSubFolderFileIdList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
+                    FileDelFlagEnums.DEL.getFlag());
         }
         // 查询所有根目录的文件
         query = new FileInfoQuery();
@@ -706,11 +751,13 @@ public class FileInfoServiceImpl implements FileInfoService {
         List<FileInfo> fileInfoList = this.fileInfoMapper.selectList(query);
         List<String> delFileSubFolderFileIdList = new ArrayList<>();
         // 找到所选文件子目录文件ID
-        for (FileInfo fileInfo : fileInfoList) {
-            if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
-                findAllSubFolderFileIdList(delFileSubFolderFileIdList, userId, fileInfo.getFileId(),
-                        FileDelFlagEnums.DEL.getFlag());
-            }
+        List<String> folderIds = fileInfoList.stream()
+                .filter(item -> FileFolderTypeEnums.FOLDER.getType().equals(item.getFolderType()))
+                .map(FileInfo::getFileId)
+                .collect(Collectors.toList());
+        if (!folderIds.isEmpty()) {
+            delFileSubFolderFileIdList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
+                    FileDelFlagEnums.DEL.getFlag());
         }
 
         // 删除所选文件，子目录中的文件
@@ -732,6 +779,20 @@ public class FileInfoServiceImpl implements FileInfoService {
         userSpaceDto.setUseSpace(useSpace);
         redisComponent.saveUserSpaceUse(userId, userSpaceDto);
 
+        // 物理删除 S3 文件
+        for (FileInfo fileInfo : fileInfoList) {
+            if (FileFolderTypeEnums.FILE.getType().equals(fileInfo.getFolderType())) {
+                s3Component.deleteFile(fileInfo.getFilePath());
+                if (fileInfo.getFileCover() != null) {
+                    s3Component.deleteFile(fileInfo.getFileCover());
+                }
+                if (FileTypeEnums.VIDEO.getType().equals(fileInfo.getFileType())) {
+                    // 删除切片目录
+                    String tsFolderKey = fileInfo.getFilePath().substring(0, fileInfo.getFilePath().lastIndexOf("."));
+                    s3Component.deleteDirectory(tsFolderKey);
+                }
+            }
+        }
     }
 
     @Override
@@ -785,7 +846,7 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
             findAllSubFile(copyFileList, item, shareUserId, cureentUserId, curDate, myFolderId);
         }
-        System.out.println(copyFileList.size());
+        logger.debug("准备批量插入文件数量: {}", copyFileList.size());
         this.fileInfoMapper.insertBatch(copyFileList);
     }
 

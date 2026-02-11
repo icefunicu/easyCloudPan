@@ -8,7 +8,6 @@ import com.easypan.entity.vo.PaginationResultVO;
 import org.apache.ibatis.annotations.Param;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.List;
 
 

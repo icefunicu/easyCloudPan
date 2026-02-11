@@ -58,10 +58,10 @@
             and password = #{query.password}
         </if>
         <if test="query.joinTime != null and query.joinTime!=''">
-            <![CDATA[ and  join_time=str_to_date(#{query.joinTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  join_time::date = #{query.joinTime}::date ]]>
         </if>
         <if test="query.lastLoginTime != null and query.lastLoginTime!=''">
-            <![CDATA[ and  last_login_time=str_to_date(#{query.lastLoginTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  last_login_time::date = #{query.lastLoginTime}::date ]]>
         </if>
         <if test="query.status != null">
             and status = #{query.status}
@@ -103,16 +103,16 @@
                 and password like concat('%', #{query.passwordFuzzy}, '%')
             </if>
             <if test="query.joinTimeStart!= null and query.joinTimeStart!=''">
-                <![CDATA[ and  join_time>=str_to_date(#{query.joinTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  join_time >= #{query.joinTimeStart}::date ]]>
             </if>
             <if test="query.joinTimeEnd!= null and query.joinTimeEnd!=''">
-                <![CDATA[ and  join_time< date_sub(str_to_date(#{query.joinTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  join_time < #{query.joinTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.lastLoginTimeStart!= null and query.lastLoginTimeStart!=''">
-                <![CDATA[ and  last_login_time>=str_to_date(#{query.lastLoginTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  last_login_time >= #{query.lastLoginTimeStart}::date ]]>
             </if>
             <if test="query.lastLoginTimeEnd!= null and query.lastLoginTimeEnd!=''">
-                <![CDATA[ and  last_login_time< date_sub(str_to_date(#{query.lastLoginTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  last_login_time < #{query.lastLoginTimeEnd}::date + interval '1 day' ]]>
             </if>
         </where>
     </sql>
@@ -131,7 +131,7 @@
         </if>
         <!-- Add more safe allowlisted sorts as needed, or default to checking in Java -->
         <if test="query.simplePage!=null">
-            limit #{query.simplePage.start},#{query.simplePage.end}
+            limit #{query.simplePage.pageSize} offset #{query.simplePage.start}
         </if>
     </select>
 
@@ -140,224 +140,6 @@
         SELECT count(1) FROM user_info
         <include refid="query_condition"/>
     </select>
-
-    <!-- 插入 （匹配有值的字段）-->
-    <insert id="insert" parameterType="com.easypan.entity.po.UserInfo">
-        INSERT INTO user_info
-        <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="bean.userId != null">
-                user_id,
-            </if>
-            <if test="bean.nickName != null">
-                nick_name,
-            </if>
-            <if test="bean.email != null">
-                email,
-            </if>
-            <if test="bean.qqOpenId != null">
-                qq_open_id,
-            </if>
-            <if test="bean.qqAvatar != null">
-                qq_avatar,
-            </if>
-            <if test="bean.password != null">
-                password,
-            </if>
-            <if test="bean.joinTime != null">
-                join_time,
-            </if>
-            <if test="bean.lastLoginTime != null">
-                last_login_time,
-            </if>
-            <if test="bean.status != null">
-                status,
-            </if>
-            <if test="bean.useSpace != null">
-                use_space,
-            </if>
-            <if test="bean.totalSpace != null">
-                total_space,
-            </if>
-        </trim>
-        <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="bean.userId!=null">
-                #{bean.userId},
-            </if>
-            <if test="bean.nickName!=null">
-                #{bean.nickName},
-            </if>
-            <if test="bean.email!=null">
-                #{bean.email},
-            </if>
-            <if test="bean.qqOpenId!=null">
-                #{bean.qqOpenId},
-            </if>
-            <if test="bean.qqAvatar!=null">
-                #{bean.qqAvatar},
-            </if>
-            <if test="bean.password!=null">
-                #{bean.password},
-            </if>
-            <if test="bean.joinTime!=null">
-                #{bean.joinTime},
-            </if>
-            <if test="bean.lastLoginTime!=null">
-                #{bean.lastLoginTime},
-            </if>
-            <if test="bean.status!=null">
-                #{bean.status},
-            </if>
-            <if test="bean.useSpace!=null">
-                #{bean.useSpace},
-            </if>
-            <if test="bean.totalSpace!=null">
-                #{bean.totalSpace},
-            </if>
-        </trim>
-    </insert>
-
-    <!-- 插入或者更新 （匹配有值的字段）-->
-    <insert id="insertOrUpdate" parameterType="com.easypan.entity.po.UserInfo">
-        INSERT INTO user_info
-        <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="bean.userId != null">
-                user_id,
-            </if>
-            <if test="bean.nickName != null">
-                nick_name,
-            </if>
-            <if test="bean.email != null">
-                email,
-            </if>
-            <if test="bean.qqOpenId != null">
-                qq_open_id,
-            </if>
-            <if test="bean.qqAvatar != null">
-                qq_avatar,
-            </if>
-            <if test="bean.password != null">
-                password,
-            </if>
-            <if test="bean.joinTime != null">
-                join_time,
-            </if>
-            <if test="bean.lastLoginTime != null">
-                last_login_time,
-            </if>
-            <if test="bean.status != null">
-                status,
-            </if>
-            <if test="bean.useSpace != null">
-                use_space,
-            </if>
-            <if test="bean.totalSpace != null">
-                total_space,
-            </if>
-        </trim>
-        <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="bean.userId!=null">
-                #{bean.userId},
-            </if>
-            <if test="bean.nickName!=null">
-                #{bean.nickName},
-            </if>
-            <if test="bean.email!=null">
-                #{bean.email},
-            </if>
-            <if test="bean.qqOpenId!=null">
-                #{bean.qqOpenId},
-            </if>
-            <if test="bean.qqAvatar!=null">
-                #{bean.qqAvatar},
-            </if>
-            <if test="bean.password!=null">
-                #{bean.password},
-            </if>
-            <if test="bean.joinTime!=null">
-                #{bean.joinTime},
-            </if>
-            <if test="bean.lastLoginTime!=null">
-                #{bean.lastLoginTime},
-            </if>
-            <if test="bean.status!=null">
-                #{bean.status},
-            </if>
-            <if test="bean.useSpace!=null">
-                #{bean.useSpace},
-            </if>
-            <if test="bean.totalSpace!=null">
-                #{bean.totalSpace},
-            </if>
-        </trim>
-        on DUPLICATE key update
-        <trim prefix="" suffix="" suffixOverrides=",">
-            <if test="bean.userId!=null">
-                user_id = VALUES(user_id),
-            </if>
-            <if test="bean.nickName!=null">
-                nick_name = VALUES(nick_name),
-            </if>
-            <if test="bean.email!=null">
-                email = VALUES(email),
-            </if>
-            <if test="bean.qqOpenId!=null">
-                qq_open_id = VALUES(qq_open_id),
-            </if>
-            <if test="bean.qqAvatar!=null">
-                qq_avatar = VALUES(qq_avatar),
-            </if>
-            <if test="bean.password!=null">
-                password = VALUES(password),
-            </if>
-            <if test="bean.joinTime!=null">
-                join_time = VALUES(join_time),
-            </if>
-            <if test="bean.lastLoginTime!=null">
-                last_login_time = VALUES(last_login_time),
-            </if>
-            <if test="bean.status!=null">
-                status = VALUES(status),
-            </if>
-            <if test="bean.useSpace!=null">
-                use_space = VALUES(use_space),
-            </if>
-            <if test="bean.totalSpace!=null">
-                total_space = VALUES(total_space),
-            </if>
-        </trim>
-    </insert>
-
-    <!-- 添加 （批量插入）-->
-    <insert id="insertBatch" parameterType="com.easypan.entity.po.UserInfo">
-        INSERT INTO user_info(
-        user_id,
-        nick_name,
-        email,
-        qq_open_id,
-        qq_avatar,
-        password,
-        join_time,
-        last_login_time,
-        status,
-        use_space,
-        total_space
-        )values
-        <foreach collection="list" item="item" separator=",">
-            (
-            #{item.userId},
-            #{item.nickName},
-            #{item.email},
-            #{item.qqOpenId},
-            #{item.qqAvatar},
-            #{item.password},
-            #{item.joinTime},
-            #{item.lastLoginTime},
-            #{item.status},
-            #{item.useSpace},
-            #{item.totalSpace}
-            )
-        </foreach>
-    </insert>
 
     <!-- 批量新增修改 （批量插入）-->
     <insert id="insertOrUpdateBatch" parameterType="com.easypan.entity.po.UserInfo">
@@ -389,18 +171,18 @@
             #{item.totalSpace}
             )
         </foreach>
-        on DUPLICATE key update
-        user_id = VALUES(user_id),
-        nick_name = VALUES(nick_name),
-        email = VALUES(email),
-        qq_open_id = VALUES(qq_open_id),
-        qq_avatar = VALUES(qq_avatar),
-        password = VALUES(password),
-        join_time = VALUES(join_time),
-        last_login_time = VALUES(last_login_time),
-        status = VALUES(status),
-        use_space = VALUES(use_space),
-        total_space = VALUES(total_space)
+        ON CONFLICT (user_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        nick_name = EXCLUDED.nick_name,
+        email = EXCLUDED.email,
+        qq_open_id = EXCLUDED.qq_open_id,
+        qq_avatar = EXCLUDED.qq_avatar,
+        password = EXCLUDED.password,
+        join_time = EXCLUDED.join_time,
+        last_login_time = EXCLUDED.last_login_time,
+        status = EXCLUDED.status,
+        use_space = EXCLUDED.use_space,
+        total_space = EXCLUDED.total_space
     </insert>
 
     <!-- 根据UserId修改-->

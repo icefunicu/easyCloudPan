@@ -12,6 +12,7 @@ import com.easypan.entity.po.FileShare;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.entity.query.FileInfoQuery;
 import com.easypan.entity.vo.FileInfoVO;
+import com.easypan.entity.vo.FolderVO;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
 import com.easypan.entity.vo.ShareInfoVO;
@@ -25,11 +26,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.util.Date;
+import java.util.List;
 
 @RestController("webShareController")
 @RequestMapping("/showShare")
@@ -43,9 +45,10 @@ public class WebShareController extends CommonFileController {
 
     @Resource
     private UserInfoService userInfoService;
+
     /**
-    * 通过分享ID获取分享文件信息
-    * */
+     * 通过分享ID获取分享文件信息
+     */
     private ShareInfoVO getShareInfoCommon(String shareId) {
         FileShare share = fileShareService.getFileShareByShareId(shareId);
         if (null == share || (share.getExpireTime() != null && new Date().after(share.getExpireTime()))) {
@@ -63,6 +66,7 @@ public class WebShareController extends CommonFileController {
         shareInfoVO.setUserId(userInfo.getUserId());
         return shareInfoVO;
     }
+
     /**
      * 校验分享是否失效
      *
@@ -80,6 +84,7 @@ public class WebShareController extends CommonFileController {
         }
         return shareSessionDto;
     }
+
     /**
      * 获取分享登录信息
      *
@@ -89,13 +94,13 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/getShareLoginInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO getShareLoginInfo(HttpSession session, @VerifyParam(required = true) String shareId) {
+    public ResponseVO<ShareInfoVO> getShareLoginInfo(HttpSession session, @VerifyParam(required = true) String shareId) {
         SessionShareDto shareSessionDto = getSessionShareFromSession(session, shareId);
         if (shareSessionDto == null) {
             return getSuccessResponseVO(null);
         }
         ShareInfoVO shareInfoVO = getShareInfoCommon(shareId);
-        //判断是否是当前用户分享的文件
+        // 判断是否是当前用户分享的文件
         SessionWebUserDto userDto = getUserInfoFromSession(session);
         if (userDto != null && userDto.getUserId().equals(shareSessionDto.getShareUserId())) {
             shareInfoVO.setCurrentUser(true);
@@ -113,11 +118,9 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/getShareInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO getShareInfo(@VerifyParam(required = true) String shareId) {
+    public ResponseVO<ShareInfoVO> getShareInfo(@VerifyParam(required = true) String shareId) {
         return getSuccessResponseVO(getShareInfoCommon(shareId));
     }
-
-
 
     /**
      * 校验分享码
@@ -129,9 +132,9 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/checkShareCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO checkShareCode(HttpSession session,
-                                     @VerifyParam(required = true) String shareId,
-                                     @VerifyParam(required = true) String code) {
+    public ResponseVO<Void> checkShareCode(HttpSession session,
+            @VerifyParam(required = true) String shareId,
+            @VerifyParam(required = true) String code) {
         SessionShareDto shareSessionDto = fileShareService.checkShareCode(shareId, code);
         session.setAttribute(Constants.SESSION_SHARE_KEY + shareId, shareSessionDto);
         return getSuccessResponseVO(null);
@@ -146,8 +149,8 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/loadFileList")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO loadFileList(HttpSession session,
-                                   @VerifyParam(required = true) String shareId, String filePid) {
+    public ResponseVO<PaginationResultVO<FileInfoVO>> loadFileList(HttpSession session,
+            @VerifyParam(required = true) String shareId, String filePid) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         FileInfoQuery query = new FileInfoQuery();
         if (!StringTools.isEmpty(filePid) && !Constants.ZERO_STR.equals(filePid)) {
@@ -159,7 +162,7 @@ public class WebShareController extends CommonFileController {
         query.setUserId(shareSessionDto.getShareUserId());
         query.setOrderBy("last_update_time desc");
         query.setDelFlag(FileDelFlagEnums.USING.getFlag());
-        PaginationResultVO resultVO = fileInfoService.findListByPage(query);
+        PaginationResultVO<FileInfo> resultVO = fileInfoService.findListByPage(query);
         return getSuccessResponseVO(convert2PaginationVO(resultVO, FileInfoVO.class));
     }
 
@@ -173,35 +176,35 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO getFolderInfo(HttpSession session,
-                                    @VerifyParam(required = true) String shareId,
-                                    @VerifyParam(required = true) String path) {
+    public ResponseVO<List<FolderVO>> getFolderInfo(HttpSession session,
+            @VerifyParam(required = true) String shareId,
+            @VerifyParam(required = true) String path) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         return super.getFolderInfo(path, shareSessionDto.getShareUserId());
     }
 
     @RequestMapping("/getFile/{shareId}/{fileId}")
     public void getFile(HttpServletResponse response, HttpSession session,
-                        @PathVariable("shareId") @VerifyParam(required = true) String shareId,
-                        @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+            @PathVariable("shareId") @VerifyParam(required = true) String shareId,
+            @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         super.getFile(response, fileId, shareSessionDto.getShareUserId());
     }
 
     @RequestMapping("/ts/getVideoInfo/{shareId}/{fileId}")
     public void getVideoInfo(HttpServletResponse response,
-                             HttpSession session,
-                             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
-                             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+            HttpSession session,
+            @PathVariable("shareId") @VerifyParam(required = true) String shareId,
+            @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         super.getFile(response, fileId, shareSessionDto.getShareUserId());
     }
 
     @RequestMapping("/createDownloadUrl/{shareId}/{fileId}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO createDownloadUrl(HttpSession session,
-                                        @PathVariable("shareId") @VerifyParam(required = true) String shareId,
-                                        @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+    public ResponseVO<String> createDownloadUrl(HttpSession session,
+            @PathVariable("shareId") @VerifyParam(required = true) String shareId,
+            @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         return super.createDownloadUrl(fileId, shareSessionDto.getShareUserId());
     }
@@ -216,7 +219,7 @@ public class WebShareController extends CommonFileController {
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     public void download(HttpServletRequest request, HttpServletResponse response,
-                         @PathVariable("code") @VerifyParam(required = true) String code) throws Exception {
+            @PathVariable("code") @VerifyParam(required = true) String code) throws Exception {
         super.download(request, response, code);
     }
 
@@ -231,16 +234,17 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/saveShare")
     @GlobalInterceptor(checkParams = true)
-    public ResponseVO saveShare(HttpSession session,
-                                @VerifyParam(required = true) String shareId,
-                                @VerifyParam(required = true) String shareFileIds,
-                                @VerifyParam(required = true) String myFolderId) {
+    public ResponseVO<Void> saveShare(HttpSession session,
+            @VerifyParam(required = true) String shareId,
+            @VerifyParam(required = true) String shareFileIds,
+            @VerifyParam(required = true) String myFolderId) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         if (shareSessionDto.getShareUserId().equals(webUserDto.getUserId())) {
             throw new BusinessException("自己分享的文件无法保存到自己的网盘");
         }
-        fileInfoService.saveShare(shareSessionDto.getFileId(), shareFileIds, myFolderId, shareSessionDto.getShareUserId(), webUserDto.getUserId());
+        fileInfoService.saveShare(shareSessionDto.getFileId(), shareFileIds, myFolderId,
+                shareSessionDto.getShareUserId(), webUserDto.getUserId());
         return getSuccessResponseVO(null);
     }
 }

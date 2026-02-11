@@ -13,8 +13,8 @@ import com.easypan.entity.po.FileInfo;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpSession;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpSession;
 
 @RestController("recycleController")
 @RequestMapping("/recycle")

@@ -1,40 +1,14 @@
 package com.easypan.entity.dto;
 
+import lombok.Data;
+
+@Data
 public class SessionWebUserDto {
     private String nickName;
     private String userId;
-    private Boolean isAdmin;
+    /**
+     * 将字段名从 isAdmin 改为 admin，使 Lombok 生成 getAdmin 和 setAdmin 以保持兼容性
+     */
+    private Boolean admin;
     private String avatar;
-
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
-    }
-
-    public String getNickName() {
-        return nickName;
-    }
-
-    public void setNickName(String nickName) {
-        this.nickName = nickName;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public Boolean getAdmin() {
-        return isAdmin;
-    }
-
-    public void setAdmin(Boolean admin) {
-        isAdmin = admin;
-    }
 }

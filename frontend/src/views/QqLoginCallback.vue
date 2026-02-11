@@ -5,9 +5,11 @@
 <script setup>
 import { ref, reactive, getCurrentInstance, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
+const userInfoStore = useUserInfoStore();
 const api = {
     logincallback: "/qqlogin/callback",
 };
@@ -27,7 +29,7 @@ const login = async () => {
     if (redirectUrl == "/login") {
         redirectUrl = "/";
     }
-    proxy.VueCookies.set("userInfo", result.data.userInfo, 0);
+    userInfoStore.setUserInfo(result.data.userInfo);
     router.push(redirectUrl);
 };
 

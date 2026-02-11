@@ -23,10 +23,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -191,15 +191,10 @@ public class AccountController extends ABaseController {
     private void printNoDefaultImage(HttpServletResponse response) {
         response.setHeader(CONTENT_TYPE, CONTENT_TYPE_VALUE);
         response.setStatus(HttpStatus.OK.value());
-        PrintWriter writer = null;
-        try {
-            writer = response.getWriter();
+        try (PrintWriter writer = response.getWriter()) {
             writer.print("请在头像目录下放置默认头像default_avatar.jpg");
-            writer.close();
         } catch (Exception e) {
             logger.error("输出无默认图失败", e);
-        } finally {
-            writer.close();
         }
     }
 

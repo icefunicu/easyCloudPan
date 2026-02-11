@@ -9,7 +9,6 @@ import com.easypan.entity.po.EmailCode;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.entity.query.EmailCodeQuery;
 import com.easypan.entity.query.SimplePage;
-import com.easypan.entity.query.UserInfoQuery;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.exception.BusinessException;
 import com.easypan.mappers.EmailCodeMapper;
@@ -23,8 +22,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
-import javax.mail.internet.MimeMessage;
+import jakarta.annotation.Resource;
+import jakarta.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.List;
 
@@ -37,7 +36,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private static final Logger logger = LoggerFactory.getLogger(EmailCodeServiceImpl.class);
 
     @Resource
-    private EmailCodeMapper<EmailCode, EmailCodeQuery> emailCodeMapper;
+    private EmailCodeMapper emailCodeMapper;
 
     @Resource
     private JavaMailSender javaMailSender;
@@ -46,7 +45,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     private AppConfig appConfig;
 
     @Resource
-    private UserInfoMapper<UserInfo, UserInfoQuery> userInfoMapper;
+    private UserInfoMapper userInfoMapper;
 
     @Resource
     private RedisComponent redisComponent;
@@ -137,6 +136,7 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         return this.emailCodeMapper.deleteByEmailAndCode(email, code);
     }
 
+    @SuppressWarnings("null")
     private void sendEmailCode(String toEmail, String code) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();

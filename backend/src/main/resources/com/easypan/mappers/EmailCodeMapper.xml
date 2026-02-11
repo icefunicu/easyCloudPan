@@ -30,7 +30,7 @@
             and code = #{query.code}
         </if>
         <if test="query.createTime != null and query.createTime!=''">
-            <![CDATA[ and  create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  create_time::date = #{query.createTime}::date ]]>
         </if>
         <if test="query.status != null">
             and status = #{query.status}
@@ -54,10 +54,10 @@
                 and code like concat('%', #{query.codeFuzzy}, '%')
             </if>
             <if test="query.createTimeStart!= null and query.createTimeStart!=''">
-                <![CDATA[ and  create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  create_time >= #{query.createTimeStart}::date ]]>
             </if>
             <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
-                <![CDATA[ and  create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  create_time < #{query.createTimeEnd}::date + interval '1 day' ]]>
             </if>
         </where>
     </sql>
@@ -72,7 +72,7 @@
             order by ${query.orderBy}
         </if>
         <if test="query.simplePage!=null">
-            limit #{query.simplePage.start},#{query.simplePage.end}
+            limit #{query.simplePage.pageSize} offset #{query.simplePage.start}
         </if>
     </select>
 
@@ -146,19 +146,19 @@
                 #{bean.status},
             </if>
         </trim>
-        on DUPLICATE key update
+        ON CONFLICT (email, code) DO UPDATE SET
         <trim prefix="" suffix="" suffixOverrides=",">
             <if test="bean.email!=null">
-                email = VALUES(email),
+                email = EXCLUDED.email,
             </if>
             <if test="bean.code!=null">
-                code = VALUES(code),
+                code = EXCLUDED.code,
             </if>
             <if test="bean.createTime!=null">
-                create_time = VALUES(create_time),
+                create_time = EXCLUDED.create_time,
             </if>
             <if test="bean.status!=null">
-                status = VALUES(status),
+                status = EXCLUDED.status,
             </if>
         </trim>
     </insert>
@@ -197,11 +197,11 @@
             #{item.status}
             )
         </foreach>
-        on DUPLICATE key update
-        email = VALUES(email),
-        code = VALUES(code),
-        create_time = VALUES(create_time),
-        status = VALUES(status)
+        ON CONFLICT (email, code) DO UPDATE SET
+        email = EXCLUDED.email,
+        code = EXCLUDED.code,
+        create_time = EXCLUDED.create_time,
+        status = EXCLUDED.status
     </insert>
 
     <!-- 根据EmailAndCode修改-->

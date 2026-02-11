@@ -55,10 +55,10 @@
             and valid_type = #{query.validType}
         </if>
         <if test="query.expireTime != null and query.expireTime!=''">
-            <![CDATA[ and  expire_time=str_to_date(#{query.expireTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  expire_time::date = #{query.expireTime}::date ]]>
         </if>
         <if test="query.shareTime != null and query.shareTime!=''">
-            <![CDATA[ and  share_time=str_to_date(#{query.shareTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  share_time::date = #{query.shareTime}::date ]]>
         </if>
         <if test="query.code != null and query.code!=''">
             and code = #{query.code}
@@ -88,16 +88,16 @@
                 and s.user_id like concat('%', #{query.userIdFuzzy}, '%')
             </if>
             <if test="query.expireTimeStart!= null and query.expireTimeStart!=''">
-                <![CDATA[ and  expire_time>=str_to_date(#{query.expireTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  expire_time >= #{query.expireTimeStart}::date ]]>
             </if>
             <if test="query.expireTimeEnd!= null and query.expireTimeEnd!=''">
-                <![CDATA[ and  expire_time< date_sub(str_to_date(#{query.expireTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  expire_time < #{query.expireTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.shareTimeStart!= null and query.shareTimeStart!=''">
-                <![CDATA[ and  share_time>=str_to_date(#{query.shareTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  share_time >= #{query.shareTimeStart}::date ]]>
             </if>
             <if test="query.shareTimeEnd!= null and query.shareTimeEnd!=''">
-                <![CDATA[ and  share_time< date_sub(str_to_date(#{query.shareTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  share_time < #{query.shareTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.codeFuzzy!= null  and query.codeFuzzy!=''">
                 and code like concat('%', #{query.codeFuzzy}, '%')
@@ -121,7 +121,7 @@
             order by ${query.orderBy}
         </if>
         <if test="query.simplePage!=null">
-            limit #{query.simplePage.start},#{query.simplePage.end}
+            limit #{query.simplePage.pageSize} offset #{query.simplePage.start}
         </if>
     </select>
 
@@ -243,31 +243,31 @@
                 #{bean.showCount},
             </if>
         </trim>
-        on DUPLICATE key update
+        ON CONFLICT (share_id) DO UPDATE SET
         <trim prefix="" suffix="" suffixOverrides=",">
             <if test="bean.shareId!=null">
-                share_id = VALUES(share_id),
+                share_id = EXCLUDED.share_id,
             </if>
             <if test="bean.fileId!=null">
-                file_id = VALUES(file_id),
+                file_id = EXCLUDED.file_id,
             </if>
             <if test="bean.userId!=null">
-                user_id = VALUES(user_id),
+                user_id = EXCLUDED.user_id,
             </if>
             <if test="bean.validType!=null">
-                valid_type = VALUES(valid_type),
+                valid_type = EXCLUDED.valid_type,
             </if>
             <if test="bean.expireTime!=null">
-                expire_time = VALUES(expire_time),
+                expire_time = EXCLUDED.expire_time,
             </if>
             <if test="bean.shareTime!=null">
-                share_time = VALUES(share_time),
+                share_time = EXCLUDED.share_time,
             </if>
             <if test="bean.code!=null">
-                code = VALUES(code),
+                code = EXCLUDED.code,
             </if>
             <if test="bean.showCount!=null">
-                show_count = VALUES(show_count),
+                show_count = EXCLUDED.show_count,
             </if>
         </trim>
     </insert>
@@ -322,15 +322,15 @@
             #{item.showCount}
             )
         </foreach>
-        on DUPLICATE key update
-        share_id = VALUES(share_id),
-        file_id = VALUES(file_id),
-        user_id = VALUES(user_id),
-        valid_type = VALUES(valid_type),
-        expire_time = VALUES(expire_time),
-        share_time = VALUES(share_time),
-        code = VALUES(code),
-        show_count = VALUES(show_count)
+        ON CONFLICT (share_id) DO UPDATE SET
+        share_id = EXCLUDED.share_id,
+        file_id = EXCLUDED.file_id,
+        user_id = EXCLUDED.user_id,
+        valid_type = EXCLUDED.valid_type,
+        expire_time = EXCLUDED.expire_time,
+        share_time = EXCLUDED.share_time,
+        code = EXCLUDED.code,
+        show_count = EXCLUDED.show_count
     </insert>
 
     <!-- 根据ShareId修改-->

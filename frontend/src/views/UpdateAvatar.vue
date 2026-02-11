@@ -30,7 +30,9 @@
 <script setup>
 import AvatarUpload from "@/components/AvatarUpload.vue";
 import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
+const userInfoStore = useUserInfoStore();
 
 const api = {
     updateUserAvatar: "updateUserAvatar",
@@ -77,9 +79,9 @@ const submitForm = async () => {
         return;
     }
     dialogConfig.value.show = false;
-    const cookieUserInfo = proxy.VueCookies.get("userInfo");
+    const cookieUserInfo = userInfoStore.userInfo;
     delete cookieUserInfo.avatar;
-    proxy.VueCookies.set("userInfo", cookieUserInfo, 0);
+    userInfoStore.setUserInfo(cookieUserInfo);
     emit("updateAvatar");
 };
 </script>

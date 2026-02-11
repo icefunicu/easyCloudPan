@@ -3,7 +3,7 @@ package com.easypan;
 import com.easypan.component.RedisComponent;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import javax.sql.DataSource;
@@ -12,13 +12,13 @@ import javax.sql.DataSource;
 @ActiveProfiles("test")
 class EasyPanApplicationTests {
 
-    @MockBean(name = "initRun")
+    @MockitoBean(name = "initRun")
     private InitRun initRun;
 
-    @MockBean
+    @MockitoBean
     private RedisComponent redisComponent;
 
-    @MockBean
+    @MockitoBean
     private DataSource dataSource;
 
     @Test

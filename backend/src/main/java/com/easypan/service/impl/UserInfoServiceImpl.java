@@ -29,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Date;
@@ -43,7 +43,7 @@ import java.util.Map;
 public class UserInfoServiceImpl implements UserInfoService {
 
     @Resource
-    private UserInfoMapper<UserInfo, UserInfoQuery> userInfoMapper;
+    private UserInfoMapper userInfoMapper;
 
     @Resource
     private EmailCodeService emailCodeService;
@@ -89,7 +89,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         SimplePage page = new SimplePage(param.getPageNo(), count, pageSize);
         param.setSimplePage(page);
         List<UserInfo> list = this.findListByParam(param);
-        PaginationResultVO<UserInfo> result = new PaginationResultVO(count, page.getPageSize(), page.getPageNo(),
+        PaginationResultVO<UserInfo> result = new PaginationResultVO<>(count, page.getPageSize(), page.getPageNo(),
                 page.getPageTotal(), list);
         return result;
     }
@@ -427,7 +427,8 @@ public class UserInfoServiceImpl implements UserInfoService {
             logger.error("调qq接口获取openID失败:tmpJson{}", tmpJson);
             throw new BusinessException("调qq接口获取openID失败");
         }
-        Map jsonData = JsonUtils.convertJson2Obj(tmpJson, Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> jsonData = JsonUtils.convertJson2Obj(tmpJson, Map.class);
         if (jsonData == null || jsonData.containsKey(Constants.VIEW_OBJ_RESULT_KEY)) {
             logger.error("调qq接口获取openID失败:{}", jsonData);
             throw new BusinessException("调qq接口获取openID失败");

@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -87,7 +87,11 @@ public class GlobalOperationAspect {
 
     //校验登录
     private void checkLogin(Boolean checkAdmin) {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            throw new BusinessException(ResponseCodeEnum.CODE_901);
+        }
+        HttpServletRequest request = attributes.getRequest();
         HttpSession session = request.getSession();
         SessionWebUserDto sessionUser = (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
         if (sessionUser == null && appConfig.getDev() != null && appConfig.getDev()) {
@@ -133,7 +137,7 @@ public class GlobalOperationAspect {
     private void checkObjValue(Parameter parameter, Object value) {
         try {
             String typeName = parameter.getParameterizedType().getTypeName();
-            Class classz = Class.forName(typeName);
+            Class<?> classz = Class.forName(typeName);
             Field[] fields = classz.getDeclaredFields();
             for (Field field : fields) {
                 VerifyParam fieldVerifyParam = field.getAnnotation(VerifyParam.class);

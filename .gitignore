@@ -72,4 +72,19 @@ backend/logs/
 *.pem
 *.pfx
 *.p12
+
+# Environment configuration
 application-local.properties
+application-local.properties.bak
+ops/docker/.env
+
+# Agent collaboration
+.agent/
+agent_runs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~

@@ -19,10 +19,7 @@
   </template>
   
 <script setup>
-import APlayer from "APlayer";
-import "APlayer/dist/Aplayer.min.css";
-
-import { ref, reactive, getCurrentInstance, nextTick, onMounted, onUnmounted } from "vue";
+import { getCurrentInstance } from "vue";
 const { proxy } = getCurrentInstance();
 
 const props = defineProps({

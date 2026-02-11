@@ -11,15 +11,17 @@ import com.easypan.entity.query.UserInfoQuery;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
 import com.easypan.entity.vo.UserInfoVO;
+import com.easypan.entity.vo.FolderVO;
 import com.easypan.service.FileInfoService;
 import com.easypan.service.UserInfoService;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 
 @RestController("adminController")
 @RequestMapping("/admin")
@@ -36,13 +38,13 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/getSysSettings")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO getSysSettings() {
+    public ResponseVO<SysSettingsDto> getSysSettings() {
         return getSuccessResponseVO(redisComponent.getSysSettingsDto());
     }
 
     @RequestMapping("/saveSysSettings")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO saveSysSettings(
+    public ResponseVO<Void> saveSysSettings(
             @VerifyParam(required = true) String registerEmailTitle,
             @VerifyParam(required = true) String registerEmailContent,
             @VerifyParam(required = true) Integer userInitUseSpace) {
@@ -64,7 +66,7 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/updateUserStatus")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO updateUserStatus(@VerifyParam(required = true) String userId,
+    public ResponseVO<Void> updateUserStatus(@VerifyParam(required = true) String userId,
             @VerifyParam(required = true) Integer status) {
         userInfoService.updateUserStatus(userId, status);
         return getSuccessResponseVO(null);
@@ -72,7 +74,7 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/updateUserSpace")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO updateUserSpace(@VerifyParam(required = true) String userId,
+    public ResponseVO<Void> updateUserSpace(@VerifyParam(required = true) String userId,
             @VerifyParam(required = true) Integer changeSpace) {
         userInfoService.changeUserSpace(userId, changeSpace);
         return getSuccessResponseVO(null);
@@ -95,7 +97,7 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkLogin = false, checkAdmin = true, checkParams = true)
-    public ResponseVO getFolderInfo(@VerifyParam(required = true) String path) {
+    public ResponseVO<List<FolderVO>> getFolderInfo(@VerifyParam(required = true) String path) {
         return super.getFolderInfo(path, null);
     }
 
@@ -117,7 +119,7 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/createDownloadUrl/{userId}/{fileId}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO createDownloadUrl(@PathVariable("userId") @VerifyParam(required = true) String userId,
+    public ResponseVO<String> createDownloadUrl(@PathVariable("userId") @VerifyParam(required = true) String userId,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         return super.createDownloadUrl(fileId, userId);
     }
@@ -138,7 +140,7 @@ public class AdminController extends CommonFileController {
 
     @RequestMapping("/delFile")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
-    public ResponseVO delFile(@VerifyParam(required = true) String fileIdAndUserIds) {
+    public ResponseVO<Void> delFile(@VerifyParam(required = true) String fileIdAndUserIds) {
         String[] fileIdAndUserIdArray = fileIdAndUserIds.split(",");
         for (String fileIdAndUserId : fileIdAndUserIdArray) {
             String[] itemArray = fileIdAndUserId.split("_");

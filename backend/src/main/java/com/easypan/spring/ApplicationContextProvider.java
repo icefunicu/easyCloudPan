@@ -17,8 +17,9 @@ public class ApplicationContextProvider implements ApplicationContextAware {
     private static ApplicationContext applicationContext;
 
     @Override
+    @SuppressWarnings("null")
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-        this.applicationContext = applicationContext;
+        ApplicationContextProvider.applicationContext = applicationContext;
     }
 
     /**
@@ -36,6 +37,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param name
      * @return
      */
+    @SuppressWarnings("null")
     public static Object getBean(String name) {
         try {
             return getApplicationContext().getBean(name);
@@ -53,6 +55,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param <T>
      * @return
      */
+    @SuppressWarnings("null")
     public static <T> T getBean(Class<T> clazz) {
         return getApplicationContext().getBean(clazz);
     }
@@ -65,6 +68,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param <T>
      * @return
      */
+    @SuppressWarnings("null")
     public static <T> T getBean(String name, Class<T> clazz) {
         return getApplicationContext().getBean(name, clazz);
     }

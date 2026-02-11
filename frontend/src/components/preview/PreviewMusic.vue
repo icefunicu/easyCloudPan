@@ -2,7 +2,7 @@
   <div class="music">
     <div class="body-content">
       <div class="cover">
-        <img src="@/assets/music_cover.png">
+        <img src="@/assets/music_cover.webp">
       </div>
       <div ref="playerRef" class="music-player"></div>
     </div>
@@ -10,8 +10,8 @@
 </template>
 
 <script setup>
-import APlayer from "APlayer";
-import "APlayer/dist/Aplayer.min.css";
+import APlayer from "aplayer";
+import "aplayer/dist/APlayer.min.css";
 
 import { ref, reactive, getCurrentInstance, nextTick, onMounted, onUnmounted } from "vue";
 const { proxy } = getCurrentInstance();

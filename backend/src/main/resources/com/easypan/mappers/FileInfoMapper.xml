@@ -75,10 +75,10 @@
             and file_path = #{query.filePath}
         </if>
         <if test="query.createTime != null and query.createTime!=''">
-            <![CDATA[ and  create_time=str_to_date(#{query.createTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  create_time::date = #{query.createTime}::date ]]>
         </if>
         <if test="query.lastUpdateTime != null and query.lastUpdateTime!=''">
-            <![CDATA[ and  last_update_time=str_to_date(#{query.lastUpdateTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  last_update_time::date = #{query.lastUpdateTime}::date ]]>
         </if>
         <if test="query.folderType != null">
             and folder_type = #{query.folderType}
@@ -93,7 +93,7 @@
             and status = #{query.status}
         </if>
         <if test="query.recoveryTime != null and query.recoveryTime!=''">
-            <![CDATA[ and  recovery_time=str_to_date(#{query.recoveryTime}, '%Y-%m-%d') ]]>
+            <![CDATA[ and  recovery_time::date = #{query.recoveryTime}::date ]]>
         </if>
         <if test="query.delFlag != null">
             and del_flag = #{query.delFlag}
@@ -141,25 +141,25 @@
                 and file_path like concat('%', #{query.filePathFuzzy}, '%')
             </if>
             <if test="query.createTimeStart!= null and query.createTimeStart!=''">
-                <![CDATA[ and  create_time>=str_to_date(#{query.createTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  create_time >= #{query.createTimeStart}::date ]]>
             </if>
             <if test="query.createTimeEnd!= null and query.createTimeEnd!=''">
-                <![CDATA[ and  create_time< date_sub(str_to_date(#{query.createTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  create_time < #{query.createTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.lastUpdateTimeStart!= null and query.lastUpdateTimeStart!=''">
-                <![CDATA[ and  last_update_time>=str_to_date(#{query.lastUpdateTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  last_update_time >= #{query.lastUpdateTimeStart}::date ]]>
             </if>
             <if test="query.lastUpdateTimeEnd!= null and query.lastUpdateTimeEnd!=''">
-                <![CDATA[ and  last_update_time< date_sub(str_to_date(#{query.lastUpdateTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  last_update_time < #{query.lastUpdateTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.recoveryTimeStart!= null and query.recoveryTimeStart!=''">
-                <![CDATA[ and  recovery_time>=str_to_date(#{query.recoveryTimeStart}, '%Y-%m-%d') ]]>
+                <![CDATA[ and  recovery_time >= #{query.recoveryTimeStart}::date ]]>
             </if>
             <if test="query.recoveryTimeEnd!= null and query.recoveryTimeEnd!=''">
-                <![CDATA[ and  recovery_time< date_sub(str_to_date(#{query.recoveryTimeEnd},'%Y-%m-%d'),interval -1 day) ]]>
+                <![CDATA[ and  recovery_time < #{query.recoveryTimeEnd}::date + interval '1 day' ]]>
             </if>
             <if test="query.queryExpire!=null and query.queryExpire">
-                <![CDATA[  and recovery_time< date_sub(now(),interval 10 day)]]>
+                <![CDATA[  and recovery_time < now() - interval '10 days' ]]>
             </if>
         </where>
     </sql>
@@ -177,7 +177,7 @@
             order by ${query.orderBy}
         </if>
         <if test="query.simplePage!=null">
-            limit #{query.simplePage.start},#{query.simplePage.end}
+            limit #{query.simplePage.pageSize} offset #{query.simplePage.start}
         </if>
     </select>
 
@@ -395,55 +395,55 @@
                 #{bean.delFlag},
             </if>
         </trim>
-        on DUPLICATE key update
+        ON CONFLICT (file_id, user_id) DO UPDATE SET
         <trim prefix="" suffix="" suffixOverrides=",">
             <if test="bean.fileId!=null">
-                file_id = VALUES(file_id),
+                file_id = EXCLUDED.file_id,
             </if>
             <if test="bean.userId!=null">
-                user_id = VALUES(user_id),
+                user_id = EXCLUDED.user_id,
             </if>
             <if test="bean.fileMd5!=null">
-                file_md5 = VALUES(file_md5),
+                file_md5 = EXCLUDED.file_md5,
             </if>
             <if test="bean.filePid!=null">
-                file_pid = VALUES(file_pid),
+                file_pid = EXCLUDED.file_pid,
             </if>
             <if test="bean.fileSize!=null">
-                file_size = VALUES(file_size),
+                file_size = EXCLUDED.file_size,
             </if>
             <if test="bean.fileName!=null">
-                file_name = VALUES(file_name),
+                file_name = EXCLUDED.file_name,
             </if>
             <if test="bean.fileCover!=null">
-                file_cover = VALUES(file_cover),
+                file_cover = EXCLUDED.file_cover,
             </if>
             <if test="bean.filePath!=null">
-                file_path = VALUES(file_path),
+                file_path = EXCLUDED.file_path,
             </if>
             <if test="bean.createTime!=null">
-                create_time = VALUES(create_time),
+                create_time = EXCLUDED.create_time,
             </if>
             <if test="bean.lastUpdateTime!=null">
-                last_update_time = VALUES(last_update_time),
+                last_update_time = EXCLUDED.last_update_time,
             </if>
             <if test="bean.folderType!=null">
-                folder_type = VALUES(folder_type),
+                folder_type = EXCLUDED.folder_type,
             </if>
             <if test="bean.fileCategory!=null">
-                file_category = VALUES(file_category),
+                file_category = EXCLUDED.file_category,
             </if>
             <if test="bean.fileType!=null">
-                file_type = VALUES(file_type),
+                file_type = EXCLUDED.file_type,
             </if>
             <if test="bean.status!=null">
-                status = VALUES(status),
+                status = EXCLUDED.status,
             </if>
             <if test="bean.recoveryTime!=null">
-                recovery_time = VALUES(recovery_time),
+                recovery_time = EXCLUDED.recovery_time,
             </if>
             <if test="bean.delFlag!=null">
-                del_flag = VALUES(del_flag),
+                del_flag = EXCLUDED.del_flag,
             </if>
         </trim>
     </insert>
@@ -530,23 +530,23 @@
             #{item.delFlag}
             )
         </foreach>
-        on DUPLICATE key update
-        file_id = VALUES(file_id),
-        user_id = VALUES(user_id),
-        file_md5 = VALUES(file_md5),
-        file_pid = VALUES(file_pid),
-        file_size = VALUES(file_size),
-        file_name = VALUES(file_name),
-        file_cover = VALUES(file_cover),
-        file_path = VALUES(file_path),
-        create_time = VALUES(create_time),
-        last_update_time = VALUES(last_update_time),
-        folder_type = VALUES(folder_type),
-        file_category = VALUES(file_category),
-        file_type = VALUES(file_type),
-        status = VALUES(status),
-        recovery_time = VALUES(recovery_time),
-        del_flag = VALUES(del_flag)
+        ON CONFLICT (file_id, user_id) DO UPDATE SET
+        file_id = EXCLUDED.file_id,
+        user_id = EXCLUDED.user_id,
+        file_md5 = EXCLUDED.file_md5,
+        file_pid = EXCLUDED.file_pid,
+        file_size = EXCLUDED.file_size,
+        file_name = EXCLUDED.file_name,
+        file_cover = EXCLUDED.file_cover,
+        file_path = EXCLUDED.file_path,
+        create_time = EXCLUDED.create_time,
+        last_update_time = EXCLUDED.last_update_time,
+        folder_type = EXCLUDED.folder_type,
+        file_category = EXCLUDED.file_category,
+        file_type = EXCLUDED.file_type,
+        status = EXCLUDED.status,
+        recovery_time = EXCLUDED.recovery_time,
+        del_flag = EXCLUDED.del_flag
     </insert>
 
     <!-- 根据FileIdAndUserId修改-->
@@ -738,7 +738,7 @@
     </delete>
 
     <select id="selectUseSpace" resultType="java.lang.Long">
-        select IFNULL(sum(file_size), 0)
+        select COALESCE(sum(file_size), 0)
         from file_info
         where user_id = #{userId}
     </select>
@@ -748,4 +748,24 @@
         from file_info
         where user_id = #{userId}
     </delete>
+    <select id="selectDescendantFolderIds" resultType="java.lang.String">
+        WITH RECURSIVE file_tree AS (
+            SELECT file_id
+            FROM file_info
+            WHERE user_id = #{userId} 
+              AND file_id IN 
+              <foreach collection="fileIdList" item="item" open="(" separator="," close=")">
+                  #{item}
+              </foreach>
+              AND del_flag = #{delFlag}
+            UNION ALL
+            SELECT f.file_id
+            FROM file_info f
+            INNER JOIN file_tree ft ON f.file_pid = ft.file_id
+            WHERE f.user_id = #{userId} 
+              AND f.del_flag = #{delFlag} 
+              AND f.folder_type = 1
+        )
+        SELECT file_id FROM file_tree
+    </select>
 </mapper>
