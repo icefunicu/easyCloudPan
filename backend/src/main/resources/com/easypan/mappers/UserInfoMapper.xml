@@ -428,4 +428,14 @@
             <![CDATA[ and (total_space + #{totalSpace}) >= use_space ]]>
         </if>
     </update>
+
+    <!-- 查询活跃用户（用于缓存预热） -->
+    <select id="selectActiveUsers" resultMap="base_result_map">
+        SELECT
+        <include refid="base_column_list"/>
+        FROM user_info
+        WHERE status = 1
+        ORDER BY last_login_time DESC NULLS LAST
+        LIMIT #{limit}
+    </select>
 </mapper>

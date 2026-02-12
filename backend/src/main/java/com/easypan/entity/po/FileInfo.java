@@ -1,7 +1,9 @@
 package com.easypan.entity.po;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import com.mybatisflex.annotation.Table;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -12,6 +14,8 @@ import java.util.Date;
  * 文件信息
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Table("file_info")
 public class FileInfo implements Serializable {
 

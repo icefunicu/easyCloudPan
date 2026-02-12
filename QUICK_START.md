@@ -1,19 +1,37 @@
-﻿# EasyCloudPan 本地从 0 启动教程（Windows）
+# EasyCloudPan 快速启动指南
 
-目标：在一台全新本地机器上，把 EasyCloudPan 跑起来并可访问。
+> 目标：让新手在 10 分钟内完成部署并访问系统
 
-## 1. 前置环境
+## 快速导航
 
-必须安装：
-- JDK 21+
-- Maven 3.9+
-- Node.js 20+（建议 22）
-- Docker Desktop（需启用 `docker compose`）
+| 场景 | 命令 | 访问地址 |
+|------|------|----------|
+| 本地开发 | `.\ops\local\startup.ps1` | http://localhost:8080 |
+| Docker 部署 | `.\ops\docker\deploy_docker.ps1` | http://localhost:8080 |
 
-快速检查：
+> **提示**：Windows 用户推荐使用 PowerShell 脚本（`.ps1`），批处理脚本（`.bat`）也可用。
+
+---
+
+## 第一步：安装必要软件
+
+在开始之前，请确保已安装以下软件：
+
+| 软件 | 版本要求 | 下载地址 | 验证命令 |
+|------|----------|----------|----------|
+| JDK | 21+ | [Oracle JDK](https://www.oracle.com/java/technologies/downloads/#java21) | `java -version` |
+| Maven | 3.9+ | [Maven](https://maven.apache.org/download.cgi) | `mvn -version` |
+| Node.js | 20+ | [Node.js LTS](https://nodejs.org/) | `node -v` |
+| Docker Desktop | 最新版 | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | `docker --version` |
+
+> **提示**：安装 Docker Desktop 后，确保 Docker Desktop 正在运行
+
+### 验证环境
+
+打开命令行，依次执行：
+
 ```bat
 java -version
-javac -version
 mvn -version
 node -v
 npm -v
@@ -21,138 +39,175 @@ docker --version
 docker compose version
 ```
 
-期望结果：
-- 上述命令全部可执行且无报错
-- `javac` 主版本 >= 21
-- `node` 主版本 >= 20
+所有命令都应该正常输出版本信息，无报错。
 
-## 2. 获取项目代码
+---
+
+## 第二步：获取代码
 
 ```bat
 git clone <你的仓库地址> easyCloudPan
 cd easyCloudPan
 ```
 
-如果你已经在项目目录中，可以跳过这一步。
+如果已有代码，直接进入项目目录即可。
 
-## 3. 初始化本地环境（只需执行一次）
+---
 
-```bat
-ops\local\setup.bat
+## 第三步：选择部署方式
+
+### 方式 A：本地开发（推荐新手）
+
+#### 3.1 初始化环境（首次运行）
+
+```powershell
+.\ops\local\setup.ps1
 ```
 
-脚本会自动完成：
-- 工具链检查（Java/Maven/Node/Docker）
-- 安装前端依赖（`frontend/node_modules`）
-- 生成本地配置：`ops/docker/.env`
-- 创建本地文件目录：`backend/file/*`
+脚本会自动：
+- 检查工具链
+- 安装前端依赖
+- 编译后端项目
+- 生成配置文件 `ops\docker\.env`
 
-可选参数：
-- `ops\local\setup.bat --force`：覆盖已存在的本地配置文件
-- `ops\local\setup.bat --skip-npm`：跳过前端依赖安装
+#### 3.2 一键启动
 
-## 4. 一键启动本地开发环境
-
-```bat
-ops\local\startup.bat
+```powershell
+.\ops\local\startup.ps1
 ```
 
-脚本会执行：
-- 启动依赖容器：PostgreSQL、Redis、MinIO、minio-init
-- 新开窗口启动后端（`mvn spring-boot:run -Dspring-boot.run.profiles=local`）
-- 新开窗口启动前端（`npm run dev`）
-- 自动打开浏览器 `http://localhost:8080`
+启动后会自动打开浏览器访问 http://localhost:8080
 
-可选参数：
-- `ops\local\startup.bat --no-browser`：不自动打开浏览器
+#### 3.3 验证服务
 
-## 5. 启动结果验证（必须做）
+| 服务 | 地址 | 说明 |
+|------|------|------|
+| 前端 | http://localhost:8080 | 用户界面 |
+| 后端 API | http://localhost:7090/api | 接口服务 |
+| MinIO 控制台 | http://localhost:9001 | 对象存储管理 |
 
-1. 检查容器状态：
-```bat
-docker compose -f ops/docker/docker-compose.yml ps
-```
-期望看到 `postgres`、`redis`、`minio` 为 `running`，`minio-init` 为 `exited (0)`。
+---
 
-2. 检查后端健康检查：
-```bat
-curl http://localhost:7090/api/actuator/health
-```
-期望返回包含 `UP` 的 JSON。
+### 方式 B：Docker 全栈部署
 
-3. 打开页面：
-- 前端：`http://localhost:8080`
-- 后端 API 基址：`http://localhost:7090/api`
-- MinIO 控制台：`http://localhost:9001`
+#### 3.1 配置环境变量
 
-## 6. 首次登录/注册说明
-
-- 系统注册流程需要发送邮箱验证码。
-- `ops\local\setup.bat` 生成的 `ops/docker/.env` 默认是占位值（`SPRING_MAIL_PASSWORD=dummy_mail_password`）。
-- 如果你要实际注册用户，请修改 `ops/docker/.env` 中邮件相关配置（尤其是 `SPRING_MAIL_PASSWORD`）后重启后端。
-
-## 7. 停止服务
-
-- 停止本地前后端：直接关闭 `ops\local\startup.bat` 打开的两个命令窗口。
-- 停止基础容器：
-```bat
-docker compose -f ops/docker/docker-compose.yml down
-```
-- 如需清空数据（危险操作）：
-```bat
-docker compose -f ops/docker/docker-compose.yml down -v
-```
-
-## 8. 手动启动（不使用一键脚本）
-
-```bat
-docker compose -f ops/docker/docker-compose.yml up -d postgres redis minio minio-init
-cd backend
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-另开一个终端：
-```bat
-cd frontend
-npm run dev
-```
-
-## 9. 常见问题
-
-### 9.1 端口占用
-- 默认端口：`5432/6379/8080/7090/9000/9001`
-- 若冲突，先关闭占用进程，或修改 `ops/docker/docker-compose.yml` 对应端口后重启。
-
-### 9.2 后端无法连数据库
-- 先执行：`docker compose -f ops/docker/docker-compose.yml ps`
-- 再检查 `ops/docker/.env` 中数据库配置是否为：
-  - `POSTGRES_DB=easypan`
-  - 用户名/密码与 `ops/docker/docker-compose.yml` 一致（默认 `postgres/123456`）
-
-### 9.3 MinIO 上传失败
-- 检查 `minio-init` 是否 `exited (0)`。
-- 检查 `ops/docker/.env` 中：
-  - `MINIO_ENDPOINT=http://minio:9000` (Docker internal) or `http://localhost:9000` (Local)
-  - `MINIO_BUCKET_NAME=easypan`
-
-## 10. Docker 全栈部署（可选）
-
-```bat
+```powershell
 copy ops\docker\.env.example ops\docker\.env
-ops\docker\deploy_docker.bat
 ```
 
-可选参数：
-- `ops\docker\deploy_docker.bat --no-build`：跳过镜像构建，直接启动现有镜像
+#### 3.2 一键部署
 
-停止：
+```powershell
+.\ops\docker\deploy_docker.ps1
+```
+
+#### 3.3 验证服务
+
+```powershell
+docker compose -f ops\docker\docker-compose.yml ps
+```
+
+或使用健康检查脚本：
+
+```powershell
+.\ops\tools\health_check.ps1
+```
+
+所有服务状态应为 `running` 或 `healthy`。
+
+---
+
+## 第四步：注册与登录
+
+### 重要说明
+
+系统注册需要邮箱验证码。默认配置使用占位值，**无法发送真实邮件**。
+
+### 配置邮件服务（如需注册功能）
+
+1. 编辑 `ops\docker\.env` 文件
+2. 修改邮件配置：
+
+```env
+SPRING_MAIL_HOST=smtp.qq.com
+SPRING_MAIL_PORT=465
+SPRING_MAIL_USERNAME=你的QQ号@qq.com
+SPRING_MAIL_PASSWORD=QQ邮箱授权码
+```
+
+> **获取QQ邮箱授权码**：QQ邮箱 -> 设置 -> 账户 -> POP3/SMTP服务 -> 生成授权码
+
+3. 重启后端服务
+
+---
+
+## 常见问题
+
+### Q1: 端口被占用怎么办？
+
+默认端口：`5432, 6379, 8080, 7090, 9000, 9001`
+
+解决方案：
+1. 关闭占用端口的程序
+2. 或修改 `ops\docker\docker-compose.yml` 中的端口映射
+
+### Q2: 后端启动失败？
+
+检查步骤：
+```powershell
+docker compose -f ops\docker\docker-compose.yml ps
+```
+
+确保 `postgres` 和 `redis` 状态为 `healthy`。
+
+或运行健康检查：
+```powershell
+.\ops\tools\health_check.ps1
+```
+
+### Q3: 前端无法访问？
+
+1. 确认后端已启动：访问 http://localhost:7090/api/actuator/health
+2. 检查控制台是否有错误信息
+
+### Q4: MinIO 上传失败？
+
+检查 `minio-init` 容器是否成功执行：
 ```bat
-ops\docker\stop_docker.bat
+docker compose -f ops\docker\docker-compose.yml logs minio-init
 ```
 
-如需停止并清理卷（危险操作）：
-```bat
-ops\docker\stop_docker.bat --volumes
+应看到 `minio bucket is ready` 输出。
+
+---
+
+## 停止服务
+
+### 本地开发
+
+直接关闭启动脚本打开的两个 PowerShell 窗口。
+
+停止基础设施容器：
+```powershell
+docker compose -f ops\docker\docker-compose.yml down
 ```
 
-详细说明见：`docs/DOCKER_DEPLOY_GUIDE.md`
+### Docker 部署
+
+```powershell
+.\ops\docker\stop_docker.ps1
+```
+
+清空所有数据（危险操作）：
+```powershell
+.\ops\docker\stop_docker.ps1 -Volumes
+```
+
+---
+
+## 下一步
+
+- 查看完整文档：[README.md](README.md)
+- Docker 部署详解：[docs/DOCKER_DEPLOY_GUIDE.md](docs/DOCKER_DEPLOY_GUIDE.md)
+- 数据库迁移说明：[database/README.md](database/README.md)

@@ -81,6 +81,8 @@ ops/docker/.env
 # Agent collaboration
 .agent/
 agent_runs/
+.agent_runs/
+.kiro/
 
 # Temporary files
 *.tmp

@@ -1,6 +1,7 @@
 <template>
     <span :style="{ width: width + 'px', height: width + 'px' }" class="icon">
-        <img :src="getImage()" :style="{ 'object-fit': fit }" />
+        <img v-if="cover" v-lazy="getImage()" :style="{ 'object-fit': fit }" />
+        <img v-else :src="getImage()" :style="{ 'object-fit': fit }" />
     </span>
 </template>
 
@@ -26,6 +27,12 @@ const props = defineProps({
         type: String,
         default: "cover",
     },
+    shareId: {
+        type: String,
+    },
+    adminUserId: {
+        type: String,
+    },
 });
 
 const fileTypeMap = {
@@ -44,6 +51,12 @@ const fileTypeMap = {
 
 const getImage = () => {
     if (props.cover) {
+        if (props.shareId) {
+            return `/api/showShare/getImage/${props.shareId}/${props.cover}`;
+        }
+        if (props.adminUserId) {
+            return `/api/admin/getImage/${props.adminUserId}/${props.cover}`;
+        }
         return proxy.globalInfo.imageUrl + props.cover;
     }
     let icon = "unknow_icon";

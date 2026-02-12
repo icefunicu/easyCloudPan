@@ -1,0 +1,120 @@
+{
+  "dashboard": {
+    "title": "EasyCloudPan System Overview",
+    "tags": ["easypan", "system"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count[5m]))",
+            "legendFormat": "Requests/sec",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Response Time (95th percentile)",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95 latency",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count[5m]))",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Active Requests",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "http_server_requests_active_seconds_count",
+            "legendFormat": "Active",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "JVM Heap Memory",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+            "legendFormat": "Used",
+            "refId": "A"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{area=\"heap\"}",
+            "legendFormat": "Max",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "title": "CPU Usage",
+        "type": "gauge",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "system_cpu_usage * 100",
+            "legendFormat": "CPU %",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active",
+            "legendFormat": "Active",
+            "refId": "A"
+          },
+          {
+            "expr": "hikaricp_connections_idle",
+            "legendFormat": "Idle",
+            "refId": "B"
+          },
+          {
+            "expr": "hikaricp_connections_max",
+            "legendFormat": "Max",
+            "refId": "C"
+          }
+        ]
+      },
+      {
+        "title": "Virtual Threads",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "jdk_virtual_thread_started_count - jdk_virtual_thread_terminated_count",
+            "legendFormat": "Active Virtual Threads",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

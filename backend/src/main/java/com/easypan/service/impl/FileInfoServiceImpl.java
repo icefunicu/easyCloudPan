@@ -29,6 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.task.AsyncTaskExecutor;
+import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.io.File;
@@ -64,10 +68,24 @@ public class FileInfoServiceImpl implements FileInfoService {
     private RedisComponent redisComponent;
 
     @Resource
+    private com.easypan.component.UploadRateLimiter uploadRateLimiter;
+
+    @Resource
+    @Qualifier("virtualThreadExecutor")
+    private AsyncTaskExecutor virtualThreadExecutor;
+
+    @Resource
     private MediaTranscodeService mediaTranscodeService;
 
     @Resource
-    private com.easypan.component.S3Component s3Component;
+    @Qualifier("storageFailoverService")
+    private com.easypan.strategy.StorageStrategy storageStrategy;
+
+    @Resource
+    private com.easypan.service.TenantQuotaService tenantQuotaService;
+
+    @Value("${app.storage.type:local}")
+    private String storageType;
 
     /**
      * 根据条件查询列表
@@ -99,6 +117,58 @@ public class FileInfoServiceImpl implements FileInfoService {
         PaginationResultVO<FileInfo> result = new PaginationResultVO<>(count, page.getPageSize(), page.getPageNo(),
                 page.getPageTotal(), list);
         return result;
+    }
+
+    /**
+     * 游标分页查询（性能优于 OFFSET 分页）
+     * 使用 (create_time, file_id) 作为复合游标
+     */
+    @Override
+    public com.easypan.entity.query.CursorPage<FileInfo> findListByCursor(String userId, String cursor, Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
+            pageSize = 20;
+        }
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+        
+        Date cursorTime = null;
+        String cursorId = null;
+        
+        if (cursor != null && !cursor.isEmpty()) {
+            String[] parts = cursor.split("_");
+            if (parts.length >= 2) {
+                try {
+                    cursorTime = new Date(Long.parseLong(parts[0]));
+                    cursorId = parts[1];
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid cursor format: {}", cursor);
+                }
+            }
+        }
+        
+        int fetchSize = pageSize + 1;
+        List<FileInfo> list;
+        
+        if (cursorTime == null || cursorId == null) {
+            FileInfoQuery query = new FileInfoQuery();
+            query.setUserId(userId);
+            query.setOrderBy("create_time desc, file_id desc");
+            SimplePage page = new SimplePage(0, fetchSize);
+            query.setSimplePage(page);
+            list = this.findListByParam(query);
+        } else {
+            list = this.fileInfoMapper.selectByCursorPagination(userId, cursorTime, cursorId, fetchSize);
+        }
+        
+        String nextCursor = null;
+        if (list.size() > pageSize) {
+            FileInfo lastItem = list.get(pageSize - 1);
+            nextCursor = lastItem.getCreateTime().getTime() + "_" + lastItem.getFileId();
+            list = list.subList(0, pageSize);
+        }
+        
+        return com.easypan.entity.query.CursorPage.of(list, nextCursor, pageSize);
     }
 
     /**
@@ -164,18 +234,32 @@ public class FileInfoServiceImpl implements FileInfoService {
     public UploadResultDto uploadFile(SessionWebUserDto webUserDto, String fileId, MultipartFile file, String fileName,
             String filePid, String fileMd5,
             Integer chunkIndex, Integer chunks) {
+
+        // 基本分片参数校验
+        if (chunkIndex == null || chunks == null || chunkIndex < 0 || chunks <= 0 || chunkIndex >= chunks) {
+            throw new BusinessException("非法的分片参数");
+        }
+
+        // 上传并发控制：为每个用户限制同时上传任务数量
+        if (!uploadRateLimiter.tryAcquire(webUserDto.getUserId())) {
+            throw new BusinessException("当前上传请求过多，请稍后重试");
+        }
+
+        // Check tenant storage quota
+        tenantQuotaService.checkStorageQuota(file.getSize());
+        
         File tempFileFolder = null;
         Boolean uploadSuccess = true;
         try {
             // 文件类型安全校验（第一个分片时检查）
             if (chunkIndex == 0) {
                 String fileSuffix = StringTools.getFileSuffix(fileName);
-                
+
                 // 检查是否为危险文件类型
                 if (com.easypan.utils.FileTypeValidator.isDangerousFileType(fileSuffix)) {
                     throw new BusinessException("不允许上传可执行文件类型");
                 }
-                
+
                 // 验证文件真实类型
                 try (InputStream inputStream = file.getInputStream()) {
                     if (!com.easypan.utils.FileTypeValidator.validateFileType(inputStream, fileSuffix)) {
@@ -187,7 +271,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     throw new BusinessException("文件类型校验失败");
                 }
             }
-            
+
             UploadResultDto resultDto = new UploadResultDto();
             if (StringTools.isEmpty(fileId)) {
                 fileId = StringTools.getRandomString(Constants.LENGTH_10);
@@ -196,14 +280,15 @@ public class FileInfoServiceImpl implements FileInfoService {
             Date curDate = new Date();
             UserSpaceDto spaceDto = redisComponent.getUserSpaceUse(webUserDto.getUserId());
             if (chunkIndex == 0) {
-                FileInfoQuery infoQuery = new FileInfoQuery();
-                infoQuery.setFileMd5(fileMd5);
-                infoQuery.setSimplePage(new SimplePage(0, 1));
-                infoQuery.setStatus(FileStatusEnums.USING.getStatus());
-                List<FileInfo> dbFileList = this.fileInfoMapper.selectList(infoQuery);
+                // 首个分片，先通过布隆过滤器快速判断是否有可能命中秒传
+                FileInfo dbFile = null;
+                if (!StringTools.isEmpty(fileMd5) && redisComponent.mightContainFileMd5(fileMd5)) {
+                    // 使用专用索引方法进行秒传查询，避免不必要的全表扫描
+                    dbFile = this.fileInfoMapper.selectOneByMd5AndStatus(
+                            fileMd5, FileStatusEnums.USING.getStatus());
+                }
                 // 秒传
-                if (!dbFileList.isEmpty()) {
-                    FileInfo dbFile = dbFileList.get(0);
+                if (dbFile != null) {
                     // 判断文件状态
                     if (dbFile.getFileSize() + spaceDto.getUseSpace() > spaceDto.getTotalSpace()) {
                         throw new BusinessException(ResponseCodeEnum.CODE_904);
@@ -243,9 +328,19 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
 
             File newFile = new File(tempFileFolder.getPath() + "/" + chunkIndex);
-            file.transferTo(newFile);
-            // 保存临时大小
-            redisComponent.saveFileTempSize(webUserDto.getUserId(), fileId, file.getSize());
+
+            // 如果分片已经存在且大小一致，则认为已上传成功，直接跳过写入与空间累加（支持断点续传幂等）
+            if (!(newFile.exists() && newFile.length() == file.getSize())) {
+                file.transferTo(newFile);
+
+                // 简单分片校验：确认写入后的大小与请求分片大小一致
+                if (newFile.length() != file.getSize()) {
+                    throw new BusinessException("分片大小校验失败，请重试上传");
+                }
+
+                // 保存临时大小（仅在实际写入新分片时累加）
+                redisComponent.saveFileTempSize(webUserDto.getUserId(), fileId, file.getSize());
+            }
             // 不是最后一个分片，直接返回
             if (chunkIndex < chunks - 1) {
                 resultDto.setStatus(UploadStatusEnums.UPLOADING.getCode());
@@ -275,6 +370,11 @@ public class FileInfoServiceImpl implements FileInfoService {
             fileInfo.setDelFlag(FileDelFlagEnums.USING.getFlag());
             this.fileInfoMapper.insert(fileInfo);
 
+            // 新文件插入成功后，将 MD5 加入布隆过滤器，提升后续秒传命中率
+            if (!StringTools.isEmpty(fileMd5)) {
+                redisComponent.addFileMd5ToBloom(fileMd5);
+            }
+
             Long totalSize = redisComponent.getFileTempSize(webUserDto.getUserId(), fileId);
             updateUserSpace(webUserDto, totalSize);
 
@@ -296,6 +396,9 @@ public class FileInfoServiceImpl implements FileInfoService {
             logger.error("文件上传失败", e);
             throw new BusinessException("文件上传失败");
         } finally {
+            // 释放上传并发许可
+            uploadRateLimiter.release(webUserDto.getUserId());
+
             // 如果上传失败，清除临时目录
             if (tempFileFolder != null && !uploadSuccess) {
                 try {
@@ -371,11 +474,12 @@ public class FileInfoServiceImpl implements FileInfoService {
             String realFileName = currentUserFolderName + fileSuffix;
             // 真实文件路径
             targetFilePath = targetFolder.getPath() + "/" + realFileName;
-            // 合并文件
-            union(fileFolder.getPath(), targetFilePath, fileInfo.getFileName(), true);
+            // 使用 NIO 方式合并文件，减少内存占用
+            unionWithNIO(fileFolder.getPath(), targetFilePath, fileInfo.getFileName(), true);
 
-            // 上传原始文件到 S3
-            s3Component.uploadFile(fileInfo.getFilePath(), new File(targetFilePath));
+            // 上传原始文件到存储后端
+            com.easypan.strategy.StorageStrategy storageStrategy = this.storageStrategy;
+            storageStrategy.upload(new File(targetFilePath), fileInfo.getFilePath());
 
             // 视频文件切割
             fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
@@ -386,15 +490,15 @@ public class FileInfoServiceImpl implements FileInfoService {
                 String coverPath = targetFolderName + "/" + cover;
                 File coverFile = new File(coverPath);
                 mediaTranscodeService.createVideoCover(new File(targetFilePath), Constants.LENGTH_150, coverFile);
-                // 上传封面到 S3
+                // 上传封面到存储后端
                 if (coverFile.exists()) {
-                    s3Component.uploadFile(cover, coverFile);
+                    storageStrategy.upload(coverFile, cover);
                 }
-                // 上传切片目录到 S3
+                // 上传切片目录到存储后端
                 String tsFolderName = targetFilePath.substring(0, targetFilePath.lastIndexOf("."));
                 File tsFolder = new File(tsFolderName);
                 if (tsFolder.exists()) {
-                    s3Component.uploadDirectory(
+                    storageStrategy.uploadDirectory(
                             fileInfo.getFilePath().substring(0, fileInfo.getFilePath().lastIndexOf(".")), tsFolder);
                 }
             } else if (FileTypeEnums.IMAGE == fileTypeEnum) {
@@ -407,8 +511,8 @@ public class FileInfoServiceImpl implements FileInfoService {
                 if (!created) {
                     FileUtils.copyFile(new File(targetFilePath), coverFile);
                 }
-                // 上传封面到 S3
-                s3Component.uploadFile(cover, coverFile);
+                // 上传封面到存储后端
+                storageStrategy.upload(coverFile, cover);
             }
         } catch (Exception e) {
             logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
@@ -423,8 +527,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             fileInfoMapper.updateFileStatusWithOldStatus(fileId, webUserDto.getUserId(), updateInfo,
                     FileStatusEnums.TRANSFER.getStatus());
 
-            // 清理本地文件 (可选，但在云原生架构中通常清理本地缓存)
-            if (targetFilePath != null) {
+            // 清理本地文件
+            // 只有当存储类型不是 LOCAL 时才删除本地文件
+            if (targetFilePath != null
+                    && !com.easypan.entity.enums.StorageTypeEnum.LOCAL.getCode().equals(storageType)) {
                 FileUtils.deleteQuietly(new File(targetFilePath));
                 String tsFolderName = targetFilePath.substring(0, targetFilePath.lastIndexOf("."));
                 FileUtils.deleteQuietly(new File(tsFolderName));
@@ -433,8 +539,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     /**
-     *
-     * 合并文件
+     * 合并文件（legacy 实现，保留以兼容旧逻辑）
      */
     public static void union(String dirPath, String toFilePath, String fileName, boolean delSource)
             throws BusinessException {
@@ -493,6 +598,66 @@ public class FileInfoServiceImpl implements FileInfoService {
                     } catch (IOException e) {
                         logger.error("删除临时目录失败: {}", dir.getPath(), e);
                     }
+                }
+            }
+        }
+    }
+
+    /**
+     * 使用 NIO FileChannel 零拷贝方式合并分片文件，降低内存占用并提升 I/O 性能。
+     *
+     * 对应任务：
+     *  - 6.1.1 创建 NIO 合并方法
+     */
+    private static void unionWithNIO(String dirPath, String toFilePath, String fileName, boolean delSource)
+            throws BusinessException {
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            throw new BusinessException("目录不存在");
+        }
+
+        File[] chunks = dir.listFiles();
+        if (chunks == null || chunks.length == 0) {
+            throw new BusinessException("未找到分片文件");
+        }
+
+        // 按文件名排序，确保按分片顺序合并
+        Arrays.sort(chunks, Comparator.comparing(File::getName));
+
+        java.nio.file.Path targetPath = java.nio.file.Paths.get(toFilePath);
+        try (java.nio.channels.FileChannel outChannel = java.nio.channels.FileChannel.open(
+                targetPath,
+                java.nio.file.StandardOpenOption.CREATE,
+                java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
+
+            for (File chunk : chunks) {
+                try (java.nio.channels.FileChannel inChannel = java.nio.channels.FileChannel.open(
+                        chunk.toPath(),
+                        java.nio.file.StandardOpenOption.READ)) {
+                    long size = inChannel.size();
+                    long position = 0L;
+                    while (position < size) {
+                        long transferred = inChannel.transferTo(position, size - position, outChannel);
+                        if (transferred <= 0) {
+                            break;
+                        }
+                        position += transferred;
+                    }
+                } catch (Exception e) {
+                    logger.error("NIO 合并分片失败", e);
+                    throw new BusinessException("合并文件失败");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("NIO 合并文件:{}失败", fileName, e);
+            throw new BusinessException("合并文件" + fileName + "出错了");
+        } finally {
+            if (delSource && dir.exists()) {
+                try {
+                    FileUtils.deleteDirectory(dir);
+                } catch (IOException e) {
+                    logger.error("删除临时目录失败: {}", dir.getPath(), e);
                 }
             }
         }
@@ -779,19 +944,32 @@ public class FileInfoServiceImpl implements FileInfoService {
         userSpaceDto.setUseSpace(useSpace);
         redisComponent.saveUserSpaceUse(userId, userSpaceDto);
 
-        // 物理删除 S3 文件
+        // 物理删除存储后端文件 (使用虚拟线程并发删除)
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        com.easypan.strategy.StorageStrategy storageStrategy = this.storageStrategy;
         for (FileInfo fileInfo : fileInfoList) {
             if (FileFolderTypeEnums.FILE.getType().equals(fileInfo.getFolderType())) {
-                s3Component.deleteFile(fileInfo.getFilePath());
-                if (fileInfo.getFileCover() != null) {
-                    s3Component.deleteFile(fileInfo.getFileCover());
-                }
-                if (FileTypeEnums.VIDEO.getType().equals(fileInfo.getFileType())) {
-                    // 删除切片目录
-                    String tsFolderKey = fileInfo.getFilePath().substring(0, fileInfo.getFilePath().lastIndexOf("."));
-                    s3Component.deleteDirectory(tsFolderKey);
-                }
+                futures.add(CompletableFuture.runAsync(() -> {
+                    storageStrategy.delete(fileInfo.getFilePath());
+                    if (fileInfo.getFileCover() != null) {
+                        storageStrategy.delete(fileInfo.getFileCover());
+                    }
+                    if (FileTypeEnums.VIDEO.getType().equals(fileInfo.getFileType())) {
+                        // 删除切片目录
+                        String tsFolderKey = fileInfo.getFilePath().substring(0,
+                                fileInfo.getFilePath().lastIndexOf("."));
+                        storageStrategy.deleteDirectory(tsFolderKey);
+                    }
+                }, virtualThreadExecutor).exceptionally(e -> {
+                    logger.error("物理删除文件失败: {}", fileInfo.getFilePath(), e);
+                    return null;
+                }));
             }
+        }
+
+        // 等待所有删除操作完成
+        if (!futures.isEmpty()) {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         }
     }
 

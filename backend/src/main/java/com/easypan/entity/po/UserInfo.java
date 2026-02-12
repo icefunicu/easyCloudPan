@@ -1,7 +1,9 @@
 package com.easypan.entity.po;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
@@ -15,6 +17,8 @@ import com.mybatisflex.annotation.Table;
  * 用户信息
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(value = "user_info")
 public class UserInfo implements Serializable {
 

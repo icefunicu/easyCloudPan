@@ -1,0 +1,127 @@
+{
+  "dashboard": {
+    "title": "EasyCloudPan Business Metrics",
+    "tags": ["easypan", "business"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Total Users",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "easypan_users_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Total Files",
+        "type": "stat",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "easypan_files_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Storage Used",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "easypan_storage_used_bytes / 1073741824",
+            "refId": "A"
+          }
+        ],
+        "options": {"unit": "GB"}
+      },
+      {
+        "title": "Active Shares",
+        "type": "stat",
+        "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+        "targets": [
+          {
+            "expr": "easypan_shares_active_total",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "File Uploads by Type",
+        "type": "piechart",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum by (file_type)(rate(easypan_file_uploads_total[24h]))",
+            "legendFormat": "{{file_type}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Downloads by Hour",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(easypan_file_downloads_total[1h]))",
+            "legendFormat": "Downloads/hour",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Share Access Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(easypan_share_access_total[1h]))",
+            "legendFormat": "Share views/hour",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Registration Rate",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(easypan_user_registrations_total[1h]))",
+            "legendFormat": "Registrations/hour",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Top File Types by Size",
+        "type": "table",
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (file_type)(easypan_storage_by_type_bytes))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "User Activity Distribution",
+        "type": "heatmap",
+        "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(easypan_user_activity_total[1h])) by (hour)",
+            "format": "heatmap",
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

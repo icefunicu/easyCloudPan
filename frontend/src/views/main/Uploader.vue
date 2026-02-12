@@ -39,6 +39,9 @@
             <span class="status" :style="{ color: STATUS[item.status].color }">
               {{ item.status == 'fail' ? item.errorMsg : STATUS[item.status].desc }}
             </span>
+            <span v-if="item.status == STATUS.uploading.value && item.isResume" class="resume-badge">
+              续传
+            </span>
             <span v-if="item.status == STATUS.uploading.value" class="upload-info">
               {{ proxy.Utils.size2Str(item.uploadSize) }} / {{ proxy.Utils.size2Str(item.totalSize) }}
             </span>
@@ -103,6 +106,7 @@ const { proxy } = getCurrentInstance();
 
 const api = {
   upload: "/file/uploadFile",
+  uploadedChunks: "/file/uploadedChunks",
 };
 
 const STATUS = {
@@ -309,6 +313,8 @@ const addFile = async (file, filePid) => {
     filePid,
     errorMsg: null,
     md5Worker: null,
+    isResume: false,
+    uploadedChunks: [],
   };
 
   fileList.value.unshift(fileItem);
@@ -321,7 +327,53 @@ const addFile = async (file, filePid) => {
   if (md5FileUid == null) {
     return;
   }
+  
+  await checkUploadedChunks(md5FileUid);
   uploadFile(md5FileUid);
+};
+
+const checkUploadedChunks = async (uid) => {
+  const currentFile = getFileByUid(uid);
+  if (!currentFile) {
+    return;
+  }
+  
+  try {
+    const result = await proxy.Request({
+      url: api.uploadedChunks,
+      showLoading: false,
+      params: {
+        fileId: currentFile.fileId,
+        fileMd5: currentFile.md5,
+      },
+    });
+    
+    if (!result || !result.data) {
+      return;
+    }
+    
+    const uploadedChunks = result.data || [];
+    if (uploadedChunks.length > 0) {
+      currentFile.isResume = true;
+      currentFile.uploadedChunks = uploadedChunks;
+      
+      const chunks = Math.ceil(currentFile.totalSize / chunkSize);
+      uploadedChunks.forEach(chunkIndex => {
+        if (chunkIndex >= 0 && chunkIndex < chunks) {
+          const start = chunkIndex * chunkSize;
+          const end = Math.min(start + chunkSize, currentFile.totalSize);
+          currentFile.chunkLoadedMap[chunkIndex] = end - start;
+        }
+      });
+      
+      syncUploadProgress(currentFile);
+      
+      const maxUploadedIndex = Math.max(...uploadedChunks, -1);
+      currentFile.chunkIndex = maxUploadedIndex + 1;
+    }
+  } catch (error) {
+    console.warn('Failed to check uploaded chunks:', error);
+  }
 };
 
 defineExpose({ addFile });
@@ -723,6 +775,15 @@ const uploadFile = async (uid, chunkIndex) => {
           margin-left: 5px;
           font-size: 12px;
           color: rgb(112, 111, 111);
+        }
+
+        .resume-badge {
+          margin-left: 5px;
+          padding: 1px 6px;
+          font-size: 11px;
+          background: linear-gradient(45deg, #409eff, #67c23a);
+          color: #fff;
+          border-radius: 3px;
         }
       }
 

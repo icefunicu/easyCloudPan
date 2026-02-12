@@ -17,8 +17,10 @@ import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
 import com.easypan.entity.vo.ShareInfoVO;
 import com.easypan.exception.BusinessException;
+import com.easypan.metrics.CustomMetrics;
 import com.easypan.service.FileInfoService;
 import com.easypan.service.FileShareService;
+import com.easypan.service.ShareAccessLogService;
 import com.easypan.service.UserInfoService;
 import com.easypan.utils.CopyTools;
 import com.easypan.utils.StringTools;
@@ -37,6 +39,10 @@ import java.util.List;
 @RequestMapping("/showShare")
 public class WebShareController extends CommonFileController {
 
+    private static final String ACCESS_TYPE_VIEW = "VIEW";
+    private static final String ACCESS_TYPE_DOWNLOAD = "DOWNLOAD";
+    private static final String ACCESS_TYPE_CHECK_CODE = "CHECK_CODE";
+
     @Resource
     private FileShareService fileShareService;
 
@@ -45,6 +51,12 @@ public class WebShareController extends CommonFileController {
 
     @Resource
     private UserInfoService userInfoService;
+
+    @Resource
+    private ShareAccessLogService shareAccessLogService;
+
+    @Resource
+    private CustomMetrics customMetrics;
 
     /**
      * 通过分享ID获取分享文件信息
@@ -132,12 +144,26 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/checkShareCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO<Void> checkShareCode(HttpSession session,
+    public ResponseVO<Void> checkShareCode(HttpSession session, HttpServletRequest request,
             @VerifyParam(required = true) String shareId,
             @VerifyParam(required = true) String code) {
-        SessionShareDto shareSessionDto = fileShareService.checkShareCode(shareId, code);
-        session.setAttribute(Constants.SESSION_SHARE_KEY + shareId, shareSessionDto);
-        return getSuccessResponseVO(null);
+        String visitorId = getVisitorId(session);
+        String visitorIp = getClientIp(request);
+        String userAgent = request.getHeader("User-Agent");
+        
+        try {
+            SessionShareDto shareSessionDto = fileShareService.checkShareCode(shareId, code);
+            session.setAttribute(Constants.SESSION_SHARE_KEY + shareId, shareSessionDto);
+            
+            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent, 
+                    ACCESS_TYPE_CHECK_CODE, true, null);
+            customMetrics.incrementShareAccess();
+            return getSuccessResponseVO(null);
+        } catch (BusinessException e) {
+            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent, 
+                    ACCESS_TYPE_CHECK_CODE, false, e.getMessage());
+            throw e;
+        }
     }
 
     /**
@@ -184,11 +210,28 @@ public class WebShareController extends CommonFileController {
     }
 
     @RequestMapping("/getFile/{shareId}/{fileId}")
-    public void getFile(HttpServletResponse response, HttpSession session,
+    public void getFile(HttpServletResponse response, HttpSession session, HttpServletRequest request,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
+        
+        String visitorId = getVisitorId(session);
+        String visitorIp = getClientIp(request);
+        String userAgent = request.getHeader("User-Agent");
+        shareAccessLogService.logAccessAsync(shareId, fileId, visitorId, visitorIp, userAgent, 
+                ACCESS_TYPE_VIEW, true, null);
+        
         super.getFile(response, fileId, shareSessionDto.getShareUserId());
+    }
+
+    @RequestMapping("/getImage/{shareId}/{imageFolder}/{imageName}")
+    @GlobalInterceptor(checkLogin = false, checkParams = true)
+    public void getImage(HttpSession session, HttpServletResponse response,
+            @PathVariable("shareId") @VerifyParam(required = true) String shareId,
+            @PathVariable("imageFolder") String imageFolder,
+            @PathVariable("imageName") String imageName) {
+        SessionShareDto shareSessionDto = checkShare(session, shareId);
+        super.getImage(response, imageFolder, imageName, shareSessionDto.getShareUserId());
     }
 
     @RequestMapping("/ts/getVideoInfo/{shareId}/{fileId}")
@@ -246,5 +289,33 @@ public class WebShareController extends CommonFileController {
         fileInfoService.saveShare(shareSessionDto.getFileId(), shareFileIds, myFolderId,
                 shareSessionDto.getShareUserId(), webUserDto.getUserId());
         return getSuccessResponseVO(null);
+    }
+
+    private String getVisitorId(HttpSession session) {
+        SessionWebUserDto userDto = getUserInfoFromSession(session);
+        return userDto != null ? userDto.getUserId() : null;
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_CLIENT_IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

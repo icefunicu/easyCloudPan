@@ -77,7 +77,7 @@
                 (row.fileType == 3 || row.fileType == 1) && row.status == 2
               "
             >
-              <Icon :cover="row.fileCover" :width="32"></Icon>
+              <Icon :cover="row.fileCover" :width="32" :shareId="shareId"></Icon>
             </template>
               <template v-else>
                 <Icon

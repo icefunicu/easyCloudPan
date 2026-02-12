@@ -1,6 +1,8 @@
 package com.easypan.component;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -10,9 +12,11 @@ import jakarta.annotation.Resource;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class S3Component {
 
     @Resource
@@ -154,5 +158,89 @@ public class S3Component {
             continuationToken = listRes.nextContinuationToken();
 
         } while (continuationToken != null);
+    }
+
+    // ==================== 异步方法 (使用 Virtual Threads) ====================
+
+    /**
+     * 异步上传文件到 S3
+     * 使用 @Async 注解在 Virtual Thread 上执行
+     *
+     * @param key  S3 对象键
+     * @param file 要上传的文件
+     * @return CompletableFuture<Void> 异步操作结果
+     */
+    @Async
+    public CompletableFuture<Void> uploadFileAsync(String key, File file) {
+        try {
+            log.debug("异步上传文件到 S3: {} 在线程: {}", key, Thread.currentThread().getName());
+            uploadFile(key, file);
+            log.info("文件上传成功: {}", key);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("文件上传失败: {}", key, e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
+     * 异步从 S3 下载文件
+     * 使用 @Async 注解在 Virtual Thread 上执行
+     *
+     * @param key  S3 对象键
+     * @param path 下载到的本地路径
+     * @return CompletableFuture<Void> 异步操作结果
+     */
+    @Async
+    public CompletableFuture<Void> downloadFileAsync(String key, Path path) {
+        try {
+            log.debug("异步从 S3 下载文件: {} 在线程: {}", key, Thread.currentThread().getName());
+            downloadFile(key, path);
+            log.info("文件下载成功: {}", key);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("文件下载失败: {}", key, e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
+     * 异步从 S3 删除文件
+     * 使用 @Async 注解在 Virtual Thread 上执行
+     *
+     * @param key S3 对象键
+     * @return CompletableFuture<Void> 异步操作结果
+     */
+    @Async
+    public CompletableFuture<Void> deleteFileAsync(String key) {
+        try {
+            log.debug("异步从 S3 删除文件: {} 在线程: {}", key, Thread.currentThread().getName());
+            deleteFile(key);
+            log.info("文件删除成功: {}", key);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("文件删除失败: {}", key, e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    /**
+     * 异步批量删除 S3 目录
+     * 使用 @Async 注解在 Virtual Thread 上执行
+     *
+     * @param prefix S3 对象键前缀
+     * @return CompletableFuture<Void> 异步操作结果
+     */
+    @Async
+    public CompletableFuture<Void> deleteDirectoryAsync(String prefix) {
+        try {
+            log.debug("异步从 S3 删除目录: {} 在线程: {}", prefix, Thread.currentThread().getName());
+            deleteDirectory(prefix);
+            log.info("目录删除成功: {}", prefix);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("目录删除失败: {}", prefix, e);
+            return CompletableFuture.failedFuture(e);
+        }
     }
 }

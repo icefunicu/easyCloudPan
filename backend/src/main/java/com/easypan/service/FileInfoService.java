@@ -3,6 +3,7 @@ package com.easypan.service;
 import com.easypan.entity.dto.SessionWebUserDto;
 import com.easypan.entity.dto.UploadResultDto;
 import com.easypan.entity.po.FileInfo;
+import com.easypan.entity.query.CursorPage;
 import com.easypan.entity.query.FileInfoQuery;
 import com.easypan.entity.vo.PaginationResultVO;
 import org.apache.ibatis.annotations.Param;
@@ -30,6 +31,16 @@ public interface FileInfoService {
      * 分页查询
      */
     PaginationResultVO<FileInfo> findListByPage(FileInfoQuery param);
+    
+    /**
+     * 游标分页查询（性能优于 OFFSET 分页）
+     * 
+     * @param userId   用户ID
+     * @param cursor   游标（格式：timestamp_id）
+     * @param pageSize 每页数量
+     * @return 游标分页结果
+     */
+    CursorPage<FileInfo> findListByCursor(String userId, String cursor, Integer pageSize);
 
     /**
      * 新增

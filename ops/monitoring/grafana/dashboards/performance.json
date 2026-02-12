@@ -1,0 +1,124 @@
+{
+  "dashboard": {
+    "title": "EasyCloudPan Performance Metrics",
+    "tags": ["easypan", "performance"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "API Latency Distribution",
+        "type": "heatmap",
+        "gridPos": {"x": 0, "y": 0, "w": 24, "h": 10},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_requests_seconds_bucket[5m])) by (le)",
+            "format": "heatmap",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Cache Hit Rate",
+        "type": "stat",
+        "gridPos": {"x": 0, "y": 10, "w": 8, "h": 6},
+        "targets": [
+          {
+            "expr": "easypan_cache_hit_rate * 100",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "yellow", "value": 70},
+              {"color": "green", "value": 90}
+            ]
+          }
+        }
+      },
+      {
+        "title": "File Upload Throughput",
+        "type": "graph",
+        "gridPos": {"x": 8, "y": 10, "w": 16, "h": 6},
+        "targets": [
+          {
+            "expr": "sum(rate(easypan_file_uploads_total[5m]))",
+            "legendFormat": "Uploads/sec",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(easypan_file_upload_bytes_total[5m]))",
+            "legendFormat": "Bytes/sec",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "title": "Database Query Performance",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(spring_data_repository_invocations_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(spring_data_repository_invocations_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(spring_data_repository_invocations_seconds_bucket[5m])) by (le))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ]
+      },
+      {
+        "title": "GC Pause Time",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(jvm_gc_pause_seconds_sum[5m])",
+            "legendFormat": "{{action}} {{cause}}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Thread Pool Status",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "executor_active_threads",
+            "legendFormat": "{{name}} active",
+            "refId": "A"
+          },
+          {
+            "expr": "executor_queued_tasks",
+            "legendFormat": "{{name}} queued",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "title": "Response Time by Endpoint",
+        "type": "table",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le, uri))",
+            "format": "table",
+            "instant": true,
+            "refId": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

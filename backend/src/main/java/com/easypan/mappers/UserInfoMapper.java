@@ -9,9 +9,12 @@ import com.mybatisflex.core.BaseMapper;
 import com.easypan.entity.po.UserInfo;
 import java.util.List;
 
+import org.apache.ibatis.annotations.Mapper;
+
 /**
  * 用户信息 数据库操作接口
  */
+@Mapper
 public interface UserInfoMapper extends BaseMapper<UserInfo> {
 
         /**
@@ -94,5 +97,14 @@ public interface UserInfoMapper extends BaseMapper<UserInfo> {
 
         Integer updateUserSpaceAdmin(@Param("userId") String userId, @Param("useSpace") Long useSpace,
                         @Param("totalSpace") Long totalSpace);
+
+        /**
+         * 查询活跃用户（按最后登录时间排序）
+         * 用于缓存预热
+         * 
+         * @param limit 限制数量
+         * @return 活跃用户列表
+         */
+        List<UserInfo> selectActiveUsers(@Param("limit") int limit);
 
 }

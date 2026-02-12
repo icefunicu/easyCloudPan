@@ -69,6 +69,11 @@
               class="file-item"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
+              v-touch="{
+                onLongPress: () => showOp(row),
+                onSwipeLeft: () => delFile(row),
+                onSwipeRight: () => share(row)
+              }"
             >
               <template
                 v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2"
@@ -219,12 +224,14 @@ const columns = [
         label: "修改时间",
         prop: "lastUpdateTime",
         width: 200,
+        className: "hidden-mobile", // Custom class to hide on mobile
     },
     {
         label: "大小",
         prop: "fileSize",
         scopedSlots: "fileSize",
         width: 200,
+        className: "hidden-mobile",
     },
 ];
 
@@ -492,4 +499,29 @@ const share = (row) => {
 
 <style lang="scss" scoped>
 @import "@/assets/file.list.scss";
+
+@media screen and (max-width: 768px) {
+  .top {
+    flex-direction: column;
+    
+    .top-op {
+      flex-wrap: wrap;
+      gap: 5px;
+      
+      .btn, .el-button {
+        margin-right: 5px;
+        margin-bottom: 5px;
+      }
+      
+      .search-panel {
+        width: 100%;
+        margin-left: 0 !important;
+        margin-top: 5px;
+      }
+    }
+    
+    // Adjust Navigation component styles if necessary via deep selector
+    // Assuming Navigation is the sidebar
+  }
+}
 </style>

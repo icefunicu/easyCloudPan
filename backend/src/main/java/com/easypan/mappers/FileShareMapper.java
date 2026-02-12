@@ -6,9 +6,12 @@ import com.mybatisflex.core.BaseMapper;
 
 import java.util.List;
 
+import org.apache.ibatis.annotations.Mapper;
+
 /**
  * 分享信息 数据库操作接口
  */
+@Mapper
 public interface FileShareMapper extends BaseMapper<FileShare> {
 
     /**

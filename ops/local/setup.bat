@@ -29,12 +29,12 @@ if errorlevel 1 exit /b 1
 call :check_prerequisites
 if errorlevel 1 exit /b 1
 
-echo [1/4] Toolchain check passed.
+echo [1/5] Toolchain check passed.
 
 if "%SKIP_NPM%"=="1" (
-    echo [2/4] Skipping frontend dependency installation ^(--skip-npm^).
+    echo [2/5] Skipping frontend dependency installation ^(--skip-npm^).
 ) else (
-    echo [2/4] Installing frontend dependencies...
+    echo [2/5] Installing frontend dependencies...
     pushd "%REPO_ROOT%\frontend"
     call npm install
     if errorlevel 1 (
@@ -46,7 +46,18 @@ if "%SKIP_NPM%"=="1" (
     echo [OK] Frontend dependencies are ready.
 )
 
-echo [3/4] Preparing local runtime directories...
+echo [3/5] Building backend dependencies...
+pushd "%REPO_ROOT%\backend"
+call mvn clean install -DskipTests
+if errorlevel 1 (
+    popd
+    echo [ERROR] Backend build failed.
+    exit /b 1
+)
+popd
+echo [OK] Backend built successfully.
+
+echo [4/5] Preparing local runtime directories...
 for %%d in (
     "%REPO_ROOT%\backend\file"
     "%REPO_ROOT%\backend\file\temp"
@@ -58,8 +69,7 @@ for %%d in (
 )
 echo [OK] Local directories prepared.
 
-echo [4/4] Generating backend local config...
-echo [4/4] Setting up environment configuration...
+echo [5/5] Setting up environment configuration...
 if not exist "%REPO_ROOT%\ops\docker\.env" (
     echo [INFO] ops\docker\.env not found. Creating from example...
     copy "%REPO_ROOT%\ops\docker\.env.example" "%REPO_ROOT%\ops\docker\.env"

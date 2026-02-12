@@ -109,6 +109,15 @@ public class AdminController extends CommonFileController {
         super.getFile(response, fileId, userId);
     }
 
+    @RequestMapping("/getImage/{userId}/{imageFolder}/{imageName}")
+    @GlobalInterceptor(checkParams = true, checkAdmin = true)
+    public void getImage(HttpServletResponse response,
+            @PathVariable("userId") @VerifyParam(required = true) String userId,
+            @PathVariable("imageFolder") String imageFolder,
+            @PathVariable("imageName") String imageName) {
+        super.getImage(response, imageFolder, imageName, userId);
+    }
+
     @RequestMapping("/ts/getVideoInfo/{userId}/{fileId}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public void getVideoInfo(HttpServletResponse response,

@@ -44,11 +44,15 @@
               class="file-item"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
+              v-touch="{
+                onLongPress: () => showOp(row),
+                onSwipeLeft: () => delFile(row),
+              }"
             >
               <template
                 v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2"
               >
-                <Icon :cover="row.fileCover" :width="32"></Icon>
+                <Icon :cover="row.fileCover" :width="32" :adminUserId="row.userId"></Icon>
               </template>
               <template v-else>
                 <Icon v-if="row.folderType == 0" :fileType="row.fileType"></Icon>
@@ -114,12 +118,14 @@ const columns = [
         label: "修改时间",
         prop: "lastUpdateTime",
         width: 200,
+        className: "hidden-mobile",
     },
     {
         label: "大小",
         prop: "fileSize",
         scopedSlots: "fileSize",
         width: 200,
+        className: "hidden-mobile",
     },
 ];
 // 搜索
@@ -260,9 +266,48 @@ const download = async (row) => {
 .file-list {
     margin-top: 10px;
     .file-item {
+        position: relative;
         .op {
             width: 120px;
         }
     }
+}
+
+@media screen and (max-width: 768px) {
+  .file-list .file-item {
+      .op {
+          display: flex !important;
+          position: absolute;
+          right: 0;
+          top: 0;
+          bottom: 0;
+          background: rgba(255,255,255,0.9);
+          align-items: center;
+          justify-content: flex-end;
+          padding-right: 10px;
+          z-index: 10;
+      }
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .top {
+    flex-direction: column;
+    
+    .top-op {
+      flex-wrap: wrap;
+      gap: 5px;
+      
+      .search-panel {
+        width: 100%;
+        margin-left: 0 !important;
+      }
+      
+      .el-button {
+        margin-left: 0 !important;
+        margin-top: 5px;
+      }
+    }
+  }
 }
 </style>

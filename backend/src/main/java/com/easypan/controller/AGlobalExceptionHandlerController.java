@@ -1,90 +1,292 @@
 package com.easypan.controller;
+
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.entity.vo.ResponseVO;
 import com.easypan.exception.BusinessException;
-
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.nio.file.AccessDeniedException;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
+/**
+ * 全局异常处理器
+ * 统一处理应用中的各类异常，返回友好的错误信息
+ * 需求：3.1.1 - 统一异常处理
+ * 需求：3.1.2 - 国际化支持
+ */
 @Slf4j
 @RestControllerAdvice
 public class AGlobalExceptionHandlerController extends ABaseController {
 
-    @ExceptionHandler(value = Exception.class)
-    Object handleException(Exception e, HttpServletRequest request) {
-        String requestUrl = request.getRequestURL().toString();
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+    
+    @Value("${dev:false}")
+    private boolean isDevelopmentMode;
+
+    @Autowired
+    private MessageSource messageSource;
+
+    /**
+     * 获取国际化消息
+     * 根据当前请求的语言环境返回对应的错误消息
+     */
+    private String getMessage(String code, Object[] args) {
+        Locale locale = LocaleContextHolder.getLocale();
+        return messageSource.getMessage(code, args, code, locale);
+    }
+
+    /**
+     * 业务异常处理
+     * 处理应用中主动抛出的业务异常
+     * 支持国际化错误消息
+     */
+    @ExceptionHandler(BusinessException.class)
+    public ResponseVO<Void> handleBusinessException(BusinessException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
         String method = request.getMethod();
         
-        log.error("[EXCEPTION] {} {} - Error: {}", method, requestUrl, e.getMessage(), e);
+        Integer code = e.getCode() != null ? e.getCode() : ResponseCodeEnum.CODE_600.getCode();
         
-        ResponseVO<Void> ajaxResponse = new ResponseVO<>();
+        // 尝试从国际化资源文件获取消息
+        String messageKey = "error." + code;
+        String message = getMessage(messageKey, null);
         
-        // 404 - 资源不存在
-        if (e instanceof NoHandlerFoundException) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_404.getCode());
-            ajaxResponse.setInfo("请求的资源不存在");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] 404 Not Found: {}", requestUrl);
-        } 
-        // 业务异常
-        else if (e instanceof BusinessException) {
-            BusinessException biz = (BusinessException) e;
-            ajaxResponse.setCode(biz.getCode() == null ? ResponseCodeEnum.CODE_600.getCode() : biz.getCode());
-            ajaxResponse.setInfo(biz.getMessage());
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] Business Error [{}]: {}", biz.getCode(), biz.getMessage());
-        } 
-        // 权限不足
-        else if (e instanceof AccessDeniedException) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_600.getCode());
-            ajaxResponse.setInfo("权限不足，无法访问该资源");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] Access Denied: {}", requestUrl);
-        }
-        // 参数类型错误
-        else if (e instanceof BindException || e instanceof MethodArgumentTypeMismatchException) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_600.getCode());
-            ajaxResponse.setInfo("请求参数格式错误，请检查后重试");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] Invalid Parameters: {}", e.getMessage());
-        } 
-        // 主键冲突/重复提交
-        else if (e instanceof DuplicateKeyException) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_601.getCode());
-            ajaxResponse.setInfo("数据已存在，请勿重复提交");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] Duplicate Key: {}", e.getMessage());
-        } 
-        // 文件上传相关异常
-        else if (e.getMessage() != null && e.getMessage().contains("MultipartException")) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_600.getCode());
-            ajaxResponse.setInfo("文件上传失败，请检查文件大小和格式");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.error("[EXCEPTION] File Upload Error: {}", e.getMessage());
-        }
-        // 会话失效
-        else if (e.getMessage() != null && e.getMessage().contains("session")) {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_901.getCode());
-            ajaxResponse.setInfo("登录已过期，请重新登录");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.warn("[EXCEPTION] Session Expired: {}", requestUrl);
-        }
-        // 其他服务器错误
-        else {
-            ajaxResponse.setCode(ResponseCodeEnum.CODE_500.getCode());
-            ajaxResponse.setInfo("服务器内部错误，请稍后重试");
-            ajaxResponse.setStatus(STATUC_ERROR);
-            log.error("[EXCEPTION] Internal Server Error: {}", e.getMessage(), e);
+        // 如果没有找到国际化消息，使用异常中的消息
+        if (messageKey.equals(message) && e.getMessage() != null) {
+            message = e.getMessage();
         }
         
-        return ajaxResponse;
+        // 获取错误解决建议
+        String suggestion = null;
+        ResponseCodeEnum codeEnum = ResponseCodeEnum.getByCode(code);
+        if (codeEnum != null) {
+            suggestion = codeEnum.getSuggestion();
+        }
+        
+        log.warn("[BUSINESS_EXCEPTION] {} {} - Code: {}, Message: {}", 
+            method, requestUrl, code, message);
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(code)
+            .info(message)
+            .suggestion(suggestion)
+            .build();
+    }
+
+    /**
+     * 参数校验异常处理
+     * 处理 @Valid 和 @Validated 注解触发的参数校验异常
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseVO<Void> handleValidationException(MethodArgumentNotValidException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        
+        // 收集所有字段的校验错误信息
+        String message = e.getBindingResult().getFieldErrors().stream()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .collect(Collectors.joining(", "));
+        
+        log.warn("[VALIDATION_EXCEPTION] {} - Validation failed: {}", requestUrl, message);
+        
+        String errorMessage = getMessage("error.600", null) + ": " + message;
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_600.getCode())
+            .info(errorMessage)
+            .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
+            .build();
+    }
+
+    /**
+     * 文件上传大小超限异常处理
+     * 处理文件上传时超过配置的最大文件大小限制
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseVO<Void> handleMaxUploadSizeExceededException(
+        MaxUploadSizeExceededException e, HttpServletRequest request) {
+        
+        String requestUrl = request.getRequestURI();
+        long maxSize = e.getMaxUploadSize();
+        long maxSizeMB = maxSize / (1024 * 1024);
+        
+        log.warn("[FILE_UPLOAD_EXCEPTION] {} - File size exceeded: max {}MB", 
+            requestUrl, maxSizeMB);
+        
+        String message = getMessage("error.file.size.exceeded", new Object[]{maxSizeMB});
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_600.getCode())
+            .info(message)
+            .suggestion("请压缩文件后重试上传")
+            .build();
+    }
+
+    /**
+     * 404 异常处理
+     * 处理请求的资源不存在的情况
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseVO<Void> handleNotFoundException(NoHandlerFoundException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        
+        log.warn("[NOT_FOUND_EXCEPTION] {} - Resource not found", requestUrl);
+        
+        String message = getMessage("error.not.found", null);
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_404.getCode())
+            .info(message)
+            .suggestion(ResponseCodeEnum.CODE_404.getSuggestion())
+            .build();
+    }
+
+    /**
+     * 权限不足异常处理
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseVO<Void> handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        
+        log.warn("[ACCESS_DENIED_EXCEPTION] {} - Access denied", requestUrl);
+        
+        String message = getMessage("error.permission.denied", null);
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_901.getCode())
+            .info(message)
+            .suggestion(ResponseCodeEnum.CODE_901.getSuggestion())
+            .build();
+    }
+
+    /**
+     * 参数类型错误异常处理
+     */
+    @ExceptionHandler({BindException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseVO<Void> handleParameterException(Exception e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        
+        log.warn("[PARAMETER_EXCEPTION] {} - Invalid parameter type: {}", requestUrl, e.getMessage());
+        
+        String message = getMessage("error.600", null);
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_600.getCode())
+            .info(message)
+            .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
+            .build();
+    }
+
+    /**
+     * 数据库主键冲突异常处理
+     */
+    @ExceptionHandler(DuplicateKeyException.class)
+    public ResponseVO<Void> handleDuplicateKeyException(DuplicateKeyException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        
+        log.warn("[DUPLICATE_KEY_EXCEPTION] {} - Duplicate key: {}", requestUrl, e.getMessage());
+        
+        String message = getMessage("error.601", null);
+        
+        return ResponseVO.<Void>builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_601.getCode())
+            .info(message)
+            .suggestion(ResponseCodeEnum.CODE_601.getSuggestion())
+            .build();
+    }
+
+    /**
+     * 系统异常处理（兜底）
+     * 处理所有未被特定处理器捕获的异常
+     * 生产环境下会脱敏，不暴露详细错误信息
+     * 需求：3.1.3 - 生产环境异常脱敏
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseVO<Object> handleException(Exception e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+        String method = request.getMethod();
+        
+        log.error("[SYSTEM_EXCEPTION] {} {} - Error: {}", method, requestUrl, e.getMessage(), e);
+        
+        // 生产环境脱敏，不暴露堆栈信息和详细错误
+        String message;
+        boolean isProduction = "prod".equals(activeProfile) || !isDevelopmentMode;
+        
+        if (isProduction) {
+            // 生产环境：只返回通用错误消息
+            message = getMessage("error.system", null);
+        } else {
+            // 开发/测试环境：返回详细错误信息，便于调试
+            message = getMessage("error.system", null) + ": " + e.getMessage();
+        }
+        
+        ResponseVO<Object> response = ResponseVO.builder()
+            .status(STATUC_ERROR)
+            .code(ResponseCodeEnum.CODE_500.getCode())
+            .info(message)
+            .suggestion(ResponseCodeEnum.CODE_500.getSuggestion())
+            .build();
+        
+        // 开发/测试环境：在响应数据中附加详细错误信息和堆栈跟踪
+        if (!isProduction) {
+            response.setData(buildDetailedErrorInfo(e, requestUrl, method));
+        }
+        
+        return response;
+    }
+    
+    /**
+     * 构建详细错误信息（仅用于开发/测试环境）
+     */
+    private DetailedErrorInfo buildDetailedErrorInfo(Exception e, String requestUrl, String method) {
+        DetailedErrorInfo errorInfo = new DetailedErrorInfo();
+        errorInfo.exceptionType = e.getClass().getName();
+        errorInfo.message = e.getMessage();
+        errorInfo.requestUrl = requestUrl;
+        errorInfo.requestMethod = method;
+        errorInfo.stackTrace = getStackTraceAsString(e);
+        return errorInfo;
+    }
+    
+    /**
+     * 将堆栈跟踪转换为字符串
+     */
+    private String getStackTraceAsString(Exception e) {
+        java.io.StringWriter sw = new java.io.StringWriter();
+        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+        e.printStackTrace(pw);
+        return sw.toString();
+    }
+    
+    /**
+     * 详细错误信息（仅用于开发/测试环境）
+     */
+    private static class DetailedErrorInfo {
+        public String exceptionType;
+        public String message;
+        public String requestUrl;
+        public String requestMethod;
+        public String stackTrace;
     }
 }

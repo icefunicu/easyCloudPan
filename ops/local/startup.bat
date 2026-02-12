@@ -34,6 +34,16 @@ for /f "usebackq eol=# tokens=1* delims==" %%A in ("%ENV_FILE%") do (
     set "%%A=%%B"
 )
 
+REM Map Docker environment variables to Spring Boot properties
+set "SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/%POSTGRES_DB%"
+set "SPRING_DATASOURCE_USERNAME=%POSTGRES_USER%"
+set "SPRING_DATASOURCE_PASSWORD=%POSTGRES_PASSWORD%"
+set "SPRING_DATA_REDIS_PASSWORD=%REDIS_PASSWORD%"
+set "MINIO_ENDPOINT=http://localhost:9000"
+set "MINIO_ACCESS_KEY=%MINIO_ROOT_USER%"
+set "MINIO_SECRET_KEY=%MINIO_ROOT_PASSWORD%"
+set "MINIO_BUCKET_NAME=%MINIO_BUCKET%"
+
 call "%COMMON_SCRIPT%" print_header "EasyCloudPan One-Click Local Start"
 if errorlevel 1 exit /b 1
 

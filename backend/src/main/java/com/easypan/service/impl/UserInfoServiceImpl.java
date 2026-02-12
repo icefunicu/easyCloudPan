@@ -59,6 +59,9 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Resource
     private PasswordEncoder passwordEncoder;
+    
+    @Resource
+    private com.easypan.service.TenantQuotaService tenantQuotaService;
 
     private static final Logger logger = LoggerFactory.getLogger(UserInfoServiceImpl.class);
 
@@ -280,6 +283,7 @@ public class UserInfoServiceImpl implements UserInfoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(String email, String nickName, String password, String emailCode) {
+        tenantQuotaService.checkUserQuota();
         UserInfo userInfo = this.userInfoMapper.selectByEmail(email);
         if (null != userInfo) {
             throw new BusinessException("邮箱账号已经存在");

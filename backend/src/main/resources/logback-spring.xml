@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <configuration scan="true" scanPeriod="10 minutes">
-    <appender name="stdot" class="ch.qos.logback.core.ConsoleAppender">
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss,GMT+8} [%p][%c][%M][%L]-> %m%n</pattern>
-        </layout>
-    </appender>
-
     <springProperty scope="context" name="log.path" source="project.folder"/>
     <springProperty scope="context" name="log.root.level" source="log.root.level"/>
+    <springProperty scope="context" name="spring.application.name" source="spring.application.name" defaultValue="easypan"/>
+
+    <turboFilter class="com.easypan.config.LogSamplingFilter">
+        <sampleRate>0.1</sampleRate>
+        <deduplicationWindowSeconds>60</deduplicationWindowSeconds>
+        <maxDuplicatesPerWindow>5</maxDuplicatesPerWindow>
+    </turboFilter>
 
     <property name="LOG_FOLDER" value="logs"/>
     <property name="LOG_FILE_NAME" value="easypan.log"/>
+    <property name="LOG_JSON_FILE_NAME" value="easypan-json.log"/>
+
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%highlight(%-5level)] [%cyan(%logger{36})] [%thread] - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
 
     <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}</file>
@@ -18,21 +27,82 @@
             <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
             <TimeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <MaxFileSize>20MB</MaxFileSize>
+                <MaxFileSize>50MB</MaxFileSize>
             </TimeBasedFileNamingAndTriggeringPolicy>
             <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <charset>utf-8</charset>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss,GMT+8} [%p][%c][%M][%L]-> %m%n</pattern>
+            <charset>UTF-8</charset>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%logger{36}] [%thread] [%X{traceId:-}] - %msg%n</pattern>
         </encoder>
-        <append>false</append>
-        <prudent>false</prudent>
+        <append>true</append>
     </appender>
 
-    <root level="${log.root.level}">
-        <appender-ref ref="stdot"/>
+    <appender name="json-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <TimeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <MaxFileSize>50MB</MaxFileSize>
+            </TimeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
+                <timestampFormat>yyyy-MM-dd'T'HH:mm:ss.SSSX</timestampFormat>
+                <timestampFormatTimezoneId>Asia/Shanghai</timestampFormatTimezoneId>
+                <jsonFormatter class="ch.qos.logback.contrib.jackson.JacksonJsonFormatter"/>
+                <appendLineSeparator>true</appendLineSeparator>
+                <includeContextName>true</includeContextName>
+                <includeMDC>true</includeMDC>
+                <includeMessage>true</includeMessage>
+                <includeLoggerName>true</includeLoggerName>
+                <includeThreadName>true</includeThreadName>
+                <includeLevel>true</includeLevel>
+                <includeException>true</includeException>
+            </layout>
+            <charset>UTF-8</charset>
+        </encoder>
+        <append>true</append>
+    </appender>
+
+    <appender name="async-file" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="file"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <appender name="async-json-file" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="json-file"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <logger name="com.easypan" level="${log.root.level}" additivity="false">
+        <appender-ref ref="console"/>
+        <appender-ref ref="async-file"/>
+        <appender-ref ref="async-json-file"/>
+    </logger>
+
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="org.springframework.cache" level="INFO"/>
+    <logger name="org.mybatis" level="INFO"/>
+    <logger name="com.mybatisflex" level="INFO"/>
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+    <logger name="io.lettuce" level="WARN"/>
+    <logger name="io.netty" level="WARN"/>
+    <logger name="org.apache.http" level="WARN"/>
+    <logger name="software.amazon.awssdk" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="console"/>
     </root>
 
 </configuration>

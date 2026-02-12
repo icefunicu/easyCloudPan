@@ -63,3 +63,19 @@ body {
         margin-right: 5px;
     }
 }
+
+// Responsive Breakpoints
+$mobile-width: 768px;
+
+@mixin mobile {
+    @media screen and (max-width: $mobile-width) {
+        @content;
+    }
+}
+
+// Utility classes
+.hidden-mobile {
+    @include mobile {
+        display: none !important;
+    }
+}
