@@ -1,6 +1,5 @@
 package com.easypan.property;
 
-import com.easypan.component.S3Component;
 import com.easypan.config.VirtualThreadConfig;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -25,7 +24,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -405,6 +403,7 @@ public class S3OperationPropertiesTest {
                     .bucket(bucketName)
                     .prefix(prefix)
                     .build();
+                @SuppressWarnings("unused")
                 ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
                 
                 // 模拟 I/O 延迟

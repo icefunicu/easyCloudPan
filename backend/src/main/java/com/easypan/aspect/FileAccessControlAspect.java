@@ -1,6 +1,5 @@
 package com.easypan.aspect;
 
-import com.easypan.annotation.FileAccessCheck;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionShareDto;
 import com.easypan.entity.dto.SessionWebUserDto;
@@ -20,7 +19,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.lang.reflect.Method;
 import java.util.List;
 
 @Aspect
@@ -34,8 +32,6 @@ public class FileAccessControlAspect {
     @Around("@annotation(com.easypan.annotation.FileAccessCheck)")
     public Object checkFileAccess(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
-        
         String fileId = extractFileId(joinPoint.getArgs(), signature.getParameterNames());
         String userIdParam = extractUserId(joinPoint.getArgs(), signature.getParameterNames());
         

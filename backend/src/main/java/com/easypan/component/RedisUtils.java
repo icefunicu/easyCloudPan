@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @Component("redisUtils")
+@SuppressWarnings("all")
 public class RedisUtils<V> {
 
     @Resource
@@ -64,7 +65,6 @@ public class RedisUtils<V> {
      * @param time  时间(秒) time要大于0 如果time小于等于0 将设置无限期
      * @return true成功 false 失败
      */
-    @SuppressWarnings("null")
     public boolean setex(String key, V value, long time) {
         try {
             if (time > 0) {

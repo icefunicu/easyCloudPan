@@ -6,13 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.io.File;
-import java.io.RandomAccessFile;
-import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,9 +27,6 @@ class ResumableUploadServiceTest {
 
     @Autowired
     private ResumableUploadService resumableUploadService;
-
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
 
     private static final String TEST_USER_ID = "test_user_123";
     private static final String TEST_FILE_MD5 = "d41d8cd98f00b204e9800998ecf8427e";

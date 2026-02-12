@@ -282,11 +282,12 @@ public class AGlobalExceptionHandlerController extends ABaseController {
     /**
      * 详细错误信息（仅用于开发/测试环境）
      */
+    @lombok.Data
     private static class DetailedErrorInfo {
-        public String exceptionType;
-        public String message;
-        public String requestUrl;
-        public String requestMethod;
-        public String stackTrace;
+        private String exceptionType;
+        private String message;
+        private String requestUrl;
+        private String requestMethod;
+        private String stackTrace;
     }
 }

@@ -2,8 +2,6 @@ package com.easypan.unit.service;
 
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionShareDto;
-import com.easypan.entity.enums.ResponseCodeEnum;
-import com.easypan.entity.enums.ShareValidTypeEnums;
 import com.easypan.entity.po.FileShare;
 import com.easypan.entity.query.FileShareQuery;
 import com.easypan.entity.vo.PaginationResultVO;
@@ -143,7 +141,7 @@ class FileShareServiceTest {
         newShare.setValidType(999); // 无效类型
 
         // When & Then
-        BusinessException exception = assertThrows(BusinessException.class, () -> {
+        assertThrows(BusinessException.class, () -> {
             fileShareService.saveShare(newShare);
         });
 
@@ -271,7 +269,7 @@ class FileShareServiceTest {
         when(fileShareMapper.deleteFileShareBatch(shareIds, testUserId)).thenReturn(2); // 只删除了2个
 
         // When & Then
-        BusinessException exception = assertThrows(BusinessException.class, () -> {
+        assertThrows(BusinessException.class, () -> {
             fileShareService.deleteFileShareBatch(shareIds, testUserId);
         });
 

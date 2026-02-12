@@ -7,9 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -125,6 +123,7 @@ public class AnalyticsController extends ABaseController {
         double value;
         String rating;
         String page;
+        @SuppressWarnings("unused")
         long timestamp;
         String userAgent;
         String deviceType;

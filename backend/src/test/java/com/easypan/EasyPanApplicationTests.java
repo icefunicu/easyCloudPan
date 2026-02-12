@@ -6,8 +6,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
-import javax.sql.DataSource;
-
 @SpringBootTest
 @ActiveProfiles("test")
 @org.junit.jupiter.api.Disabled("Disabled due to H2/MyBatis-Flex compatibility issues in test environment")

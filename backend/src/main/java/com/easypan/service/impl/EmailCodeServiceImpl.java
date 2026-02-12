@@ -31,6 +31,7 @@ import java.util.List;
  * 邮箱验证码 业务接口实现
  */
 @Service("emailCodeService")
+@SuppressWarnings("all")
 public class EmailCodeServiceImpl implements EmailCodeService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailCodeServiceImpl.class);
@@ -136,7 +137,6 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         return this.emailCodeMapper.deleteByEmailAndCode(email, code);
     }
 
-    @SuppressWarnings("null")
     private void sendEmailCode(String toEmail, String code) {
         try {
             MimeMessage message = javaMailSender.createMimeMessage();

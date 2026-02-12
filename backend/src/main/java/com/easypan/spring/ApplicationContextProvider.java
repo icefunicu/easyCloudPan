@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
 @Component("applicationContextProvider")
+@SuppressWarnings("all")
 public class ApplicationContextProvider implements ApplicationContextAware {
     private static final Logger logger = LoggerFactory.getLogger(ApplicationContextProvider.class);
     /**
@@ -17,7 +18,6 @@ public class ApplicationContextProvider implements ApplicationContextAware {
     private static ApplicationContext applicationContext;
 
     @Override
-    @SuppressWarnings("null")
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         ApplicationContextProvider.applicationContext = applicationContext;
     }
@@ -37,7 +37,6 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param name
      * @return
      */
-    @SuppressWarnings("null")
     public static Object getBean(String name) {
         try {
             return getApplicationContext().getBean(name);
@@ -68,7 +67,6 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param <T>
      * @return
      */
-    @SuppressWarnings("null")
     public static <T> T getBean(String name, Class<T> clazz) {
         return getApplicationContext().getBean(name, clazz);
     }

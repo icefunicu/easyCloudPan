@@ -40,7 +40,6 @@ import java.util.List;
 public class WebShareController extends CommonFileController {
 
     private static final String ACCESS_TYPE_VIEW = "VIEW";
-    private static final String ACCESS_TYPE_DOWNLOAD = "DOWNLOAD";
     private static final String ACCESS_TYPE_CHECK_CODE = "CHECK_CODE";
 
     @Resource

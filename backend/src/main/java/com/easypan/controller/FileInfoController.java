@@ -288,7 +288,6 @@ public class FileInfoController extends CommonFileController {
     @Operation(summary = "Batch Download", description = "Download multiple files as zip")
     public void batchDownload(HttpServletResponse response, HttpSession session,
             @PathVariable("fileIds") @VerifyParam(required = true) String fileIds) {
-        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         try {
             response.setContentType("application/zip");
             response.setHeader("Content-Disposition", "attachment; filename=\"download.zip\"");

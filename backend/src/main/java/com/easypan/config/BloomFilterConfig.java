@@ -33,6 +33,7 @@ public class BloomFilterConfig {
     private BloomFilter<String> fileMd5BloomFilter;
 
     @Bean
+    @SuppressWarnings("null")
     public BloomFilter<String> fileMd5BloomFilter() {
         return BloomFilter.create(
                 Funnels.stringFunnel(StandardCharsets.UTF_8),

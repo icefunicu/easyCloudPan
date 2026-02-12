@@ -12,10 +12,15 @@ import jakarta.annotation.Resource;
 @Service
 public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService {
 
+    @SuppressWarnings("unused")
     private static final String REDIS_KEY_TOKEN_USAGE = "easypan:security:token:usage:";
+    @SuppressWarnings("unused")
     private static final String REDIS_KEY_SUSPICIOUS = "easypan:security:suspicious:";
+    @SuppressWarnings("unused")
     private static final int MAX_IPS_PER_USER = 5;
+    @SuppressWarnings("unused")
     private static final long SUSPICIOUS_WINDOW_SECONDS = 3600;
+    @SuppressWarnings("unused")
     private static final int MAX_SUSPICIOUS_COUNT = 10;
 
     @Resource
@@ -26,9 +31,6 @@ public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService 
 
     @Override
     public void recordTokenUsage(String userId, String token, String ipAddress, String userAgent) {
-        String key = REDIS_KEY_TOKEN_USAGE + userId;
-        String usageKey = ipAddress + ":" + userAgent.hashCode();
-        
         log.info("[TOKEN_AUDIT] Token usage recorded: userId={}, ip={}, userAgent={}", 
                 userId, ipAddress, userAgent);
     }
@@ -37,8 +39,6 @@ public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService 
     public void reportSuspiciousActivity(String userId, String activityType, String details) {
         log.warn("[SECURITY_ALERT] Suspicious activity detected: userId={}, type={}, details={}", 
                 userId, activityType, details);
-        
-        String key = REDIS_KEY_SUSPICIOUS + userId;
         
         customMetrics.recordCustomCounter("easypan_security_alerts_total", "type", activityType);
         

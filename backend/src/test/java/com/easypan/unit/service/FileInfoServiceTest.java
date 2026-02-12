@@ -250,6 +250,7 @@ class FileInfoServiceTest {
 
     // ==================== 辅助方法 ====================
 
+    @SuppressWarnings("unused")
     private FileInfo createTestFolder(String fileId, String userId, String folderName) {
         FileInfo folder = new FileInfo();
         folder.setFileId(fileId);
@@ -264,6 +265,7 @@ class FileInfoServiceTest {
         return folder;
     }
 
+    @SuppressWarnings("unused")
     private FileInfo createTestFile(String fileId, String userId, String fileName, String filePid) {
         FileInfo file = new FileInfo();
         file.setFileId(fileId);

@@ -4,13 +4,6 @@ import com.easypan.InitRun;
 import com.easypan.component.RedisComponent;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionWebUserDto;
-import com.easypan.entity.enums.FileDelFlagEnums;
-import com.easypan.entity.po.FileInfo;
-import com.easypan.entity.po.UserInfo;
-import com.easypan.mappers.FileInfoMapper;
-import com.easypan.mappers.UserInfoMapper;
-import com.easypan.service.FileInfoService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,14 +14,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 import javax.sql.DataSource;
-import java.util.Date;
 
-import static org.hamcrest.Matchers.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -51,15 +39,6 @@ class FileInfoControllerIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @Autowired
-    private FileInfoMapper fileInfoMapper;
-
-    @Autowired
-    private UserInfoMapper userInfoMapper;
-
     @MockBean(name = "initRun")
     private InitRun initRun;
 
@@ -72,7 +51,6 @@ class FileInfoControllerIntegrationTest {
     private MockHttpSession session;
     private SessionWebUserDto testUser;
     private String testUserId = "test_user_001";
-    private String testFileId = "test_file_001";
 
     @BeforeAll
     void setupTestData() {

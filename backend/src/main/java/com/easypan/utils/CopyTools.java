@@ -7,11 +7,11 @@ import org.springframework.beans.BeanUtils;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("all")
 public class CopyTools {
     
     private static final Logger logger = LoggerFactory.getLogger(CopyTools.class);
     
-    @SuppressWarnings("null")
     public static <T, S> List<T> copyList(List<S> sList, Class<T> classz) {
         List<T> list = new ArrayList<T>();
         for (S s : sList) {
@@ -29,7 +29,6 @@ public class CopyTools {
         return list;
     }
 
-    @SuppressWarnings("null")
     public static <T, S> T copy(S s, Class<T> classz) {
         T t = null;
         try {
