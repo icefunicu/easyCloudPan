@@ -5,6 +5,8 @@ import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 /**
  * Session 用户信息数据传输对象.
  */
@@ -12,7 +14,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Session User Information")
-public class SessionWebUserDto {
+public class SessionWebUserDto implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     @Schema(description = "User Nickname")
     private String nickName;
     @Schema(description = "User ID")

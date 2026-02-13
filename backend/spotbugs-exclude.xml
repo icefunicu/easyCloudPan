@@ -43,4 +43,8 @@
     <Match>
         <Bug pattern="MS_SHOULD_BE_FINAL" />
     </Match>
+    <Match>
+        <Class name="com.easypan.spring.ApplicationContextProvider" />
+        <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD" />
+    </Match>
 </FindBugsFilter>

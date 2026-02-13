@@ -55,7 +55,7 @@
       <div class="body">
         <div class="left-sider">
             <div class="menu-list">
-                <template v-for="item in menus">
+                <template v-for="item in menus" :key="item.menuCode">
                 <div
                 v-if="item.allShow || (!item.allShow && userInfo.admin)"
                 :class="[
@@ -72,6 +72,7 @@
             <div class="menu-sub-list">
                 <div
                   v-for="sub in currentMenu.children"
+                  :key="sub.path"
                   :class="['menu-item-sub', currentPath == sub.path ? 'active' : '']"
                   @click="jump(sub)"
                 >
@@ -133,7 +134,7 @@ import Uploader from "@/views/main/Uploader.vue";
 import UpdateAvatar from "./UpdateAvatar.vue";
 import UpdatePassword from "./UpdatePassword.vue";
 
-import { ref, reactive, getCurrentInstance, nextTick, watch } from "vue";
+import { ref, getCurrentInstance, nextTick, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();

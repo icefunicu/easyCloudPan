@@ -25,6 +25,7 @@
     "vue/no-v-html": "warn",
     "vue/require-default-prop": "off",
     "vue/require-explicit-emits": "warn",
+    "vue/no-reserved-component-names": "off",
     "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "no-console": ["warn", { "allow": ["warn", "error"] }],

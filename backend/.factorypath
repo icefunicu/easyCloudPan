@@ -1,0 +1,6 @@
+<factorypath>
+    <factorypathentry kind="VARJAR" id="M2_REPO/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="VARJAR" id="M2_REPO/com/mybatis-flex/mybatis-flex-processor/1.11.6/mybatis-flex-processor-1.11.6.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="VARJAR" id="M2_REPO/com/mybatis-flex/mybatis-flex-annotation/1.11.6/mybatis-flex-annotation-1.11.6.jar" enabled="true" runInBatchMode="false"/>
+    <factorypathentry kind="VARJAR" id="M2_REPO/org/mybatis/mybatis/3.5.19/mybatis-3.5.19.jar" enabled="true" runInBatchMode="false"/>
+</factorypath>

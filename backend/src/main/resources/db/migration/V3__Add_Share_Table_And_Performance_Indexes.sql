@@ -12,6 +12,11 @@ CREATE TABLE IF NOT EXISTS file_share (
     share_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     code VARCHAR(10), -- Share code (optional)
     show_count INT DEFAULT 0, -- View count
+    file_name VARCHAR(255), -- File name at time of sharing
+    folder_type SMALLINT DEFAULT 0, -- 0:file, 1:folder
+    file_category SMALLINT, -- 1:video, 2:audio, 3:image, 4:document, 5:other
+    file_type SMALLINT, -- File type code
+    file_cover VARCHAR(500), -- File cover/thumbnail
     status SMALLINT DEFAULT 0 -- 0:Valid, 1:Expired, 2:Cancelled
 );
 

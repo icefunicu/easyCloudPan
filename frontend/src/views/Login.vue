@@ -292,7 +292,7 @@ const dialogConfig4SendMailCode = reactive({
         {
             type: "primary",
             text: "发送验证码",
-            click: (e) => {
+            click: () => {
                 sendEmailCode();
             },
         },
@@ -357,27 +357,21 @@ const doSubmit = ()=> {
         }
         const params = {};
         Object.assign(params, formData.value);
-        // 注册
+        // 注册和重置密码 - 发送原始密码，由后端进行加密和复杂度验证
         if (opType.value == 0 || opType.value == 2) {
             params.password = params.registerPassword;
             delete params.registerPassword;
             delete params.reRegisterPassword;
         }
-        // 登录
-        if (opType.value == 1) {
-            const cookieLoginInfo = proxy.VueCookies.get("loginInfo");
-            const cookiePassword = cookieLoginInfo == null ? null : cookieLoginInfo.password;
-            if (params.password !== cookiePassword) {
-                params.password = md5(params.password);
-            }
-        }
-        let url = null;
+        // 登录 - 发送原始密码，由后端进行验证
+        // 后端会兼容处理BCrypt和MD5两种密码格式
+        let url = "";
         if (opType.value == 0) {
             url = api.register;
         } else if (opType.value == 1) {
             url = api.login;
         } else if (opType.value == 2) {
-            URL = api.resetPwd;
+            url = api.resetPwd;
         }
         const result = await proxy.Request({
             url: url,
@@ -406,7 +400,7 @@ const doSubmit = ()=> {
             }
             proxy.Message.success("登录成功");
             // 存储cookie
-            userInfoStore.setUserInfo(result.data);
+            userInfoStore.setUserInfo(result.data.userInfo);
             // 重定向到原始页面
             const redirectUrl = route.query.redirectUrl || "/";
             router.push(redirectUrl);

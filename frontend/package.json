@@ -36,6 +36,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.2.3",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",

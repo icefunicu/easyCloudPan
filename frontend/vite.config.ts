@@ -94,6 +94,13 @@ export default defineConfig(({ mode }): UserConfig => {
         }
       }
     },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          silenceDeprecations: ['import', 'global-builtin'],
+        },
+      },
+    },
     build: {
       chunkSizeWarningLimit: 1500,
       cssCodeSplit: true,

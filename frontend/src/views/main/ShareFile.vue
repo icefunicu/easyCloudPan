@@ -68,7 +68,7 @@
 <script setup>
 import useClipboard from "vue-clipboard3";
 const { toClipboard } = useClipboard();
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance, nextTick } from "vue";
 const { proxy } = getCurrentInstance();
 
 const shareUrl = ref(document.location.origin + "/share/");
@@ -98,7 +98,7 @@ const dialogConfig = ref({
       {
         type: "primary",
         text: "确定",
-        click: (e) => {
+        click: () => {
             share();
         },
       },

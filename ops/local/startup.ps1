@@ -34,7 +34,7 @@ Get-Content $EnvFile | Where-Object { $_ -notmatch '^#' -and $_ -match '=' } | F
 }
 
 # Set Spring Boot properties
-$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/$env:POSTGRES_DB"
+$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5433/$env:POSTGRES_DB"
 $env:SPRING_DATASOURCE_USERNAME = $env:POSTGRES_USER
 $env:SPRING_DATASOURCE_PASSWORD = $env:POSTGRES_PASSWORD
 $env:SPRING_DATA_REDIS_PASSWORD = $env:REDIS_PASSWORD
@@ -87,16 +87,39 @@ mvn spring-boot:run
 Set-Content -Path $backendScript -Value $backendContent -Encoding UTF8
 
 # Start backend
-Write-Host "[3/4] Starting backend in a new window..."
+Write-Host "[3/5] Starting backend in a new window..."
 Start-Process powershell -ArgumentList "-NoExit", "-File", $backendScript
 
+# Wait for backend to be ready
+Write-Host "[4/5] Waiting for backend to be ready..."
+$backendReady = $false
+$maxAttempts = 60
+$attempt = 0
+while (-not $backendReady -and $attempt -lt $maxAttempts) {
+    $attempt++
+    try {
+        $response = Invoke-WebRequest -Uri "http://localhost:7090/api/actuator/health" -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue
+        if ($response.StatusCode -eq 200) {
+            $backendReady = $true
+            Write-Host "[OK] Backend is ready!" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "  Waiting... ($attempt/$maxAttempts)"
+        Start-Sleep -Seconds 2
+    }
+}
+
+if (-not $backendReady) {
+    Write-Host "[WARN] Backend did not become ready within timeout. Starting frontend anyway..." -ForegroundColor Yellow
+}
+
 # Start frontend
-Write-Host "[4/4] Starting frontend in a new window..."
+Write-Host "[5/5] Starting frontend in a new window..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$RepoRoot\frontend'; npm run dev"
 
 # Open browser
 if (-not $NoBrowser) {
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 2
     Start-Process "http://localhost:8080"
 }
 

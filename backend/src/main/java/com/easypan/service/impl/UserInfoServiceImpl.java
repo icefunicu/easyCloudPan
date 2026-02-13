@@ -76,7 +76,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public Integer findCountByParam(UserInfoQuery param) {
-        QueryWrapper qw = QueryWrapperBuilder.build(param);
+        QueryWrapper qw = QueryWrapperBuilder.build(param, false);
         return Math.toIntExact(this.userInfoMapper.selectCountByQuery(qw));
     }
 
@@ -387,7 +387,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         String openIDResult = OKHttpUtils.getRequest(url);
         String tmpJson = this.getQQResp(openIDResult);
         if (tmpJson == null) {
-            logger.error("调qq接口获取openID失败:tmpJson{}", tmpJson);
+            logger.error("调qq接口获取openID失败:tmpJson is null");
             throw new BusinessException("调qq接口获取openID失败");
         }
         @SuppressWarnings("unchecked")

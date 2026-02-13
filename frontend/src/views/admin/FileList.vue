@@ -39,7 +39,7 @@
           :options="tableOptions"
           @row-selected="rowSelected"
         >
-        <template #fileName="{ index, row }">
+        <template #fileName="{ row }">
             <div
               v-touch="{
                 onLongPress: () => showOp(row),
@@ -80,7 +80,7 @@
               </span>
             </div>
         </template>
-        <template #fileSize="{ index, row }">
+        <template #fileSize="{ row }">
             <span v-if="row.fileSize">{{
               proxy.Utils.size2Str(row.fileSize)
             }}</span>
@@ -93,7 +93,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance } from "vue";
 const { proxy } = getCurrentInstance();
 
 const api = {

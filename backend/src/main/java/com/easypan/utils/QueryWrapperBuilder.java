@@ -30,6 +30,10 @@ public final class QueryWrapperBuilder {
      * @return QueryWrapper
      */
     public static QueryWrapper build(FileInfoQuery query) {
+        return build(query, true);
+    }
+
+    public static QueryWrapper build(FileInfoQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         
         if (query == null) {
@@ -105,7 +109,9 @@ public final class QueryWrapperBuilder {
         }
 
         applyPagination(qw, query);
-        applyOrderBy(qw, query);
+        if (applyOrderBy) {
+            applyOrderBy(qw, query);
+        }
         
         return qw;
     }
@@ -117,6 +123,10 @@ public final class QueryWrapperBuilder {
      * @return QueryWrapper
      */
     public static QueryWrapper build(UserInfoQuery query) {
+        return build(query, true);
+    }
+
+    public static QueryWrapper build(UserInfoQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         
         if (query == null) {
@@ -146,7 +156,9 @@ public final class QueryWrapperBuilder {
         }
 
         applyPagination(qw, query);
-        applyOrderBy(qw, query);
+        if (applyOrderBy) {
+            applyOrderBy(qw, query);
+        }
         
         return qw;
     }
@@ -158,6 +170,10 @@ public final class QueryWrapperBuilder {
      * @return QueryWrapper
      */
     public static QueryWrapper build(FileShareQuery query) {
+        return build(query, true);
+    }
+
+    public static QueryWrapper build(FileShareQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         
         if (query == null) {
@@ -175,7 +191,9 @@ public final class QueryWrapperBuilder {
         }
 
         applyPagination(qw, query);
-        applyOrderBy(qw, query);
+        if (applyOrderBy) {
+            applyOrderBy(qw, query);
+        }
         
         return qw;
     }

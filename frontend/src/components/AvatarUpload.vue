@@ -43,7 +43,7 @@ const props = defineProps({
 });
 
 const localFile = ref(null);
-const emit = defineEmits();
+const emit = defineEmits(["update:modelValue"]);
 const uploadImage = async (file) => {
     file = file.file;
     const img = new FileReader();

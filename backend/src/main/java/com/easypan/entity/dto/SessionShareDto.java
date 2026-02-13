@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.util.Date;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,7 +16,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "Session Share Information")
-public class SessionShareDto {
+public class SessionShareDto implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     @Schema(description = "Share ID")
     private String shareId;
     @Schema(description = "Share User ID")

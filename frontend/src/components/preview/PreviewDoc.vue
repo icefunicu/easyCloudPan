@@ -32,12 +32,12 @@ onMounted(() => {
 <style lang="scss" scoped>
 .doc-content {
     margin: 0px auto;
-    :deep .docx-wrapper {
+    :deep(.docx-wrapper) {
         background: #fff;
         padding: 10px 0px;
     }
 
-    :deep .docx-wrapper > section.docx {
+    :deep(.docx-wrapper > section.docx) {
         margin-bottom: 0px;
     }
 }

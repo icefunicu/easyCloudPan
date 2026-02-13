@@ -81,7 +81,7 @@ app.config.globalProperties.globalInfo = {
     imageUrl: "/api/file/getImage/"
 }
 // Custom Directives
-// @ts-ignore
+// @ts-expect-error Virtual module
 import TouchDirective from '@/utils/TouchDirective'
 app.directive('touch', TouchDirective)
 
@@ -90,7 +90,7 @@ initWebVitals()
 
 app.mount('#app')
 
-// @ts-ignore
+// @ts-expect-error Virtual module
 import { registerSW } from 'virtual:pwa-register'
 
 const updateSW = registerSW({

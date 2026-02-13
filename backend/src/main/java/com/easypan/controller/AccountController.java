@@ -234,8 +234,8 @@ public class AccountController extends ABaseController {
             @VerifyParam(required = true) @PathVariable("userId") String userId) {
         String avatarFolderName = Constants.FILE_FOLDER_FILE + Constants.FILE_FOLDER_AVATAR_NAME;
         File folder = new File(appConfig.getProjectFolder() + avatarFolderName);
-        if (!folder.exists()) {
-            folder.mkdirs();
+        if (!folder.exists() && !folder.mkdirs()) {
+            logger.error("Failed to create avatar folder: {}", folder.getAbsolutePath());
         }
 
         String avatarPath = appConfig.getProjectFolder() + avatarFolderName + userId + Constants.AVATAR_SUFFIX;
@@ -367,17 +367,21 @@ public class AccountController extends ABaseController {
     @GlobalInterceptor
     @Operation(summary = "Update Avatar", description = "Update user avatar")
     public ResponseVO<Void> updateUserAvatar(HttpSession session, MultipartFile avatar) {
+        if (avatar == null || avatar.isEmpty()) {
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请选择头像文件");
+        }
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String baseFolder = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
         File targetFileFolder = new File(baseFolder + Constants.FILE_FOLDER_AVATAR_NAME);
-        if (!targetFileFolder.exists()) {
-            targetFileFolder.mkdirs();
+        if (!targetFileFolder.exists() && !targetFileFolder.mkdirs()) {
+            logger.error("Failed to create avatar folder: {}", targetFileFolder.getAbsolutePath());
         }
         File targetFile = new File(targetFileFolder.getPath() + "/" + webUserDto.getUserId() + Constants.AVATAR_SUFFIX);
         try {
             avatar.transferTo(targetFile);
         } catch (Exception e) {
             logger.error("上传头像失败", e);
+            throw new BusinessException(ResponseCodeEnum.CODE_500.getCode(), "上传头像失败");
         }
 
         UserInfo userInfo = new UserInfo();

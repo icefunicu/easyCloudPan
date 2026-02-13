@@ -141,7 +141,9 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
 
             try (InputStream inputStream = process.getInputStream();
                     BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-                while (reader.readLine() != null) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    logger.debug("FFmpeg output: {}", line);
                 }
             }
 

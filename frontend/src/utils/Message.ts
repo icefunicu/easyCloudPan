@@ -1,6 +1,6 @@
 import { ElMessage } from 'element-plus'
 
-const showMessage = (msg: string, callback: Function | undefined, type: any) => {
+const showMessage = (msg: string, callback: (() => void) | undefined, type: string) => {
     ElMessage({
         type: type,
         message: msg,
@@ -14,13 +14,13 @@ const showMessage = (msg: string, callback: Function | undefined, type: any) => 
 }
 
 const message = {
-    error: (msg: string, callback?: Function) => {
+    error: (msg: string, callback?: () => void) => {
         showMessage(msg, callback, "error");
     },
-    success: (msg: string, callback?: Function) => {
+    success: (msg: string, callback?: () => void) => {
         showMessage(msg, callback, "success");
     },
-    warning: (msg: string, callback?: Function) => {
+    warning: (msg: string, callback?: () => void) => {
         showMessage(msg, callback, "warning");
     },
 }

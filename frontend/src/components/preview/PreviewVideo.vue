@@ -61,7 +61,7 @@ onMounted(() => {
 <style lang="scss" scoped>
 #player {
     width: 100%;
-    :deep .dplayer-video-wrap {
+    :deep(.dplayer-video-wrap) {
         text-align: center;
         .dplayer-video {
             margin: 0px auto;

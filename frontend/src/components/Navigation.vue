@@ -12,7 +12,7 @@
         >
           全部文件
         </span>
-        <template v-for="(item, index) in folderList">
+        <template v-for="(item, index) in folderList" :key="item.fileId || index">
             <span class="iconfont icon-right"></span>
             <span
               v-if="index < folderList.length - 1"

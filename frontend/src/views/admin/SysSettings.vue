@@ -42,11 +42,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { ref, getCurrentInstance } from "vue";
 const { proxy } = getCurrentInstance();
-const router = useRouter();
-const route = useRoute();
 
 const api = {
     getSysSettings: "/admin/getSysSettings",

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
  * Spring 应用上下文提供者，用于获取 Spring 容器中的 Bean.
  */
 @Component("applicationContextProvider")
-@SuppressWarnings("all")
+@SuppressWarnings({"all", "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"})
 public class ApplicationContextProvider implements ApplicationContextAware {
     private static final Logger logger = LoggerFactory.getLogger(ApplicationContextProvider.class);
 

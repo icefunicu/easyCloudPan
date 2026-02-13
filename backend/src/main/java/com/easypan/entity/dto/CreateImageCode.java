@@ -110,14 +110,14 @@ public class CreateImageCode {
 
     private String randomStr(int n) {
         String str1 = "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789";
-        String str2 = "";
+        StringBuilder sb = new StringBuilder(n);
         int len = str1.length() - 1;
         double r;
         for (int i = 0; i < n; i++) {
             r = (Math.random()) * len;
-            str2 = str2 + str1.charAt((int) r);
+            sb.append(str1.charAt((int) r));
         }
-        return str2;
+        return sb.toString();
     }
 
     private Color getRandColor(int fc, int bc) {

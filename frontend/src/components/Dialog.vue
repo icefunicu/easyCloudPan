@@ -21,7 +21,8 @@
         <div class="dialog-footer">
             <el-button  v-if="showCancel" link @click="close"> 取消 </el-button>
             <el-button
-                v-for="btn in buttons"
+                v-for="(btn, index) in buttons"
+                :key="index"
                 class="dialog-buttons"
                 :type="btn.type || 'primary' "
                 @click="btn.click"
@@ -70,7 +71,7 @@ const props = defineProps ({
 
 const maxHeight = window.innerHeight - props.top - 100;
 
-const emit = defineEmits();
+const emit = defineEmits(["close"]);
 const close = () => {
     emit("close");
 };

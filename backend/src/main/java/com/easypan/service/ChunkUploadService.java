@@ -188,7 +188,7 @@ public class ChunkUploadService {
 
                 log.info("文件合并完成: userId={}, fileMd5={}", userId, fileMd5);
 
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 log.error("文件合并失败: userId={}, fileMd5={}", userId, fileMd5, e);
                 clearUploadProgress(userId, fileMd5);
             }

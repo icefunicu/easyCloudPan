@@ -94,7 +94,11 @@ public class AnalyticsController extends ABaseController {
             entity.setUserAgent(vitalMetric.userAgent);
             entity.setDeviceType(vitalMetric.deviceType);
             entity.setConnectionType(vitalMetric.connectionType);
-            entity.setCreatedAt(LocalDateTime.now());
+            if (vitalMetric.timestamp > 0) {
+                entity.setCreatedAt(LocalDateTime.ofEpochSecond(vitalMetric.timestamp / 1000, 0, java.time.ZoneOffset.ofHours(8)));
+            } else {
+                entity.setCreatedAt(LocalDateTime.now());
+            }
 
             webVitalsMetricsMapper.insert(entity);
         } catch (Exception e) {
@@ -175,7 +179,6 @@ public class AnalyticsController extends ABaseController {
         double value;
         String rating;
         String page;
-        @SuppressWarnings("unused")
         long timestamp;
         String userAgent;
         String deviceType;

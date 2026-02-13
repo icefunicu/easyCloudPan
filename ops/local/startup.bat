@@ -29,7 +29,7 @@ for /f "usebackq eol=# tokens=1* delims==" %%A in ("%ENV_FILE%") do (
 )
 
 REM Map Docker environment variables to Spring Boot properties
-set "SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/%POSTGRES_DB%"
+set "SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/%POSTGRES_DB%"
 set "SPRING_DATASOURCE_USERNAME=%POSTGRES_USER%"
 set "SPRING_DATASOURCE_PASSWORD=%POSTGRES_PASSWORD%"
 set "SPRING_DATA_REDIS_PASSWORD=%REDIS_PASSWORD%"
@@ -55,14 +55,18 @@ if not "%COMPOSE_EXIT%"=="0" (
     exit /b 1
 )
 
-echo [2/3] Starting backend in a new window...
+echo [2/4] Starting backend in a new window...
 start "EasyCloudPan Backend" cmd /k "chcp 65001 >nul && cd /d "%REPO_ROOT%\backend" && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 && mvn spring-boot:run -Dspring-boot.run.profiles=local"
 
-echo [3/3] Starting frontend in a new window...
+echo [3/5] Waiting for backend to be ready...
+powershell -Command "$attempt=0; while($attempt -lt 60){$attempt++; try{$r=Invoke-WebRequest -Uri 'http://localhost:7090/api/actuator/health' -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if($r.StatusCode -eq 200){Write-Host '[OK] Backend is ready!' -ForegroundColor Green; exit 0}}catch{} Write-Host \"  Waiting... ($attempt/60)\"; Start-Sleep 2}; Write-Host '[WARN] Backend did not become ready within timeout.' -ForegroundColor Yellow"
+
+echo [4/5] Starting frontend in a new window...
 start "EasyCloudPan Frontend" cmd /k "cd /d "%REPO_ROOT%\frontend" && npm run dev"
 
+echo [5/5] Opening browser...
 if "%OPEN_BROWSER%"=="1" (
-    timeout /t 3 >nul
+    timeout /t 2 >nul
     start "" "http://localhost:8080"
 )
 

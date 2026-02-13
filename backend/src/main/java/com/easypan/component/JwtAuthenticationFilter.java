@@ -1,12 +1,14 @@
 package com.easypan.component;
 
+import com.easypan.service.JwtBlacklistService;
+import com.easypan.service.TokenSecurityAuditService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -26,14 +28,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger =
             LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-    @Autowired
+    @Resource
     private JwtTokenProvider tokenProvider;
 
-    @Autowired
-    private com.easypan.service.JwtBlacklistService jwtBlacklistService;
+    @Resource
+    private JwtBlacklistService jwtBlacklistService;
 
-    @Autowired
-    private com.easypan.service.TokenSecurityAuditService tokenSecurityAuditService;
+    @Resource
+    private TokenSecurityAuditService tokenSecurityAuditService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

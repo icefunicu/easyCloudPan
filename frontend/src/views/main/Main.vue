@@ -134,7 +134,7 @@
               </span>
             </div>
         </template>
-        <template #fileSize="{index, row}">
+        <template #fileSize="{ row }">
             <span v-if="row.fileSize">{{
               proxy.Utils.size2Str(row.fileSize)
             }}</span>
@@ -179,7 +179,7 @@
 <script setup>
 import CategoryInfo from "@/js/CategoryInfo.js";
 import ShareFile from "./ShareFile.vue";
-import { ref, reactive, getCurrentInstance, nextTick, computed } from "vue";
+import { ref, getCurrentInstance, nextTick, computed } from "vue";
 const { proxy } = getCurrentInstance();
 
 const emit = defineEmits(["addFile"]);

@@ -1,5 +1,6 @@
 package com.easypan.component;
 
+import com.easypan.service.JwtBlacklistService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtBuilder;
@@ -34,8 +35,8 @@ public class JwtTokenProvider {
     @Value("${jwt.refresh-expiration:2592000000}")
     private long jwtRefreshExpirationInMs;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    private com.easypan.service.JwtBlacklistService jwtBlacklistService;
+    @jakarta.annotation.Resource
+    private JwtBlacklistService jwtBlacklistService;
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);

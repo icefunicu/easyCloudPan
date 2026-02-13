@@ -35,7 +35,7 @@ onMounted(() => {
 .table-info {
     width: 100%;
     padding: 10px;
-    :deep table {
+    :deep(table) {
         width: 100%;
         border-collapse: collapse;
         td {

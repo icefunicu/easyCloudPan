@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance, nextTick } from "vue";
 const { proxy } = getCurrentInstance();
 
 const api = {
@@ -97,7 +97,7 @@ const dialogConfig = ref ({
         {
             type: "primary",
             text: "确定",
-            click: (e) => {
+            click: () => {
                 submitForm();
             },
         },

@@ -2,7 +2,7 @@
     <div>
         <el-table
           ref="dataTable"
-          :data="dataSource.list || []"
+          :data="dataSource?.list || []"
           :height="tableHeight"
           :stripe="options.stripe"
           :border="options.border"
@@ -27,10 +27,9 @@
             align="center"
           ></el-table-column>
           <!-- 数据列 -->
-          <template v-for="(column, index) in columns">
+          <template v-for="(column, index) in columns" :key="index">
             <template v-if="column.scopedSlots">
               <el-table-column
-                :key="index"
                 :prop="column.prop"
                 :label="column.label"
                 :align="column.align || 'left'"
@@ -48,7 +47,6 @@
           </template>
           <template v-else>
             <el-table-column
-              :key="index"
               :prop="column.prop"
               :label="column.label"
               :align="column.align || 'left'"
@@ -62,8 +60,8 @@
         <!-- 分页 -->
         <div v-if="showPagination" class="pagination">
           <el-pagination
-            v-if="dataSource.totalCount"
-            v-model:current-page="dataSource.pageNo"
+            v-if="dataSource?.totalCount"
+            :current-page="dataSource.pageNo"
             background
             :total="dataSource.totalCount"
             :page-sizes="[15, 30, 50, 100]"
@@ -76,12 +74,45 @@
         </div>
     </div>
 </template>
-<script setup>
-import { ref, computed } from "vue";
+<script setup lang="ts">
+import { ref, computed, type PropType } from "vue";
 
-const emit = defineEmits(["rowSelected", "rowClick"]);
+interface TableColumn {
+    prop?: string;
+    label?: string;
+    align?: string;
+    width?: number | string;
+    fixed?: string | boolean;
+    scopedSlots?: string;
+}
+
+interface DataSource {
+    list: Record<string, unknown>[];
+    totalCount?: number;
+    pageNo: number;
+    pageSize: number;
+}
+
+interface TableOptions {
+    extHeight?: number;
+    showIndex?: boolean;
+    stripe?: boolean;
+    border?: boolean;
+    selectType?: string;
+    tableHeight?: number;
+}
+
+const emit = defineEmits<{
+    (e: "rowSelected", row: Record<string, unknown>[]): void;
+    (e: "rowClick", row: Record<string, unknown>): void;
+    (e: "update:dataSource", value: DataSource): void;
+}>();
+
 const props = defineProps({
-    dataSource: Object,
+    dataSource: {
+        type: Object as PropType<DataSource>,
+        default: () => ({ list: [], pageNo: 1, pageSize: 15 })
+    },
     showPagination: {
         type: Boolean,
         default: true,
@@ -91,14 +122,20 @@ const props = defineProps({
         default: true,
     },
     options: {
-        type: Object,
-        default: {
+        type: Object as PropType<TableOptions>,
+        default: () => ({
             extHeight: 0,
             showIndex: false,
-        },
+        }),
     },
-    columns: Array,
-    fetch: Function, // 获取数据的函数
+    columns: {
+        type: Array as PropType<TableColumn[]>,
+        default: () => []
+    },
+    fetch: {
+        type: Function as PropType<() => void>,
+        required: false
+    },
     initFetch: {
         type: Boolean,
         default: true,
@@ -116,7 +153,7 @@ const topHeight = 60 + 20 + 30 + 46;
 const tableHeight = ref(
     props.options.tableHeight
     ? props.options.tableHeight
-    : window.innerHeight - topHeight - props.options.extHeight
+    : window.innerHeight - topHeight - (props.options.extHeight || 0)
 );
 
 // 初始化
@@ -134,8 +171,8 @@ const clearSelection = () => {
 };
 
 // 设置行选中
-const setCurrentRow = (rowKey, rowValue) => {
-    const row = props.dataSource.list.find((item) => {
+const setCurrentRow = (rowKey: string, rowValue: unknown) => {
+    const row = props.dataSource?.list.find((item: Record<string, unknown>) => {
         return item[rowKey] === rowValue;
     });
     dataTable.value.setCurrentRow(row);
@@ -144,25 +181,31 @@ const setCurrentRow = (rowKey, rowValue) => {
 defineExpose({ setCurrentRow, clearSelection });
 
 // 行点击
-const handleRowClick = (row) => {
+const handleRowClick = (row: Record<string, unknown>) => {
     emit("rowClick", row);
 };
 
 // 多选
-const handleSelectionChange = (row) => {
+const handleSelectionChange = (row: Record<string, unknown>[]) => {
     emit("rowSelected", row);
 };
 
 // 切换每页大小
-const handlePageSizeChange = (size) => {
-    props.dataSource.pageSize = size;
-    props.dataSource.pageNo = 1;
-    props.fetch();
+const handlePageSizeChange = (size: number) => {
+    emit("update:dataSource", {
+        ...props.dataSource,
+        pageSize: size,
+        pageNo: 1
+    } as DataSource);
+    props.fetch?.();
 };
 // 切换页码
-const handlePageNoChange = (pageNo) => {
-    props.dataSource.pageNo = pageNo;
-    props.fetch();
+const handlePageNoChange = (pageNo: number) => {
+    emit("update:dataSource", {
+        ...props.dataSource,
+        pageNo: pageNo
+    } as DataSource);
+    props.fetch?.();
 };
 </script>
 <style lang="scss" scoped>
@@ -174,7 +217,7 @@ const handlePageNoChange = (pageNo) => {
     justify-content: right;
 }
 
-:deep .el-table__cell {
+:deep(.el-table__cell) {
     padding: 4px 0px;
 }
 </style>

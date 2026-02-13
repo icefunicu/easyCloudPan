@@ -3,12 +3,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { getCurrentInstance } from "vue";
+import { useRouter } from "vue-router";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
 const router = useRouter();
-const route = useRoute();
 const userInfoStore = useUserInfoStore();
 const api = {
     logincallback: "/qqlogin/callback",

@@ -65,13 +65,12 @@ public class AGlobalExceptionHandlerController extends ABaseController {
 
         Integer code = e.getCode() != null ? e.getCode() : ResponseCodeEnum.CODE_600.getCode();
 
-        // 尝试从国际化资源文件获取消息
-        String messageKey = "error." + code;
-        String message = getMessage(messageKey, null);
-
-        // 如果没有找到国际化消息，使用异常中的消息
-        if (messageKey.equals(message) && e.getMessage() != null) {
+        String message;
+        if (e.getMessage() != null && !e.getMessage().isEmpty()) {
             message = e.getMessage();
+        } else {
+            String messageKey = "error." + code;
+            message = getMessage(messageKey, null);
         }
 
         // 获取错误解决建议

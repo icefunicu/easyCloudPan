@@ -1,1333 +1,1063 @@
-# EasyCloudPan 开发纲领 (AGENTS.md)
+# EasyCloudPan 协作与交付手册（AGENTS.md）
 
-> **文档版本**: v2.0  
-> **最后更新**: 2026-02-13  
-> **适用范围**: 前端、后端、数据库、运维、测试
-
-本文档是 EasyCloudPan 项目的核心开发纲领，通过本文档可以快速了解项目全貌并进行开发。
-
----
-
-## 目录
-
-1. [项目概览](#1-项目概览)
-2. [技术栈](#2-技术栈)
-3. [项目架构](#3-项目架构)
-4. [数据库设计](#4-数据库设计)
-5. [核心业务逻辑](#5-核心业务逻辑)
-6. [编码规约](#6-编码规约)
-7. [性能优化规范](#7-性能优化规范)
-8. [安全编码规范](#8-安全编码规范)
-9. [监控和日志规范](#9-监控和日志规范)
-10. [测试规范](#10-测试规范)
-11. [部署和运维规范](#11-部署和运维规范)
-12. [开发工作流](#12-开发工作流)
+> 文档版本：v3.0  
+> 最后更新：2026-02-13  
+> 适用对象：自动化 Agent、后端开发、前端开发、测试、运维、代码审查者  
+> 适用范围：仓库根目录 `easyCloudPan/` 下全部内容
 
 ---
 
-## 1. 项目概览
+## 1. 文档目标与使用规则
 
-### 1.1 项目简介
+本文件是 EasyCloudPan 的生产级协作手册，目标是让任何协作者都能在“可验证、可回滚、可审计”的前提下进行交付。
 
-EasyCloudPan 是一个前后端分离的企业级网盘系统，支持文件上传、管理、分享、回收站等核心功能，具备高性能、高安全性和高可用性。
+### 1.1 目标
 
-### 1.2 核心功能
+- 统一技术事实来源，避免文档与代码脱节。
+- 统一开发、测试、部署、回滚流程。
+- 统一接口规范、数据规范、安全规范。
+- 统一 PR 验收标准与变更记录标准。
 
-| 功能模块 | 功能描述 | 技术亮点 |
-|---------|---------|---------|
-| 用户认证 | 邮箱注册/登录、QQ 登录、JWT 双 Token 认证 | Token 黑名单、滑动刷新 |
-| 文件管理 | 上传、下载、删除、重命名、移动、复制 | 分片上传、秒传、断点续传 |
-| 文件分享 | 创建分享链接、密码保护、过期时间 | 访问日志、次数限制 |
-| 回收站 | 文件恢复、彻底删除、自动清理 | 定时任务、批量操作 |
-| 文件预览 | 图片、PDF、视频、音频、Office 文档 | 流式传输、转码 |
-| 管理后台 | 用户管理、文件管理、系统设置 | 权限控制、审计日志 |
-| 多租户 | 租户隔离、配额管理 | 租户上下文、数据隔离 |
-| 监控告警 | 性能监控、业务指标、告警通知 | Prometheus + Grafana |
+### 1.2 强制原则
 
-### 1.3 技术亮点
-
-- **虚拟线程**: 基于 Java 21 虚拟线程，支持高并发场景（10000+ 并发）
-- **多级缓存**: Caffeine 本地缓存 + Redis 分布式缓存，命中率 > 90%
-- **秒传技术**: 基于 MD5 的文件去重，节省存储空间和上传时间
-- **零拷贝**: NIO FileChannel.transferTo() 实现文件合并，降低内存占用
-- **属性测试**: 使用 jqwik 进行属性测试，提高代码质量
-- **结构化日志**: JSON 格式日志，支持 ELK 集成，敏感信息自动脱敏
-- **安全加固**: JWT 双 Token、Token 黑名单、文件类型校验、配置加密
+- 默认选择更安全、更小改动、更可回滚、更可验证的方案。
+- 不得假设“已成功”，必须用命令输出或测试结果验证。
+- 不可在 2 分钟内解释清楚的改动，先拆分后实施。
+- 禁止在未评估风险时进行高危操作（清库、删卷、强推、覆盖配置等）。
 
 ---
 
-## 2. 技术栈
+## 2. 项目概览
 
-### 2.1 后端技术栈
+EasyCloudPan 是一个前后端分离网盘系统，包含用户认证、文件管理、文件分享、回收站、文件预览、多租户、监控告警等能力。
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **JDK** | 21+ | 运行环境（必须支持 Virtual Threads） |
-| **Spring Boot** | 3.2.12 | 应用框架 |
-| **MyBatis-Plus** | 3.5.9 | ORM 框架 |
-| **MySQL** | 8.0+ | 关系型数据库 |
-| **Redis** | 7.0+ | 缓存、分布式锁 |
-| **Caffeine** | 3.1.8 | 本地缓存 |
-| **JWT** | 0.12.6 | 认证授权 |
-| **Flyway** | 10.21.0 | 数据库版本管理 |
-| **Lombok** | 1.18.36 | 代码简化 |
-| **Jasypt** | 3.0.5 | 配置加密 |
-| **jqwik** | 1.9.2 | 属性测试框架 |
-| **Micrometer** | 1.12.0 | 监控指标 |
+### 2.1 代码结构
 
-### 2.2 前端技术栈
-
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| **Vue** | 3.4+ | 前端框架 |
-| **Element Plus** | 2.8+ | UI 组件库 |
-| **Vite** | 5.4+ | 构建工具 |
-| **Pinia** | 2.2+ | 状态管理 |
-| **Axios** | 1.7+ | HTTP 客户端 |
-| **SparkMD5** | 3.0+ | 文件 MD5 计算 |
-| **Video.js** | 8.18+ | 视频播放器 |
-
-### 2.3 开发工具
-
-| 工具 | 用途 |
-|------|------|
-| **IntelliJ IDEA** | Java 开发 IDE |
-| **VS Code** | 前端开发 IDE |
-| **Docker** | 容器化部署 |
-| **Git** | 版本控制 |
-| **Postman** | API 测试 |
-| **JMeter** | 性能测试 |
-
----
-
-## 3. 项目架构
-
-### 3.1 整体架构
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         用户层                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │ Web 浏览器│  │ 移动端 APP│  │ 桌面客户端│  │  第三方   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ HTTPS
-┌─────────────────────────────────────────────────────────────┐
-│                      接入层 (Nginx)                          │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐           │
-│  │ 负载均衡    │  │ SSL 终止   │  │ 静态资源   │           │
-│  └────────────┘  └────────────┘  └────────────┘           │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      应用层 (Spring Boot)                    │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Controller 层 (10个控制器)                          │  │
-│  │  - AccountController, FileController, ShareController │  │
-│  │  - AdminController, RecycleController, etc.          │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  AOP 层 (4个切面)                                    │  │
-│  │  - GlobalExceptionHandler, VerifyParamAspect         │  │
-│  │  - TenantContextAspect, LoggingAspect                │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Service 层 (20+服务)                                │  │
-│  │  - UserInfoService, FileInfoService, FileShareService│  │
-│  │  - EmailCodeService, TenantService, etc.             │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Component 层 (9个组件)                              │  │
-│  │  - RedisComponent, FileComponent, EmailComponent     │  │
-│  │  - TenantContextHolder, etc.                         │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      缓存层 (多级缓存)                        │
-│  ┌────────────┐              ┌────────────┐                │
-│  │ Caffeine   │ ←─ L1 ────→ │   Redis    │                │
-│  │ 本地缓存    │              │ 分布式缓存  │                │
-│  └────────────┘              └────────────┘                │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      数据层                                  │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐           │
-│  │   MySQL    │  │ 文件存储    │  │   Redis    │           │
-│  │ 主从复制    │  │ 本地/OSS   │  │ 消息队列   │           │
-│  └────────────┘  └────────────┘  └────────────┘           │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      监控层                                  │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐           │
-│  │ Prometheus │  │  Grafana   │  │    ELK     │           │
-│  │ 指标采集    │  │ 可视化监控  │  │ 日志分析   │           │
-│  └────────────┘  └────────────┘  └────────────┘           │
-└─────────────────────────────────────────────────────────────┘
+```text
+easyCloudPan/
+├── backend/                    # Spring Boot 后端（Java 21）
+├── frontend/                   # Vue 3 前端（Vite）
+├── ops/                        # 本地启动、Docker 部署、健康检查、监控配置
+├── docs/                       # 部署文档
+├── database/                   # 数据库迁移说明（Flyway 脚本在 backend）
+├── scripts/                    # 验证/基线采集脚本
+└── .github/workflows/build.yml # CI
 ```
 
-### 3.2 后端模块结构
+### 2.2 运行形态
 
-```
-backend/
-├── src/main/java/com/easypan/
-│   ├── aspect/              # AOP 切面 (4个)
-│   │   ├── GlobalExceptionHandler.java
-│   │   ├── VerifyParamAspect.java
-│   │   ├── TenantContextAspect.java
-│   │   └── LoggingAspect.java
-│   ├── component/           # 组件 (9个)
-│   │   ├── RedisComponent.java
-│   │   ├── FileComponent.java
-│   │   ├── EmailComponent.java
-│   │   ├── TenantContextHolder.java
-│   │   └── ...
-│   ├── config/              # 配置类 (14个)
-│   │   ├── RedisConfig.java
-│   │   ├── CacheConfig.java
-│   │   ├── SecurityConfig.java
-│   │   └── ...
-│   ├── controller/          # 控制器 (10个)
-│   │   ├── AccountController.java
-│   │   ├── FileController.java
-│   │   ├── ShareController.java
-│   │   ├── AdminController.java
-│   │   ├── RecycleController.java
-│   │   └── ...
-│   ├── entity/              # 实体类
-│   │   ├── po/              # 持久化对象
-│   │   ├── dto/             # 数据传输对象
-│   │   ├── vo/              # 视图对象
-│   │   └── query/           # 查询对象
-│   ├── mapper/              # MyBatis Mapper (6个)
-│   │   ├── UserInfoMapper.java
-│   │   ├── FileInfoMapper.java
-│   │   ├── FileShareMapper.java
-│   │   └── ...
-│   ├── service/             # 服务层 (20+)
-│   │   ├── UserInfoService.java
-│   │   ├── FileInfoService.java
-│   │   ├── FileShareService.java
-│   │   └── ...
-│   └── utils/               # 工具类
-└── src/main/resources/
-    ├── application.yml
-    ├── application-dev.yml
-    ├── application-prod.yml
-    └── mapper/              # MyBatis XML
-```
-
-### 3.3 前端模块结构
-
-```
-frontend/
-├── src/
-│   ├── views/               # 页面 (9个)
-│   │   ├── Login.vue
-│   │   ├── Main.vue
-│   │   ├── Share.vue
-│   │   ├── Admin.vue
-│   │   └── ...
-│   ├── components/          # 组件 (11个)
-│   │   ├── FileList.vue
-│   │   ├── Uploader.vue
-│   │   ├── Navigation.vue
-│   │   └── ...
-│   ├── components/preview/  # 预览组件 (7个)
-│   │   ├── PreviewImage.vue
-│   │   ├── PreviewVideo.vue
-│   │   ├── PreviewPdf.vue
-│   │   └── ...
-│   ├── api/                 # API 接口
-│   ├── stores/              # Pinia 状态管理
-│   ├── router/              # 路由配置
-│   └── utils/               # 工具函数
-└── public/
-```
+- 本地开发：`ops/local/setup.ps1` + `ops/local/startup.ps1`
+- Docker 全栈：`ops/docker/deploy_docker.ps1`
+- Docker 精简基础设施：`ops/docker/docker-compose.simple.yml`（仅 PostgreSQL/Redis/MinIO）
 
 ---
 
-## 4. 数据库设计
+## 3. 技术栈（以仓库清单为准）
 
-### 4.1 核心表结构
+## 3.1 后端技术栈（`backend/pom.xml`）
 
-#### 4.1.1 用户表 (user_info)
+| 类别 | 技术 | 版本 |
+|---|---|---|
+| 语言/运行时 | Java | 21 |
+| 框架 | Spring Boot | 3.2.12 |
+| Web | spring-boot-starter-web | Boot 管理 |
+| 安全 | Spring Security | Boot 管理 |
+| OAuth2 客户端 | spring-boot-starter-oauth2-client | Boot 管理 |
+| 密码加密 | BCrypt (`PasswordEncoder`) | Boot 管理 |
+| ORM | MyBatis-Flex | 1.11.6 |
+| 数据库 | PostgreSQL JDBC | 42.7.2 |
+| 缓存 | Redis Starter + Caffeine | Boot 管理 + 3.1.8 |
+| 布隆过滤器 | Guava | 32.1.3-jre |
+| 对象存储 | AWS SDK v2 S3（用于 MinIO） | 2.25.10 |
+| JWT | jjwt-api/impl/jackson | 0.12.3 |
+| DB 迁移 | Flyway | 11.20.3 |
+| 监控 | Actuator + Micrometer Prometheus | Boot 管理 |
+| 文档 | springdoc-openapi-starter-webmvc-ui | 2.3.0 |
+| 配置加密 | jasypt-spring-boot-starter | 3.0.5 |
+| 日志 | Logback + JSON Layout | 1.5.16 + 0.1.5 |
+| IO 工具 | okhttp | 4.12.0 |
+| 工具库 | commons-lang3 / codec / io | 3.14.0 / 1.16.0 / 2.15.1 |
+| 单测 | spring-boot-starter-test | Boot 管理 |
+| 属性测试 | jqwik | 1.8.2 |
+| 代码规范 | Maven Checkstyle Plugin | 3.3.1 |
+| 静态分析 | SpotBugs Maven Plugin | 4.8.3.1 |
+| 覆盖率 | JaCoCo Maven Plugin | 0.8.11 |
 
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| user_id | VARCHAR(15) | 用户ID (主键) | PK |
-| nick_name | VARCHAR(20) | 昵称 | - |
-| email | VARCHAR(150) | 邮箱 | UK |
-| qq_open_id | VARCHAR(35) | QQ OpenID | UK |
-| qq_avatar | VARCHAR(150) | QQ 头像 | - |
-| password | VARCHAR(32) | 密码 (MD5) | - |
-| join_time | DATETIME | 注册时间 | - |
-| last_login_time | DATETIME | 最后登录时间 | - |
-| status | TINYINT | 状态 (0禁用 1启用) | IDX |
-| use_space | BIGINT | 已用空间 (字节) | - |
-| total_space | BIGINT | 总空间 (字节) | - |
-| tenant_id | VARCHAR(32) | 租户ID | IDX |
+## 3.2 前端技术栈（`frontend/package.json`）
 
+| 类别 | 技术 | 版本 |
+|---|---|---|
+| 框架 | Vue | 3.5.13 |
+| 构建工具 | Vite | 7.3.1 |
+| 路由 | Vue Router | 4.5.0 |
+| 状态管理 | Pinia | 3.0.4 |
+| UI 组件 | Element Plus | 2.9.0 |
+| HTTP 客户端 | Axios | 1.7.9 |
+| 国际化 | vue-i18n | 9.14.4 |
+| 文件哈希 | spark-md5 / js-md5 | 3.0.2 / 0.8.3 |
+| 预览能力 | vue-pdf-embed / docx-preview / xlsx / dplayer / aplayer | 见 `package.json` |
+| PWA | vite-plugin-pwa | 1.2.0 |
+| 压缩 | vite-plugin-compression | 0.5.1 |
+| 图片优化 | vite-plugin-imagemin | 0.6.1 |
+| 代码规范 | eslint + prettier | 8.57.0 + 3.2.5 |
+| 类型检查 | vue-tsc | 3.2.4 |
+| E2E | Playwright | 1.58.2 |
 
-#### 4.1.2 文件表 (file_info)
+## 3.3 基础设施与运维
 
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| file_id | VARCHAR(10) | 文件ID (主键) | PK |
-| user_id | VARCHAR(15) | 用户ID | IDX |
-| file_md5 | VARCHAR(32) | 文件MD5 | IDX |
-| file_pid | VARCHAR(10) | 父目录ID | IDX |
-| file_size | BIGINT | 文件大小 | - |
-| file_name | VARCHAR(200) | 文件名 | - |
-| file_cover | VARCHAR(150) | 封面 | - |
-| file_path | VARCHAR(100) | 文件路径 | - |
-| create_time | DATETIME | 创建时间 | IDX |
-| last_update_time | DATETIME | 最后更新时间 | - |
-| folder_type | TINYINT | 文件夹类型 (0文件 1目录) | IDX |
-| file_category | TINYINT | 文件分类 (1视频 2音频 3图片 4文档 5其他) | IDX |
-| file_type | TINYINT | 文件类型 (详细分类) | - |
-| status | TINYINT | 状态 (0转码中 1转码失败 2正常) | IDX |
-| recovery_time | DATETIME | 回收时间 | IDX |
-| del_flag | TINYINT | 删除标记 (0正常 1回收站 2已删除) | IDX |
-| tenant_id | VARCHAR(32) | 租户ID | IDX |
-
-#### 4.1.3 分享表 (file_share)
-
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| share_id | VARCHAR(20) | 分享ID (主键) | PK |
-| file_id | VARCHAR(10) | 文件ID | IDX |
-| user_id | VARCHAR(15) | 用户ID | IDX |
-| valid_type | TINYINT | 有效期类型 (0永久 1天 2周 3月) | - |
-| expire_time | DATETIME | 过期时间 | IDX |
-| share_time | DATETIME | 分享时间 | - |
-| code | VARCHAR(5) | 提取码 | - |
-| show_count | INT | 浏览次数 | - |
-| tenant_id | VARCHAR(32) | 租户ID | IDX |
-
-#### 4.1.4 邮箱验证码表 (email_code)
-
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| email | VARCHAR(150) | 邮箱 (主键) | PK |
-| code | VARCHAR(5) | 验证码 (主键) | PK |
-| create_time | DATETIME | 创建时间 | - |
-| status | TINYINT | 状态 (0未使用 1已使用) | - |
-
-#### 4.1.5 租户表 (tenant_info)
-
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| tenant_id | VARCHAR(32) | 租户ID (主键) | PK |
-| tenant_name | VARCHAR(100) | 租户名称 | - |
-| status | TINYINT | 状态 (0禁用 1启用) | IDX |
-| total_space | BIGINT | 总空间配额 | - |
-| used_space | BIGINT | 已用空间 | - |
-| create_time | DATETIME | 创建时间 | - |
-
-#### 4.1.6 分享访问日志表 (share_access_log)
-
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| id | BIGINT | 主键 (自增) | PK |
-| share_id | VARCHAR(20) | 分享ID | IDX |
-| user_id | VARCHAR(15) | 访问用户ID | IDX |
-| access_time | DATETIME | 访问时间 | IDX |
-| ip_address | VARCHAR(50) | IP地址 | - |
-| user_agent | VARCHAR(500) | User Agent | - |
-
-#### 4.1.7 Web性能指标表 (web_vitals_metrics)
-
-| 字段 | 类型 | 说明 | 索引 |
-|------|------|------|------|
-| id | BIGINT | 主键 (自增) | PK |
-| metric_name | VARCHAR(50) | 指标名称 (LCP/FID/CLS) | IDX |
-| metric_value | DECIMAL(10,2) | 指标值 | - |
-| page_url | VARCHAR(500) | 页面URL | IDX |
-| user_agent | VARCHAR(500) | User Agent | - |
-| timestamp | DATETIME | 时间戳 | IDX |
-
-### 4.2 索引设计原则
-
-- **主键索引**: 所有表必须有主键，优先使用业务ID
-- **唯一索引**: 邮箱、QQ OpenID 等唯一字段
-- **普通索引**: 高频查询字段 (user_id, tenant_id, status, del_flag)
-- **复合索引**: 多条件查询 (user_id + del_flag + folder_type)
-- **时间索引**: 范围查询字段 (create_time, expire_time, recovery_time)
-
-### 4.3 数据库迁移脚本
-
-| 版本 | 文件名 | 说明 |
-|------|--------|------|
-| V1 | V1__init_schema.sql | 初始化数据库结构 |
-| V2 | V2__add_tenant_support.sql | 添加多租户支持 |
-| V3 | V3__add_share_access_log.sql | 添加分享访问日志表 |
-| V4 | V4__add_web_vitals_metrics.sql | 添加Web性能指标表 |
-| V5 | V5__add_file_indexes.sql | 优化文件表索引 |
-| V6 | V6__add_user_indexes.sql | 优化用户表索引 |
-| V7 | V7__add_share_indexes.sql | 优化分享表索引 |
-| V8 | V8__add_tenant_space_fields.sql | 添加租户空间字段 |
-| V9 | V9__optimize_query_performance.sql | 查询性能优化 |
-
+| 组件 | 版本/镜像 | 说明 |
+|---|---|---|
+| PostgreSQL | `postgres:15-alpine` | 主数据库 |
+| Redis | `redis:7-alpine` | 缓存、Token 黑名单、会话辅助 |
+| MinIO | `minio/minio:latest` | 对象存储 |
+| Nginx | `nginx:stable-alpine` | 前端静态资源与 API 反向代理 |
+| Prometheus | `prom/prometheus:latest` | 指标采集 |
+| Grafana | `grafana/grafana:latest` | 监控展示 |
+| Redis Exporter | `oliver006/redis_exporter:latest` | Redis 指标 |
+| Postgres Exporter | `prometheuscommunity/postgres-exporter:latest` | PostgreSQL 指标 |
+| 容器编排 | Docker Compose V2 | 本地/测试部署 |
+| CI | GitHub Actions | `backend-build` + `frontend-build` |
 
 ---
 
-## 5. 核心业务逻辑
+## 4. 环境要求与端口规划
 
-### 5.1 用户认证流程
+## 4.1 最低环境
 
-#### 5.1.1 JWT 双 Token 机制
+- JDK 21+
+- Maven 3.9+
+- Node.js 20+（`setup.ps1` 检查 >=20；前端 Docker 构建镜像使用 Node 22）
+- Docker Desktop + `docker compose`（V2）
 
-- **Access Token**: 有效期 15 分钟，用于 API 访问
-- **Refresh Token**: 有效期 7 天，用于刷新 Access Token
-- **Token 黑名单**: 使用 Redis 存储已注销的 Token
-- **滑动刷新**: Access Token 过期前 5 分钟自动刷新
+建议先验证：
 
-#### 5.1.2 认证流程
-
-1. 用户登录 → 验证邮箱/密码或 QQ OpenID
-2. 生成 Access Token 和 Refresh Token
-3. 将 Refresh Token 存入 Redis (key: refresh:token:{userId})
-4. 返回双 Token 给客户端
-5. 客户端每次请求携带 Access Token
-6. 服务端验证 Token 有效性和黑名单
-7. Token 过期前自动刷新或使用 Refresh Token 刷新
-
-#### 5.1.3 注销流程
-
-1. 客户端发起注销请求
-2. 将 Access Token 和 Refresh Token 加入黑名单
-3. 从 Redis 删除 Refresh Token
-4. 清除客户端存储的 Token
-
-### 5.2 文件上传流程
-
-#### 5.2.1 分片上传
-
-1. 前端计算文件 MD5 (使用 SparkMD5)
-2. 调用秒传接口检查文件是否已存在
-3. 如果存在则直接返回文件信息 (秒传)
-4. 如果不存在则分片上传:
-   - 将文件切分为 5MB 的分片
-   - 并发上传分片到临时目录
-   - 每个分片上传成功后记录进度
-5. 所有分片上传完成后调用合并接口
-6. 服务端使用零拷贝技术合并分片
-7. 更新文件信息和用户空间
-
-#### 5.2.2 秒传机制
-
-- 基于文件 MD5 去重
-- 检查数据库是否存在相同 MD5 的文件
-- 如果存在则复用文件路径，只创建新的文件记录
-- 节省存储空间和上传时间
-
-#### 5.2.3 断点续传
-
-- 前端记录已上传的分片索引
-- 上传失败时从断点处继续上传
-- 服务端校验分片完整性
-
-### 5.3 文件分享流程
-
-#### 5.3.1 创建分享
-
-1. 用户选择文件创建分享
-2. 设置有效期 (永久/1天/7天/30天)
-3. 生成随机分享ID和提取码
-4. 将分享信息存入数据库
-5. 返回分享链接
-
-#### 5.3.2 访问分享
-
-1. 用户访问分享链接
-2. 验证分享是否过期
-3. 验证提取码 (如果设置)
-4. 记录访问日志 (IP、User Agent、时间)
-5. 增加浏览次数
-6. 返回文件列表
-
-#### 5.3.3 保存分享
-
-1. 用户选择要保存的文件
-2. 验证用户空间是否足够
-3. 复制文件记录到用户目录
-4. 更新用户已用空间
-
-### 5.4 回收站流程
-
-#### 5.4.1 删除文件
-
-1. 将文件 del_flag 设置为 1 (回收站)
-2. 记录 recovery_time (回收时间)
-3. 不释放用户空间 (文件仍占用空间)
-
-#### 5.4.2 恢复文件
-
-1. 将文件 del_flag 设置为 0 (正常)
-2. 清除 recovery_time
-3. 检查目标目录是否存在同名文件
-
-#### 5.4.3 彻底删除
-
-1. 将文件 del_flag 设置为 2 (已删除)
-2. 释放用户空间
-3. 异步删除物理文件
-4. 如果是最后一个引用则删除物理文件
-
-#### 5.4.4 自动清理
-
-- 定时任务每天凌晨执行
-- 清理回收站中超过 10 天的文件
-- 批量删除并释放空间
-
-### 5.5 缓存策略
-
-#### 5.5.1 多级缓存架构
-
-```
-请求 → Caffeine (L1) → Redis (L2) → MySQL (L3)
+```powershell
+java -version
+javac -version
+mvn -version
+node -v
+npm -v
+docker --version
+docker compose version
 ```
 
-#### 5.5.2 缓存配置
+## 4.2 默认端口
 
-| 缓存类型 | TTL | 最大条目 | 淘汰策略 |
-|---------|-----|---------|---------|
-| 用户信息 | 30分钟 | 10000 | LRU |
-| 文件信息 | 15分钟 | 50000 | LRU |
-| 分享信息 | 10分钟 | 5000 | LRU |
-| 系统配置 | 1小时 | 1000 | LRU |
-
-#### 5.5.3 缓存更新策略
-
-- **Cache Aside**: 先更新数据库，再删除缓存
-- **延迟双删**: 删除缓存 → 更新数据库 → 延迟 500ms → 再次删除缓存
-- **缓存预热**: 应用启动时加载热点数据
-- **缓存穿透**: 使用布隆过滤器或缓存空值
-- **缓存雪崩**: 设置随机过期时间
-- **缓存击穿**: 使用分布式锁
+| 服务 | 端口 | 说明 |
+|---|---|---|
+| 前端 | 8080 | 浏览器访问入口 |
+| 后端 | 7090 | Spring Boot 端口（上下文 `/api`） |
+| PostgreSQL（全栈 compose） | 5433 | 映射到容器 5432 |
+| PostgreSQL（simple compose） | 5432 | 映射到容器 5432 |
+| Redis | 6379 | 缓存 |
+| MinIO API | 9000 | 对象存储 API |
+| MinIO Console | 9001 | 管理台 |
+| Prometheus | 9090 | 指标采集 |
+| Grafana | 3000 | 监控看板 |
+| Redis Exporter | 9121 | Redis 指标 |
+| Postgres Exporter | 9187 | PostgreSQL 指标 |
 
 ---
 
-## 6. 编码规约
+## 5. 配置与密钥管理
 
-### 6.1 Lombok 使用规范
+## 5.1 配置文件
 
-#### 6.1.1 推荐使用的注解
+- 模板：`ops/docker/.env.example`
+- 实际配置：`ops/docker/.env`
+- 后端默认配置：`backend/src/main/resources/application.properties`
 
-- `@Data`: 实体类 (PO/DTO/VO)
-- `@Builder`: 构建器模式
-- `@Slf4j`: 日志记录
-- `@RequiredArgsConstructor`: 依赖注入 (final 字段)
-- `@NoArgsConstructor`: 无参构造器 (JPA 实体)
-- `@AllArgsConstructor`: 全参构造器
+## 5.2 关键环境变量（生产必须覆盖默认值）
 
-#### 6.1.2 禁止使用的注解
+- 数据库：`POSTGRES_DB` `POSTGRES_USER` `POSTGRES_PASSWORD`
+- Redis：`REDIS_PASSWORD`
+- MinIO：`MINIO_ROOT_USER` `MINIO_ROOT_PASSWORD` `MINIO_BUCKET`
+- 邮件：`SPRING_MAIL_HOST` `SPRING_MAIL_PORT` `SPRING_MAIL_USERNAME` `SPRING_MAIL_PASSWORD`
+- QQ 登录：`QQ_APP_ID` `QQ_APP_KEY` `QQ_URL_REDIRECT`
+- 安全/日志：`ADMIN_EMAILS` `LOG_ROOT_LEVEL`
+- 可选：`JASYPT_ENCRYPTOR_PASSWORD`
 
-- `@ToString`: 可能导致循环引用和性能问题
-- `@EqualsAndHashCode`: 可能导致意外的相等性判断
+## 5.3 安全要求
 
-
-### 6.2 命名规范
-
-#### 6.2.1 包命名
-
-- 全部小写，使用点分隔
-- 示例: `com.easypan.controller`, `com.easypan.service.impl`
-
-#### 6.2.2 类命名
-
-- 使用大驼峰 (PascalCase)
-- Controller: `XxxController`
-- Service: `XxxService` / `XxxServiceImpl`
-- Mapper: `XxxMapper`
-- Entity: `XxxPO` / `XxxDTO` / `XxxVO` / `XxxQuery`
-- Config: `XxxConfig`
-- Component: `XxxComponent`
-- Utils: `XxxUtils`
-
-#### 6.2.3 方法命名
-
-- 使用小驼峰 (camelCase)
-- 查询: `getXxx`, `findXxx`, `listXxx`, `queryXxx`
-- 新增: `addXxx`, `createXxx`, `insertXxx`
-- 修改: `updateXxx`, `modifyXxx`, `editXxx`
-- 删除: `deleteXxx`, `removeXxx`
-- 判断: `isXxx`, `hasXxx`, `canXxx`
-
-#### 6.2.4 变量命名
-
-- 使用小驼峰 (camelCase)
-- 常量: 全大写，下划线分隔 (UPPER_SNAKE_CASE)
-- 布尔变量: `isXxx`, `hasXxx`, `canXxx`
-
-#### 6.2.5 数据库命名
-
-- 表名: 小写，下划线分隔 (snake_case)
-- 字段名: 小写，下划线分隔 (snake_case)
-- 索引: `idx_字段名`, `uk_字段名` (唯一索引)
-
-### 6.3 注释规范
-
-#### 6.3.1 类注释
-
-- 必须包含: 类的功能描述、作者、创建日期
-- 可选: 版本号、修改记录
-
-#### 6.3.2 方法注释
-
-- 必须包含: 方法功能描述、参数说明、返回值说明
-- 可选: 异常说明、示例代码
-
-#### 6.3.3 字段注释
-
-- 实体类字段必须添加注释
-- 使用 `@Schema` 注解 (Swagger 文档)
-
-### 6.4 数据库变更规范
-
-#### 6.4.1 Flyway 迁移脚本规范
-
-- 文件命名: `V{版本号}__{描述}.sql`
-- 版本号: 递增整数 (V1, V2, V3...)
-- 描述: 使用下划线分隔的英文描述
-- 示例: `V10__add_user_avatar_field.sql`
-
-#### 6.4.2 迁移脚本编写规范
-
-- 每个脚本只做一件事
-- 必须可重复执行 (幂等性)
-- 使用 `IF NOT EXISTS` 检查
-- 添加回滚说明注释
-- 禁止修改已执行的脚本
-
-#### 6.4.3 索引变更规范
-
-- 添加索引前检查是否已存在
-- 大表添加索引使用 `ALGORITHM=INPLACE`
-- 删除索引前确认无业务使用
+- 严禁提交或打印密钥、Token、连接串、`.env` 明文敏感值。
+- 所有默认密码仅用于本地调试，生产必须替换。
+- 加密配置统一通过 Jasypt，密钥走环境变量，不写入仓库。
 
 ---
 
-## 7. 性能优化规范
+## 6. 本地开发流程（可执行）
 
-### 7.1 数据库优化
+## 6.1 首次初始化
 
-#### 7.1.1 查询优化
+```powershell
+.\ops\local\setup.ps1
+```
 
-- 避免 `SELECT *`，只查询需要的字段
-- 使用索引覆盖查询
-- 避免在 WHERE 子句中使用函数
-- 使用 LIMIT 限制返回行数
-- 避免子查询，使用 JOIN 代替
-- 使用 EXPLAIN 分析查询计划
+脚本会做：
 
-#### 7.1.2 索引优化
+- 依赖检查（JDK/Maven/Node/npm/Docker）
+- 前端依赖安装
+- 后端构建（`mvn clean install -DskipTests`）
+- 本地目录初始化（`backend/file/...`）
+- 生成 `ops/docker/.env`
 
-- 高频查询字段添加索引
-- 复合索引遵循最左前缀原则
-- 避免过多索引 (影响写入性能)
-- 定期分析索引使用情况
-- 删除冗余索引
+## 6.2 一键启动开发环境
 
-#### 7.1.3 分页优化
+```powershell
+.\ops\local\startup.ps1
+```
 
-- 使用游标分页代替 OFFSET
-- 深分页使用子查询优化
-- 缓存总数，避免每次 COUNT
+脚本会做：
 
-#### 7.1.4 批量操作
+- 启动基础设施容器：PostgreSQL/Redis/MinIO/minio-init
+- 启动后端：`mvn spring-boot:run`
+- 启动前端：`npm run dev`
 
-- 使用批量插入代替单条插入
-- 批量更新使用 CASE WHEN
-- 批量删除分批执行，避免锁表
+## 6.3 健康检查
 
-### 7.2 缓存优化
+```powershell
+.\ops\tools\health_check.ps1
+```
 
-#### 7.2.1 缓存设计原则
+关键验证点：
 
-- 缓存热点数据 (80/20 原则)
-- 设置合理的过期时间
-- 使用多级缓存
-- 缓存粒度适中 (不要太大也不要太小)
-
-#### 7.2.2 缓存 Key 设计
-
-- 使用命名空间: `模块:业务:ID`
-- 示例: `user:info:123456`, `file:info:abc123`
-- 避免 Key 冲突
-- Key 长度适中 (不超过 100 字符)
-
-#### 7.2.3 缓存更新策略
-
-- 优先使用 Cache Aside 模式
-- 关键业务使用延迟双删
-- 避免缓存雪崩 (随机过期时间)
-- 使用分布式锁防止缓存击穿
-
-### 7.3 虚拟线程优化
-
-#### 7.3.1 适用场景
-
-- IO 密集型任务 (数据库查询、文件读写、网络请求)
-- 高并发场景 (10000+ 并发)
-- 长时间等待的任务
-
-#### 7.3.2 不适用场景
-
-- CPU 密集型任务 (加密、压缩、计算)
-- 使用 ThreadLocal 的场景
-- 需要线程池管理的场景
-
-#### 7.3.3 使用规范
-
-- 使用 `@Async` 注解标记异步方法
-- 配置虚拟线程执行器
-- 避免在虚拟线程中使用 synchronized
-- 使用 ReentrantLock 代替 synchronized
-
-### 7.4 文件处理优化
-
-#### 7.4.1 文件上传优化
-
-- 使用分片上传 (5MB/片)
-- 并发上传分片 (最多 3 个并发)
-- 使用零拷贝合并分片
-- 异步处理文件转码
-
-#### 7.4.2 文件下载优化
-
-- 使用流式传输
-- 支持断点续传 (Range 请求)
-- 使用 Nginx X-Accel-Redirect
-- 静态资源使用 CDN
-
-#### 7.4.3 文件存储优化
-
-- 使用 MD5 去重 (秒传)
-- 图片压缩和缩略图
-- 视频转码 (H.264)
-- 冷数据归档到对象存储
-
-### 7.5 前端优化
-
-#### 7.5.1 资源优化
-
-- 代码分割 (Code Splitting)
-- 懒加载 (Lazy Loading)
-- 图片懒加载
-- 使用 WebP 格式
-- 压缩 JS/CSS
-
-#### 7.5.2 渲染优化
-
-- 虚拟滚动 (大列表)
-- 防抖和节流
-- 使用 Web Worker
-- 避免重排和重绘
-
-#### 7.5.3 网络优化
-
-- HTTP/2 多路复用
-- 资源预加载 (Preload)
-- 使用 CDN
-- 开启 Gzip 压缩
-- 使用浏览器缓存
+- `docker compose ps` 可获取容器状态
+- PostgreSQL `pg_isready` 成功
+- Redis `PONG`
+- MinIO `http://localhost:9000/minio/health/live` 返回 200
+- 后端 `http://localhost:7090/api/actuator/health` 返回 200（本地模式若未启动后端可为 WARN）
 
 ---
 
-## 8. 安全编码规范
+## 7. Docker 部署流程（生产基线）
 
-### 8.1 认证授权
+## 7.1 全栈部署
 
-#### 8.1.1 密码安全
+```powershell
+copy ops\docker\.env.example ops\docker\.env
+.\ops\docker\deploy_docker.ps1
+```
 
-- 使用 MD5 + 盐值加密
-- 密码长度 6-18 位
-- 密码复杂度要求 (字母+数字)
-- 登录失败次数限制 (5次/15分钟)
-- 密码重置需要邮箱验证
+跳过构建：
 
-#### 8.1.2 Token 安全
+```powershell
+.\ops\docker\deploy_docker.ps1 -NoBuild
+```
 
-- 使用 JWT 双 Token 机制
-- Access Token 短期有效 (15分钟)
-- Refresh Token 长期有效 (7天)
-- Token 黑名单机制
-- Token 签名使用强密钥
+等价命令：
 
-#### 8.1.3 权限控制
+```powershell
+docker compose -f ops\docker\docker-compose.yml up -d --build
+```
 
-- 基于角色的访问控制 (RBAC)
-- 接口级权限校验
-- 数据级权限校验 (租户隔离)
-- 敏感操作二次验证
+## 7.2 部署后验证
 
+```powershell
+docker compose -f ops\docker\docker-compose.yml ps
+.\ops\tools\health_check.ps1
+```
 
-### 8.2 数据安全
+访问地址：
 
-#### 8.2.1 SQL 注入防护
+- 前端：`http://localhost:8080`
+- 后端：`http://localhost:7090/api`
+- MinIO Console：`http://localhost:9001`
+- Prometheus：`http://localhost:9090`
+- Grafana：`http://localhost:3000`
 
-- 使用参数化查询 (MyBatis #{})
-- 禁止拼接 SQL
-- 输入验证和过滤
-- 使用 ORM 框架
+## 7.3 停止与回滚
 
-#### 8.2.2 XSS 防护
+```powershell
+.\ops\docker\stop_docker.ps1
+```
 
-- 输出转义 (HTML/JS/URL)
-- 使用 Content-Security-Policy
-- 禁止内联脚本
-- 验证用户输入
+危险操作（会删除卷并清空数据）：
 
-#### 8.2.3 CSRF 防护
-
-- 使用 CSRF Token
-- 验证 Referer
-- 使用 SameSite Cookie
-- 敏感操作使用 POST
-
-#### 8.2.4 敏感信息保护
-
-- 配置文件加密 (Jasypt)
-- 日志脱敏 (手机号、邮箱、身份证)
-- 数据库字段加密 (密码、银行卡)
-- HTTPS 传输
-
-### 8.3 文件安全
-
-#### 8.3.1 文件类型校验
-
-- 白名单机制 (只允许特定类型)
-- 文件头校验 (Magic Number)
-- 文件扩展名校验
-- MIME 类型校验
-
-#### 8.3.2 文件大小限制
-
-- 单文件大小限制 (默认 500MB)
-- 用户总空间限制 (默认 50GB)
-- 分片大小限制 (5MB)
-- 并发上传限制 (3个)
-
-#### 8.3.3 文件路径安全
-
-- 禁止路径穿越 (../)
-- 使用随机文件名
-- 文件存储在非 Web 目录
-- 下载时验证权限
-
-### 8.4 分享安全
-
-#### 8.4.1 分享链接安全
-
-- 使用随机分享ID (20位)
-- 提取码保护 (5位随机码)
-- 设置过期时间
-- 访问次数限制
-
-#### 8.4.2 分享访问控制
-
-- 记录访问日志 (IP、时间、User Agent)
-- 异常访问检测 (频率限制)
-- 恶意访问封禁
-- 分享者可随时取消分享
+```powershell
+.\ops\docker\stop_docker.ps1 -Volumes
+```
 
 ---
 
-## 9. 监控和日志规范
+## 8. 接口文档规范（详细）
 
-### 9.1 日志规范
+## 8.1 文档入口与分组
 
-#### 9.1.1 日志级别
+- Swagger UI：`/api/swagger-ui/index.html`
+- OpenAPI JSON：`/api/v3/api-docs`
 
-| 级别 | 使用场景 | 示例 |
-|------|---------|------|
-| ERROR | 系统错误、异常 | 数据库连接失败、文件读写失败 |
-| WARN | 警告信息、潜在问题 | 缓存未命中、配置缺失 |
-| INFO | 关键业务操作 | 用户登录、文件上传、分享创建 |
-| DEBUG | 调试信息 | 方法入参、SQL 语句、缓存命中 |
-| TRACE | 详细跟踪信息 | 方法调用链、变量值 |
+接口事实来源（必须与源码一致）：
 
-#### 9.1.2 日志格式
+- 控制器：`backend/src/main/java/com/easypan/controller/*.java`
+- 参数校验与鉴权：`backend/src/main/java/com/easypan/aspect/GlobalOperationAspect.java`
+- 路由上下文：`backend/src/main/resources/application.properties`（`server.servlet.context-path=/api`）
 
-- 使用 JSON 格式 (便于 ELK 解析)
-- 包含字段: timestamp, level, logger, thread, message, context
-- 添加 traceId (分布式追踪)
-- 添加 tenantId (多租户隔离)
+OpenAPI 分组（`SwaggerConfig`）：
 
-#### 9.1.3 日志内容
+- `User Module`：`/account/**` `/userInfo/**`
+- `File Module`：`/file/**`
+- `Share Module`：`/share/**` `/showShare/**`
+- `Admin Module`：`/admin/**`
 
-- 记录关键业务操作 (谁、什么时间、做了什么、结果)
-- 记录异常堆栈信息
-- 敏感信息脱敏 (手机号、邮箱、密码)
-- 避免记录大对象 (文件内容、大 JSON)
+联调注意：
 
-#### 9.1.4 日志输出
+- `AccountController` 无类级 `@RequestMapping`，真实用户接口路径是 `/api/login` 这种根路径，不是 `/api/account/login`。
 
-- 开发环境: 控制台 + 文件
-- 生产环境: 文件 + ELK
-- 日志文件按天滚动
-- 保留 30 天日志
-- 日志文件大小限制 (100MB)
+## 8.2 全局协议
 
-### 9.2 监控指标
+- Base URL：`/api`
+- 前端 SDK 默认调用方式：`POST` + `application/x-www-form-urlencoded`（见 `frontend/src/utils/Request.ts`）
+- 文件上传：`multipart/form-data`
+- 文件/图片/视频流/下载：`GET`
+- 认证头：`Authorization: Bearer <access_token>`
+- 多租户头：`X-Tenant-Id: <tenant_id>`（缺省落到 `default`）
+- 统一响应结构：`ResponseVO<T>`
+- 认证模型：`Session + JWT` 并存（登录写入 Session，同时返回 `token` 和 `refreshToken`）
+- 后端多数接口使用 `@RequestMapping`（未限制 Method），前端约定按 `POST` 调用，流接口按 `GET`
 
-#### 9.2.1 系统指标
+```json
+{
+  "status": "success|error",
+  "code": 200,
+  "info": "请求成功",
+  "suggestion": "可选",
+  "data": {}
+}
+```
 
-| 指标 | 说明 | 告警阈值 |
-|------|------|---------|
-| CPU 使用率 | 系统 CPU 使用率 | > 80% |
-| 内存使用率 | 系统内存使用率 | > 85% |
-| 磁盘使用率 | 磁盘空间使用率 | > 90% |
-| 磁盘 IO | 磁盘读写速率 | > 80% |
-| 网络流量 | 网络带宽使用率 | > 80% |
+## 8.3 认证与令牌协议
 
-#### 9.2.2 应用指标
+登录接口返回：
 
-| 指标 | 说明 | 告警阈值 |
-|------|------|---------|
-| QPS | 每秒请求数 | > 10000 |
-| 响应时间 | 接口平均响应时间 | > 1000ms |
-| 错误率 | 接口错误率 | > 1% |
-| 线程数 | 活跃线程数 | > 1000 |
-| 连接池 | 数据库连接池使用率 | > 80% |
+- `token`：Access Token（JWT）
+- `refreshToken`：刷新令牌（Redis 持久化）
+- `userInfo`：`SessionWebUserDto`
 
-#### 9.2.3 业务指标
+刷新接口：
 
-| 指标 | 说明 | 告警阈值 |
-|------|------|---------|
-| 注册用户数 | 每日新增注册用户 | < 10 |
-| 活跃用户数 | 每日活跃用户数 | < 100 |
-| 文件上传数 | 每日文件上传数 | < 50 |
-| 文件下载数 | 每日文件下载数 | < 100 |
-| 分享创建数 | 每日分享创建数 | < 20 |
-| 存储空间 | 总存储空间使用率 | > 90% |
+- `POST /api/refreshToken`
+- 入参：`refreshToken`
+- 出参：新 `token` + 当前 `refreshToken`
 
-#### 9.2.4 缓存指标
+登出接口：
 
-| 指标 | 说明 | 告警阈值 |
-|------|------|---------|
-| 缓存命中率 | Caffeine + Redis 命中率 | < 80% |
-| 缓存大小 | 缓存条目数 | > 100000 |
-| 缓存驱逐率 | 缓存驱逐频率 | > 100/s |
-| Redis 连接数 | Redis 连接池使用率 | > 80% |
+- `POST /api/logout`
+- 行为：会话失效 + Refresh Token 删除 + Access Token 加入黑名单
 
-### 9.3 告警规则
+验证码会话键：
 
-#### 9.3.1 告警级别
+- 普通验证码：`check_code_key`
+- 邮箱验证码场景：`check_code_key_email`
 
-| 级别 | 说明 | 响应时间 | 通知方式 |
-|------|------|---------|---------|
-| P0 | 紧急 (服务不可用) | 5分钟 | 电话 + 短信 + 邮件 |
-| P1 | 严重 (核心功能异常) | 15分钟 | 短信 + 邮件 |
-| P2 | 警告 (性能下降) | 30分钟 | 邮件 |
-| P3 | 提示 (潜在问题) | 1小时 | 邮件 |
+常用错误码（`ResponseCodeEnum`）：
 
-#### 9.3.2 告警规则
+| code | 含义 | 典型触发场景 |
+|---|---|---|
+| `200` | 请求成功 | 正常返回 |
+| `600` | 请求参数错误 | `@VerifyParam` 校验失败 |
+| `901` | 登录超时 | Token 或 Session 无效 |
+| `902` | 分享链接失效 | 分享不存在/过期 |
+| `903` | 分享验证失效 | 提取码会话失效 |
+| `904` | 空间不足 | 上传或保存分享超配额 |
 
-- 服务不可用 (P0): 连续 3 次健康检查失败
-- 接口错误率 > 5% (P1): 持续 5 分钟
-- 响应时间 > 2000ms (P1): 持续 10 分钟
-- CPU 使用率 > 90% (P1): 持续 5 分钟
-- 内存使用率 > 90% (P1): 持续 5 分钟
-- 磁盘使用率 > 95% (P1): 立即告警
-- 缓存命中率 < 70% (P2): 持续 30 分钟
+## 8.4 统一返回数据结构字典
 
-#### 9.3.3 告警收敛
+| 结构 | 字段 | 说明 |
+|---|---|---|
+| `SessionWebUserDto` | `userId` `nickName` `admin` `avatar` | 会话用户信息 |
+| `UserSpaceDto` | `useSpace` `totalSpace` | 用户空间（字节） |
+| `UploadResultDto` | `fileId` `status` | 上传结果，`status`：`uploading` `upload_finish` `upload_seconds` |
+| `PaginationResultVO<T>` | `totalCount` `pageSize` `pageNo` `pageTotal` `list` | 分页结果 |
+| `CursorPage<T>` | `list` `nextCursor` `hasMore` `pageSize` `totalCount` | 游标分页结果 |
+| `FileInfoVO` | `fileId` `filePid` `fileName` `fileSize` `fileCover` `recoveryTime` `lastUpdateTime` `folderType` `fileCategory` `fileType` `status` | 文件视图 |
+| `ShareInfoVO` | `shareTime` `expireTime` `nickName` `fileName` `currentUser` `fileId` `avatar` `userId` | 分享页信息 |
+| `SysSettingsDto` | `registerEmailTitle` `registerEmailContent` `userInitUseSpace` | 系统设置 |
 
-- 相同告警 5 分钟内只发送一次
-- 告警恢复后发送恢复通知
-- 夜间告警 (00:00-08:00) 降级处理
-- 节假日告警升级通知
+## 8.5 账户模块接口明细（`AccountController`）
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/checkCode` | 否 | GET | `type` | 可选；`0/null` 普通验证码，其他值邮箱验证码 | 图片流（`image/jpeg`） |
+| `/api/sendEmailCode` | 否 | POST | `email` `checkCode` `type` | `email` 正则 EMAIL，最大 150；`checkCode` 必填 | `null` |
+| `/api/register` | 否 | POST | `email` `nickName` `password` `checkCode` `emailCode` | `nickName` 最大 20；`password` 正则 PASSWORD，长度 8-32 | `null` |
+| `/api/login` | 否 | POST | `email` `password` `checkCode` | 均必填 | `{ userInfo, token, refreshToken }` |
+| `/api/resetPwd` | 否 | POST | `email` `password` `checkCode` `emailCode` | `password` 正则 PASSWORD，长度 8-32 | `null` |
+| `/api/getAvatar/{userId}` | 否 | GET | `userId` | 必填 | 图片流 |
+| `/api/getUserInfo` | 是 | POST | - | 会话必须有效 | `SessionWebUserDto` |
+| `/api/getUseSpace` | 是 | POST | - | 会话必须有效 | `UserSpaceDto` |
+| `/api/logout` | 否（可匿名） | POST | - | 若已登录则清理会话与黑名单；未登录也返回成功 | `null` |
+| `/api/refreshToken` | 否 | POST | `refreshToken` | 必填 | `{ token, refreshToken }` |
+| `/api/updateUserAvatar` | 是 | POST | `avatar` | `multipart/form-data`，业务上必须传文件 | `null` |
+| `/api/updatePassword` | 是 | POST | `password` | PASSWORD 正则，长度 8-32 | `null` |
+| `/api/qqlogin` | 否 | POST | `callbackUrl` | 可选 | QQ 授权 URL 字符串 |
+| `/api/qqlogin/callback` | 否 | POST | `code` `state` | 必填 | `{ callbackUrl, userInfo }` |
+
+## 8.6 文件模块接口明细（`FileInfoController`）
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/file/loadDataList` | 是 | POST | `FileInfoQuery` + `category` | `category` 支持 `video/music/image/doc/others` | `PaginationResultVO<FileInfoVO>` |
+| `/api/file/loadDataListCursor` | 是 | POST | `cursor` `pageSize` | 游标分页 | `CursorPage<FileInfoVO>` |
+| `/api/file/uploadFile` | 是 | POST | `fileId` `file` `fileName` `filePid` `fileMd5` `chunkIndex` `chunks` | `chunkIndex>=0 && chunkIndex<chunks`；首片做扩展名黑名单+MagicNumber 校验；并发限流；`status` 返回 `uploading/upload_finish/upload_seconds` | `UploadResultDto` |
+| `/api/file/uploadedChunks` | 是 | POST | `fileId` `filePid` | 均必填 | `List<Integer>` 已上传分片序号 |
+| `/api/file/getImage/{imageFolder}/{imageName}` | 是 | GET | 路径参数 | 需通过图片访问校验 | 图片流 |
+| `/api/file/ts/getVideoInfo/{fileId}` | 依赖会话 | GET | `fileId` | 虽未显式注解登录拦截，但方法内部依赖 Session 用户 | 视频分片流 |
+| `/api/file/getFile/{fileId}` | 依赖会话 | GET | `fileId` | 同上，依赖 Session 用户 | 文件流 |
+| `/api/file/newFoloder` | 是 | POST | `filePid` `fileName` | 均必填 | `FileInfo` |
+| `/api/file/getFolderInfo` | 是 | POST | `path` | 必填 | `List<FolderVO>` |
+| `/api/file/rename` | 是 | POST | `fileId` `fileName` | 均必填 | `FileInfoVO` |
+| `/api/file/loadAllFolder` | 是 | POST | `filePid` `currentFileIds` | `filePid` 必填 | `List<FileInfoVO>` |
+| `/api/file/changeFileFolder` | 是 | POST | `fileIds` `filePid` | 均必填 | `null` |
+| `/api/file/createDownloadUrl/{fileId}` | 是 | POST | `fileId` | 必填且必须是文件非目录 | `String`（下载码） |
+| `/api/file/download/{code}` | 否 | GET | `code` | 必填 | 文件流下载 |
+| `/api/file/delFile` | 是 | POST | `fileIds` | 必填，逗号分隔 | `null` |
+| `/api/file/batchDownload/{fileIds}` | 是 | GET | `fileIds` | 必填，逗号分隔 | ZIP 文件流 |
+
+联调注意：
+
+- `/api/file/newFoloder` 为后端现有拼写，前后端需保持一致。
+- `uploadedChunks` 接口后端实际参数是 `fileId + filePid`，不是 `fileMd5`。
+
+## 8.7 分享模块接口明细（`ShareController` + `WebShareController`）
+
+用户侧分享管理（`/api/share`）：
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/share/loadShareList` | 是 | POST | `FileShareQuery` | 支持分页/时间/条件 | `PaginationResultVO<FileShare>` |
+| `/api/share/shareFile` | 是 | POST | `fileId` `validType` `code` | `validType`：`0/1/2/3` | `FileShare` |
+| `/api/share/cancelShare` | 是 | POST | `shareIds` | 必填，逗号分隔 | `null` |
+| `/api/share/getShareUrl` | 是 | POST | `shareId` | 必填 | `{ shareUrl, code, shareId }` |
+| `/api/share/checkShareStatus` | 是 | POST | `shareId` | 必填 | `{ shareId, fileName, shareTime, expireTime, showCount, validType, status }` |
+
+访客侧分享访问（`/api/showShare`）：
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/showShare/getShareLoginInfo` | 否 | POST | `shareId` | 必填 | `ShareInfoVO` 或 `null` |
+| `/api/showShare/getShareInfo` | 否 | POST | `shareId` | 必填 | `ShareInfoVO` |
+| `/api/showShare/checkShareCode` | 否 | POST | `shareId` `code` | 必填 | `null` |
+| `/api/showShare/loadFileList` | 否 | POST | `shareId` `filePid` | `shareId` 必填 | `PaginationResultVO<FileInfoVO>` |
+| `/api/showShare/getFolderInfo` | 否 | POST | `shareId` `path` | 必填 | `List<FolderVO>` |
+| `/api/showShare/getFile/{shareId}/{fileId}` | 否 | GET | 路径参数 | 需通过分享会话校验 | 文件流 |
+| `/api/showShare/getImage/{shareId}/{imageFolder}/{imageName}` | 否 | GET | 路径参数 | 需通过分享会话校验 | 图片流 |
+| `/api/showShare/ts/getVideoInfo/{shareId}/{fileId}` | 否 | GET | 路径参数 | 需通过分享会话校验 | 视频流 |
+| `/api/showShare/createDownloadUrl/{shareId}/{fileId}` | 否 | POST | 路径参数 | 必填 | `String`（下载码） |
+| `/api/showShare/download/{code}` | 否 | GET | `code` | 必填 | 文件流下载 |
+| `/api/showShare/saveShare` | 是 | POST | `shareId` `shareFileIds` `myFolderId` | 必填；禁止保存自己分享的文件 | `null` |
+
+## 8.8 回收站与管理端接口明细
+
+回收站（`/api/recycle`）：
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/recycle/loadRecycleList` | 是 | POST | `pageNo` `pageSize` | 分页参数可选 | `PaginationResultVO<FileInfoVO>` |
+| `/api/recycle/recoverFile` | 是 | POST | `fileIds` | 必填，逗号分隔 | `null` |
+| `/api/recycle/delFile` | 是 | POST | `fileIds` | 必填，逗号分隔 | `null` |
+
+管理端（`/api/admin`，均需管理员）：
+
+| 接口 | 鉴权 | 推荐请求方式 | 关键参数 | 参数约束 | 返回 `data` |
+|---|---|---|---|---|---|
+| `/api/admin/getSysSettings` | 管理员 | POST | - | 需 admin | `SysSettingsDto` |
+| `/api/admin/saveSysSettings` | 管理员 | POST | `registerEmailTitle` `registerEmailContent` `userInitUseSpace` | 均必填 | `null` |
+| `/api/admin/loadUserList` | 管理员 | POST | `UserInfoQuery` | 分页/条件查询 | `PaginationResultVO<UserInfoVO>` |
+| `/api/admin/updateUserStatus` | 管理员 | POST | `userId` `status` | 均必填 | `null` |
+| `/api/admin/updateUserSpace` | 管理员 | POST | `userId` `changeSpace` | 均必填，单位 MB | `null` |
+| `/api/admin/loadFileList` | 管理员 | POST | `FileInfoQuery` | 支持按用户/文件筛选 | `PaginationResultVO<FileInfo>` |
+| `/api/admin/getFolderInfo` | 管理员 | POST | `path` | 必填 | `List<FolderVO>` |
+| `/api/admin/getFile/{userId}/{fileId}` | 管理员 | GET | 路径参数 | 必填 | 文件流 |
+| `/api/admin/getImage/{userId}/{imageFolder}/{imageName}` | 管理员 | GET | 路径参数 | 必填 | 图片流 |
+| `/api/admin/ts/getVideoInfo/{userId}/{fileId}` | 管理员 | GET | 路径参数 | 必填 | 视频流 |
+| `/api/admin/createDownloadUrl/{userId}/{fileId}` | 管理员 | POST | 路径参数 | 必填 | `String`（下载码） |
+| `/api/admin/download/{code}` | 否 | GET | `code` | 必填 | 文件流下载 |
+| `/api/admin/delFile` | 管理员 | POST | `fileIdAndUserIds` | 格式：`{userId}_{fileId},{userId}_{fileId}` | `null` |
+
+## 8.9 分析指标接口明细（`AnalyticsController`）
+
+| 接口 | 鉴权 | 请求方式 | 入参 | 返回 `data` |
+|---|---|---|---|---|
+| `/api/analytics/web-vitals` | 否 | POST JSON | `name` `value` `rating` `delta` `id` `navigationType` `page` `timestamp` `userAgent` `deviceType` `connectionType` | `null` |
+| `/api/analytics/web-vitals/stats` | 否 | GET | - | `{ totalMetrics, poorMetrics, avgLCP, avgINP, avgCLS, avgFCP, avgTTFB }` |
+
+## 8.10 查询对象字段（联调必须对齐）
+
+基础分页对象（`BaseParam`）：
+
+| 字段 | 类型 | 默认值 | 说明 |
+|---|---|---|---|
+| `pageNo` | Integer | `1` | 页码 |
+| `pageSize` | Integer | `15` | 每页条数 |
+| `orderBy` | String | - | 排序表达式 |
+
+`FileInfoQuery`（全字段）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `fileId` `fileIdFuzzy` | String | 文件 ID 精确/模糊 |
+| `userId` `userIdFuzzy` | String | 用户 ID 精确/模糊 |
+| `fileMd5` `fileMd5Fuzzy` | String | MD5 精确/模糊 |
+| `filePid` `filePidFuzzy` | String | 父目录 ID |
+| `fileSize` | Long | 文件大小 |
+| `fileName` `fileNameFuzzy` | String | 文件名精确/模糊 |
+| `fileCover` `fileCoverFuzzy` | String | 封面路径精确/模糊 |
+| `filePath` `filePathFuzzy` | String | 存储路径精确/模糊 |
+| `createTimeStart` `createTimeEnd` | String | 创建时间范围 |
+| `lastUpdateTimeStart` `lastUpdateTimeEnd` | String | 更新时间范围 |
+| `folderType` | Integer | `0` 文件，`1` 目录 |
+| `fileCategory` | Integer | `1` 视频，`2` 音频，`3` 图片，`4` 文档，`5` 其他 |
+| `fileType` | Integer | 文件细分类 |
+| `status` | Integer | 转码状态 |
+| `recoveryTimeStart` `recoveryTimeEnd` | String | 回收时间范围 |
+| `delFlag` | Integer | 删除标记 |
+| `fileIdArray` `filePidArray` | String[] | 批量过滤 |
+| `excludeFileIdArray` | String[] | 排除集合 |
+| `queryExpire` `queryNickName` | Boolean | 扩展查询开关 |
+
+`FileShareQuery`（全字段）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `shareId` `shareIdFuzzy` | String | 分享 ID |
+| `fileId` `fileIdFuzzy` | String | 文件 ID |
+| `userId` `userIdFuzzy` | String | 用户 ID |
+| `validType` | Integer | 有效期类型 |
+| `expireTimeStart` `expireTimeEnd` | String | 过期时间范围 |
+| `shareTimeStart` `shareTimeEnd` | String | 分享时间范围 |
+| `code` `codeFuzzy` | String | 提取码 |
+| `showCount` | Integer | 浏览次数 |
+| `queryFileName` | Boolean | 是否联表查询文件名 |
+
+`UserInfoQuery`（全字段）：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `userId` `userIdFuzzy` | String | 用户 ID |
+| `nickName` `nickNameFuzzy` | String | 昵称 |
+| `email` `emailFuzzy` | String | 邮箱 |
+| `qqAvatar` `qqAvatarFuzzy` | String | QQ 头像 |
+| `qqOpenId` `qqOpenIdFuzzy` | String | QQ OpenID |
+| `password` `passwordFuzzy` | String | 密码字段过滤 |
+| `joinTimeStart` `joinTimeEnd` | String | 注册时间范围 |
+| `lastLoginTimeStart` `lastLoginTimeEnd` | String | 登录时间范围 |
+| `status` | Integer | 用户状态 |
+| `useSpace` `totalSpace` | Long | 空间过滤条件 |
+
+## 8.11 接口变更硬性要求
+
+- 任何接口变更必须同时更新：
+  - 后端 Controller + 参数校验注解
+  - 前端 `src/services/*`
+  - 前端 `src/types/*`
+  - 文档本节
+- 保持 `ResponseVO<T>` 契约不破坏兼容。
+- 新增错误码时同步更新：
+  - 后端 `ResponseCodeEnum`
+  - 前端 `src/locales/*` 的错误文案映射
+
+## 8.12 联调请求样例（生产可复用）
+
+登录：
+
+```http
+POST /api/login
+Content-Type: application/x-www-form-urlencoded
+
+email=test@example.com&password=Abcd1234!&checkCode=8K9QX
+```
+
+分片上传（首片）：
+
+```http
+POST /api/file/uploadFile
+Content-Type: multipart/form-data
+
+file=<binary>&fileName=demo.mp4&filePid=0&fileMd5=1bc29b36f623ba82aaf6724fd3b16718&chunkIndex=0&chunks=20&fileId=TMP_001
+```
+
+分享提取码校验：
+
+```http
+POST /api/showShare/checkShareCode
+Content-Type: application/x-www-form-urlencoded
+
+shareId=SHARE_001&code=K3F8P
+```
 
 ---
 
-## 10. 测试规范
+## 9. 数据文档规范（详细）
 
-### 10.1 单元测试
+## 9.1 数据库迁移机制
 
-#### 10.1.1 测试覆盖率
+- 数据库类型：PostgreSQL（`spring.datasource.url=jdbc:postgresql://...`）
+- 迁移工具：Flyway
+- 迁移目录：`backend/src/main/resources/db/migration/`
+- 命名规则：`V{版本号}__{描述}.sql`
+- 执行规则：历史脚本只读，不改历史，只追加。
 
-- 核心业务代码覆盖率 > 80%
-- Service 层覆盖率 > 90%
-- Utils 工具类覆盖率 > 95%
-- Controller 层覆盖率 > 70%
+当前版本链：
 
-#### 10.1.2 测试框架
+- `V1__Initial_Schema.sql`
+- `V2__Add_Performance_Indexes_For_File_Cleanup.sql`
+- `V3__Add_Share_Table_And_Performance_Indexes.sql`
+- `V4__Add_File_Query_Indexes.sql`
+- `V5__Add_Tenant_Support.sql`
+- `V6__Add_User_QQ_OpenId_Index.sql`
+- `V7__Performance_Optimization_Indexes.sql`
+- `V8__Add_Share_Access_Log.sql`
+- `V9__Add_Web_Vitals_Metrics_Table.sql`
 
-- JUnit 5: 单元测试框架
-- Mockito: Mock 框架
-- AssertJ: 断言库
-- Spring Boot Test: 集成测试
+## 9.2 表关系总览
 
-#### 10.1.3 测试规范
+| 关系 | 约束 | 来源迁移 | 说明 |
+|---|---|---|---|
+| `file_info.user_id -> user_info.user_id` | `ON DELETE CASCADE` | V1 | 用户删除时级联删除文件记录 |
+| `file_share.file_id -> file_info.file_id` | `ON DELETE CASCADE` | V3 | 文件删除时级联删除分享 |
+| `file_share.user_id -> user_info.user_id` | `ON DELETE CASCADE` | V3 | 用户删除时级联删除分享 |
+| `user_info.tenant_id -> tenant_info.tenant_id` | `fk_user_tenant` | V5 | 用户租户绑定 |
+| `file_info.tenant_id -> tenant_info.tenant_id` | `fk_file_tenant` | V5 | 文件租户绑定 |
+| `file_share.tenant_id -> tenant_info.tenant_id` | `fk_share_tenant` | V5 | 分享租户绑定 |
 
-- 测试类命名: `XxxTest`
-- 测试方法命名: `testXxx_条件_预期结果`
-- 使用 `@BeforeEach` 初始化测试数据
-- 使用 `@AfterEach` 清理测试数据
-- 测试方法独立，不依赖执行顺序
-- 使用 Mock 隔离外部依赖
+补充说明：
 
+- `share_access_log`、`web_vitals_metrics` 当前无外键，优先保证写入吞吐与异步落库稳定性。
 
-### 10.2 属性测试 (Property-Based Testing)
+## 9.3 核心表字段字典
 
-#### 10.2.1 适用场景
+### 9.3.1 `user_info`
 
-- 数据验证逻辑 (邮箱、手机号、文件名)
-- 算法正确性 (加密、压缩、编码)
-- 边界条件测试 (空值、极值、特殊字符)
-- 幂等性测试 (重复操作结果一致)
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `user_id` | `VARCHAR(20)` | PK, NOT NULL | - | 用户 ID |
+| `nick_name` | `VARCHAR(20)` | NOT NULL | - | 昵称 |
+| `email` | `VARCHAR(50)` | UNIQUE, NOT NULL | - | 邮箱 |
+| `password` | `VARCHAR(100)` | NOT NULL | - | 密码哈希 |
+| `avatar` | `VARCHAR(150)` | NULL | NULL | 头像 |
+| `join_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 注册时间 |
+| `last_login_time` | `TIMESTAMP` | NULL | NULL | 最近登录时间 |
+| `status` | `SMALLINT` | NULL | `1` | 用户状态（0禁用/1启用） |
+| `use_space` | `BIGINT` | NULL | `0` | 已用空间（字节） |
+| `total_space` | `BIGINT` | NULL | `5368709120` | 总空间（字节） |
+| `is_admin` | `BOOLEAN` | NULL | `FALSE` | 是否管理员 |
+| `tenant_id` | `VARCHAR(10)` | FK | `'default'` | 租户 ID |
+| `qq_open_id` | `VARCHAR(64)` | NULL | NULL | QQ OpenID |
+| `qq_avatar` | `VARCHAR(255)` | NULL | NULL | QQ 头像 |
 
-#### 10.2.2 测试框架
+表级规则：
 
-- jqwik: Java 属性测试框架
-- 支持自动生成测试数据
-- 支持收缩 (Shrinking) 找到最小失败用例
+- `email` 全局唯一（唯一索引约束）。
+- `is_admin` 仅用于权限判断，不代表租户管理员角色扩展。
 
-#### 10.2.3 测试规范
+### 9.3.2 `file_info`
 
-- 测试方法使用 `@Property` 注解
-- 使用 `@ForAll` 生成测试数据
-- 定义属性不变量 (Invariant)
-- 验证前置条件和后置条件
-- 测试执行次数 > 1000 次
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `file_id` | `VARCHAR(20)` | PK, NOT NULL | - | 文件 ID |
+| `user_id` | `VARCHAR(20)` | FK, NOT NULL | - | 所属用户 |
+| `file_md5` | `VARCHAR(32)` | NULL | NULL | 文件 MD5 |
+| `file_pid` | `VARCHAR(20)` | NULL | NULL | 父目录 ID |
+| `file_size` | `BIGINT` | NULL | NULL | 文件大小（字节） |
+| `file_name` | `VARCHAR(200)` | NOT NULL | - | 文件名 |
+| `file_cover` | `VARCHAR(100)` | NULL | NULL | 封面路径 |
+| `file_path` | `VARCHAR(200)` | NULL | NULL | 存储路径 |
+| `create_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 创建时间 |
+| `last_update_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 更新时间 |
+| `folder_type` | `SMALLINT` | NULL | `0` | 0文件/1目录 |
+| `file_category` | `SMALLINT` | NULL | NULL | 文件分类 |
+| `file_type` | `SMALLINT` | NULL | NULL | 文件类型 |
+| `status` | `SMALLINT` | NULL | `2` | 转码状态 |
+| `del_flag` | `SMALLINT` | NULL | `0` | 删除标志 |
+| `recovery_time` | `TIMESTAMP` | NULL | NULL | 回收时间 |
+| `tenant_id` | `VARCHAR(10)` | FK | `'default'` | 租户 ID |
 
-#### 10.2.4 测试示例场景
+表级规则：
 
-- 文件名验证: 任意合法文件名都能通过验证
-- MD5 计算: 相同内容的文件 MD5 相同
-- 分片合并: 合并后的文件与原文件一致
-- 缓存一致性: 缓存数据与数据库数据一致
-- 空间计算: 上传文件后空间增加，删除文件后空间减少
+- 软删除模型依赖 `del_flag`，业务读取“正常文件”使用 `FileDelFlagEnums.USING`（值 `2`）。
+- 秒传依赖 `file_md5 + status` 查询链路，必须保留对应索引。
+- 文件/目录同表存储，`folder_type` 区分。
 
-### 10.3 集成测试
+### 9.3.3 `file_share`
 
-#### 10.3.1 测试范围
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `share_id` | `VARCHAR(20)` | PK, NOT NULL | - | 分享 ID |
+| `file_id` | `VARCHAR(20)` | FK, NOT NULL | - | 文件 ID |
+| `user_id` | `VARCHAR(20)` | FK, NOT NULL | - | 分享人 |
+| `valid_type` | `SMALLINT` | NULL | `0` | 有效期类型（0/1/2/3） |
+| `expire_time` | `TIMESTAMP` | NULL | NULL | 过期时间 |
+| `share_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 分享时间 |
+| `code` | `VARCHAR(10)` | NULL | NULL | 提取码 |
+| `show_count` | `INT` | NULL | `0` | 浏览次数 |
+| `status` | `SMALLINT` | NULL | `0` | 0有效/1过期/2取消 |
+| `tenant_id` | `VARCHAR(10)` | FK | `'default'` | 租户 ID |
 
-- API 接口测试
-- 数据库操作测试
-- 缓存操作测试
-- 文件操作测试
-- 第三方服务集成测试
+表级规则：
 
-#### 10.3.2 测试环境
+- `code` 允许为空；业务层为空时自动生成 5 位随机提取码。
+- `show_count` 在提取码校验成功后递增（`checkShareCode` 流程）。
 
-- 使用 H2 内存数据库或 Testcontainers
-- 使用 Embedded Redis
-- 使用 Mock Server 模拟第三方服务
-- 测试数据隔离 (使用测试租户)
+### 9.3.4 `email_code`
 
-#### 10.3.3 测试规范
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `email` | `VARCHAR(150)` | PK 组合键, NOT NULL | - | 邮箱 |
+| `code` | `VARCHAR(10)` | PK 组合键, NOT NULL | - | 验证码 |
+| `create_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 创建时间 |
+| `status` | `SMALLINT` | NULL | `0` | 0未使用/1已使用 |
 
-- 使用 `@SpringBootTest` 启动完整上下文
-- 使用 `@Transactional` 自动回滚
-- 使用 `@Sql` 初始化测试数据
-- 测试完整业务流程
-- 验证数据库状态变化
+### 9.3.5 `tenant_info`
 
-### 10.4 性能测试
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `tenant_id` | `VARCHAR(10)` | PK, NOT NULL | - | 租户 ID |
+| `tenant_name` | `VARCHAR(150)` | NOT NULL | - | 租户名称 |
+| `tenant_code` | `VARCHAR(50)` | UNIQUE, NOT NULL | - | 租户编码 |
+| `storage_quota` | `BIGINT` | NULL | `10737418240` | 存储配额（字节） |
+| `user_quota` | `INTEGER` | NULL | `100` | 用户配额 |
+| `status` | `INTEGER` | NULL | `1` | 0禁用/1启用 |
+| `create_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 创建时间 |
+| `expire_time` | `TIMESTAMP` | NULL | NULL | 到期时间 |
 
-#### 10.4.1 测试工具
+表级规则：
 
-- JMeter: 压力测试
-- Gatling: 性能测试
-- JMH: 微基准测试
+- V5 会插入默认租户 `default`；初始化数据的 `storage_quota=107374182400`（100GB），与字段默认值 10GB 不同。
 
-#### 10.4.2 测试场景
+### 9.3.6 `share_access_log`
 
-- 并发上传测试 (1000 并发)
-- 并发下载测试 (5000 并发)
-- 分享访问测试 (10000 并发)
-- 文件列表查询测试 (5000 并发)
-- 缓存性能测试
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `id` | `BIGSERIAL` | PK, NOT NULL | 自增 | 主键 |
+| `share_id` | `VARCHAR(20)` | NOT NULL | - | 分享 ID |
+| `file_id` | `VARCHAR(20)` | NULL | NULL | 文件 ID |
+| `visitor_id` | `VARCHAR(32)` | NULL | NULL | 访问者用户 ID |
+| `visitor_ip` | `VARCHAR(50)` | NULL | NULL | 访问 IP |
+| `visitor_user_agent` | `VARCHAR(500)` | NULL | NULL | UA |
+| `access_type` | `VARCHAR(20)` | NOT NULL | - | 访问类型（VIEW/DOWNLOAD/CHECK_CODE） |
+| `access_time` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 访问时间 |
+| `success` | `BOOLEAN` | NULL | `true` | 是否成功 |
+| `error_message` | `VARCHAR(500)` | NULL | NULL | 错误信息 |
 
-#### 10.4.3 性能指标
+### 9.3.7 `web_vitals_metrics`
 
-- QPS: 每秒请求数 > 10000
-- 响应时间: P95 < 500ms, P99 < 1000ms
-- 错误率: < 0.1%
-- CPU 使用率: < 70%
-- 内存使用率: < 80%
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `id` | `BIGINT` | PK, NOT NULL | Identity | 主键 |
+| `metric_name` | `VARCHAR(20)` | NOT NULL | - | 指标名（LCP/INP/CLS/FCP/TTFB） |
+| `metric_value` | `DOUBLE PRECISION` | NOT NULL | - | 指标值 |
+| `rating` | `VARCHAR(20)` | NOT NULL | - | 评级（good/needs-improvement/poor） |
+| `page_url` | `VARCHAR(500)` | NULL | NULL | 页面地址 |
+| `user_agent` | `VARCHAR(500)` | NULL | NULL | 浏览器 UA |
+| `user_id` | `BIGINT` | NULL | NULL | 登录用户 ID |
+| `session_id` | `VARCHAR(100)` | NULL | NULL | 会话 ID |
+| `country` | `VARCHAR(50)` | NULL | NULL | 国家 |
+| `device_type` | `VARCHAR(20)` | NULL | NULL | 设备类型 |
+| `connection_type` | `VARCHAR(20)` | NULL | NULL | 网络类型 |
+| `created_at` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 采集时间 |
+
+### 9.3.8 `performance_summary`
+
+| 字段 | 类型 | 约束 | 默认值 | 说明 |
+|---|---|---|---|---|
+| `id` | `BIGINT` | PK, NOT NULL | Identity | 主键 |
+| `metric_name` | `VARCHAR(20)` | NOT NULL | - | 指标名 |
+| `period_type` | `VARCHAR(10)` | NOT NULL | - | 聚合周期（hourly/daily/weekly） |
+| `period_start` | `TIMESTAMP` | NOT NULL | - | 窗口开始 |
+| `period_end` | `TIMESTAMP` | NOT NULL | - | 窗口结束 |
+| `sample_count` | `INT` | NOT NULL | `0` | 样本数 |
+| `avg_value` | `DOUBLE PRECISION` | NULL | NULL | 均值 |
+| `median_value` | `DOUBLE PRECISION` | NULL | NULL | 中位数 |
+| `p75_value` | `DOUBLE PRECISION` | NULL | NULL | P75 |
+| `p95_value` | `DOUBLE PRECISION` | NULL | NULL | P95 |
+| `good_count` | `INT` | NULL | `0` | good 数 |
+| `needs_improvement_count` | `INT` | NULL | `0` | needs-improvement 数 |
+| `poor_count` | `INT` | NULL | `0` | poor 数 |
+| `device_type` | `VARCHAR(20)` | NULL | NULL | 设备维度 |
+| `created_at` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 创建时间 |
+| `updated_at` | `TIMESTAMP` | NULL | `CURRENT_TIMESTAMP` | 更新时间（触发器自动改写） |
+
+表级规则：
+
+- V9 已创建 `updated_at` 自动维护触发器：`update_performance_summary_updated_at`。
+- 当前仓库未见对应独立 PO/Service 完整写链路，作为预聚合表保留。
+
+## 9.4 枚举值字典（数据库语义）
+
+- `file_info.folder_type`：`0` 文件，`1` 目录
+- `file_info.status`：`0` 转码中，`1` 转码失败，`2` 可用
+- `file_info.del_flag`：`0` 删除，`1` 回收站，`2` 正常
+- `file_share.valid_type`：`0` 1天，`1` 7天，`2` 30天，`3` 永久
+- `file_share.status`：`0` 有效，`1` 过期，`2` 取消
+- `user_info.status`：`0` 禁用，`1` 启用
+
+语义兼容说明（必须关注）：
+
+- 早期迁移注释与当前业务代码对 `file_info.del_flag` 存在历史差异；联调与 SQL 以 `FileDelFlagEnums` 为准。
+- 早期注释曾出现 `file_info.status=3` 的描述，当前业务枚举只使用 `0/1/2`。
+
+## 9.5 全量索引清单（迁移脚本事实）
+
+| 索引名 | 表 | 字段/条件 | 来源 |
+|---|---|---|---|
+| `idx_file_user` | `file_info` | `(user_id)` | V1 |
+| `idx_file_pid` | `file_info` | `(file_pid)` | V1 |
+| `idx_file_md5` | `file_info` | `(file_md5)` | V1 |
+| `idx_user_pid` | `file_info` | `(user_id, file_pid)` | V1 |
+| `idx_file_info_del_flag_recovery_time` | `file_info` | `(del_flag, recovery_time)` | V2 |
+| `idx_file_info_user_del_pid_last_update` | `file_info` | `(user_id, del_flag, file_pid, last_update_time DESC)` | V2 |
+| `idx_file_info_user_del_category_last_update` | `file_info` | `(user_id, del_flag, file_category, last_update_time DESC)` | V2 |
+| `idx_file_info_md5_status` | `file_info` | `(file_md5, status)` | V2 |
+| `idx_share_user_status` | `file_share` | `(user_id, status, share_time DESC)` | V3 |
+| `idx_share_file` | `file_share` | `(file_id)` | V3 |
+| `idx_share_status_expire` | `file_share` | `(status, expire_time)` | V3 |
+| `idx_file_info_user_status_del` | `file_info` | `(user_id, status, del_flag)` | V3 |
+| `idx_file_info_user_pid_name` | `file_info` | `(user_id, file_pid, file_name)` | V3 |
+| `idx_file_info_user_del_size` | `file_info` | `(user_id, del_flag, file_size)` | V3 |
+| `idx_file_user_pid_del` | `file_info` | `(user_id, file_pid, del_flag) WHERE del_flag = 2` | V4 |
+| `idx_file_user_category_time` | `file_info` | `(user_id, file_category, create_time DESC) WHERE del_flag = 2` | V4 |
+| `idx_file_recycle` | `file_info` | `(user_id, recovery_time DESC) WHERE del_flag = 1` | V4 |
+| `idx_share_user_time` | `file_share` | `(user_id, share_time DESC)` | V4 |
+| `idx_user_email` | `user_info` | `(email) WHERE status = 1` | V4 |
+| `idx_user_tenant` | `user_info` | `(tenant_id)` | V5 |
+| `idx_file_tenant` | `file_info` | `(tenant_id)` | V5 |
+| `idx_share_tenant` | `file_share` | `(tenant_id)` | V5 |
+| `idx_user_qq_openid` | `user_info` | `(qq_open_id) WHERE qq_open_id IS NOT NULL` | V6 |
+| `idx_file_md5_status_user` | `file_info` | `(file_md5, status, user_id) WHERE status = 2 AND file_md5 IS NOT NULL` | V7 |
+| `idx_file_user_status_size` | `file_info` | `(user_id, status, file_size) WHERE del_flag = 0` | V7 |
+| `idx_share_expire` | `file_share` | `(expire_time, valid_type) WHERE valid_type = 1` | V7 |
+| `idx_share_access_log_share_id` | `share_access_log` | `(share_id)` | V8 |
+| `idx_share_access_log_visitor_id` | `share_access_log` | `(visitor_id)` | V8 |
+| `idx_share_access_log_access_time` | `share_access_log` | `(access_time)` | V8 |
+| `idx_wv_metric_name` | `web_vitals_metrics` | `(metric_name)` | V9 |
+| `idx_wv_rating` | `web_vitals_metrics` | `(rating)` | V9 |
+| `idx_wv_created_at` | `web_vitals_metrics` | `(created_at)` | V9 |
+| `idx_wv_user_id` | `web_vitals_metrics` | `(user_id)` | V9 |
+| `idx_wv_device_type` | `web_vitals_metrics` | `(device_type)` | V9 |
+| `idx_ps_unique_period` | `performance_summary` | `(metric_name, period_type, period_start, device_type)` UNIQUE | V9 |
+| `idx_ps_period_start` | `performance_summary` | `(period_start)` | V9 |
+
+## 9.6 Redis 数据字典（详细）
+
+| Key | Value 结构 | TTL | 写入点 | 读取点 |
+|---|---|---|---|---|
+| `easypan:download:{code}` | `DownloadFileDto{downloadCode,filePath,fileName}` | 5 分钟 | `saveDownloadCode` | `getDownloadCode` |
+| `easypan:syssetting:` | `SysSettingsDto` | 30 分钟 | `saveSysSettingsDto` | `getSysSettingsDto` |
+| `easypan:user:spaceuse:{userId}` | `UserSpaceDto` | 6 小时 | `saveUserSpaceUse/resetUserSpaceUse` | `getUserSpaceUse` |
+| `easypan:user:file:temp:{userId}{fileId}` | 分片累计大小（Long） | 1 小时 | `saveFileTempSize` | `getFileTempSize` |
+| `easypan:jwt:blacklist:{token}` | 空值 | Token 剩余有效期 | `addBlacklistToken` | `isTokenBlacklisted` |
+| `easypan:jwt:refresh:{userId}` | `refreshToken` 字符串 | 登录时写入（约 30 天） | `saveRefreshToken` | `getRefreshToken/validateRefreshToken` |
+
+值结构补充：
+
+- `DownloadFileDto`：`downloadCode` `filePath` `fileName`
+- `SysSettingsDto`：`registerEmailTitle` `registerEmailContent` `userInitUseSpace`
+- `UserSpaceDto`：`useSpace` `totalSpace`
+
+## 9.7 数据生命周期任务
+
+- 回收站清理任务：`FileCleanTask`
+  - 触发方式：`fixedDelay`（默认 180000ms）
+  - 作用：分批清理过期回收站文件并释放空间
+- 分片清理任务：`ChunkCleanupTask`
+  - 触发时间：每天 `03:00`
+  - 作用：清理过期上传分片目录与状态键
+- 缓存预热任务：`CacheWarmupService`
+  - 触发时间：每天 `02:00`
+  - 作用：预热热点缓存，降低冷启动抖动
+
+## 9.8 数据变更要求
+
+- 任何表结构变更必须新增 Flyway 脚本。
+- 变更必须包含：目的、影响范围、回滚说明、验证 SQL。
+- 涉及索引变更必须附带 `EXPLAIN` 前后对比。
 
 ---
 
-## 11. 部署和运维规范
+## 10. 开发规范（工程化）
 
-### 11.1 环境配置
+## 10.1 后端规范
 
-#### 11.1.1 环境划分
+- Controller 对外接口优先使用：
+  - `@GlobalInterceptor`（登录/管理员/参数校验）
+  - `@VerifyParam`（必填、长度、正则）
+- 统一响应：`ABaseController.getSuccessResponseVO`
+- 统一异常出口：`AGlobalExceptionHandlerController`
+- 文件访问必须经过 `@FileAccessCheck`
+- 上传安全校验必须保留：
+  - 扩展名黑名单（`FileTypeValidator.isDangerousFileType`）
+  - Magic Number 校验（`FileTypeValidator.validateFileType`）
+  - 并发上传限流（`UploadRateLimiter`）
+- 密码策略：
+  - 注册/重置使用 BCrypt
+  - 登录兼容旧 MD5 并自动升级为 BCrypt
 
-| 环境 | 用途 | 配置 |
-|------|------|------|
-| dev | 开发环境 | 本地开发，使用 H2/MySQL |
-| test | 测试环境 | 功能测试，使用独立数据库 |
-| staging | 预发布环境 | 生产环境镜像，压力测试 |
-| prod | 生产环境 | 正式环境，高可用配置 |
+## 10.2 前端规范
 
-#### 11.1.2 配置管理
+- API 调用统一经 `src/utils/Request.ts`（含 Token 自动刷新）。
+- 业务请求统一收敛在 `src/services/*`，禁止页面散落拼接 URL。
+- 所有接口类型定义必须落在 `src/types/*`。
+- 新增页面文案同步更新 `src/locales/zh-CN.ts` 与 `src/locales/en-US.ts`。
+- 路由守卫权限逻辑统一维护在 `src/router/index.ts`。
 
-- 使用 Spring Profiles 管理多环境配置
-- 敏感配置使用 Jasypt 加密
-- 配置文件版本控制 (排除敏感信息)
-- 使用配置中心 (Apollo/Nacos)
+## 10.3 数据库规范
 
-#### 11.1.3 环境变量
+- 禁止手工改库绕过 Flyway。
+- SQL 变更优先幂等写法：`IF NOT EXISTS`。
+- 大字段/大表变更必须附带性能评估和回滚方案。
 
-- 数据库连接信息
-- Redis 连接信息
-- JWT 密钥
-- 文件存储路径
-- 第三方服务密钥
+## 10.4 日志规范
 
-### 11.2 部署方式
-
-#### 11.2.1 Docker 部署
-
-- 使用多阶段构建减小镜像体积
-- 基础镜像: openjdk:21-jdk-slim
-- 暴露端口: 8080 (应用), 9090 (监控)
-- 挂载卷: 日志目录、文件存储目录
-- 健康检查: /actuator/health
-
-#### 11.2.2 Docker Compose 部署
-
-- 一键启动所有服务
-- 包含: 应用、MySQL、Redis、Nginx
-- 使用网络隔离
-- 使用卷持久化数据
-
-#### 11.2.3 Kubernetes 部署
-
-- 使用 Deployment 管理应用
-- 使用 Service 暴露服务
-- 使用 ConfigMap 管理配置
-- 使用 Secret 管理敏感信息
-- 使用 PVC 持久化存储
-- 使用 HPA 自动扩缩容
-
-### 11.3 发布流程
-
-#### 11.3.1 发布前检查
-
-- 代码审查通过
-- 单元测试通过 (覆盖率 > 80%)
-- 集成测试通过
-- 性能测试通过
-- 安全扫描通过
-- 数据库迁移脚本准备
-
-#### 11.3.2 发布步骤
-
-1. 备份数据库
-2. 执行数据库迁移脚本
-3. 构建 Docker 镜像
-4. 推送镜像到仓库
-5. 更新 Kubernetes 配置
-6. 滚动更新应用
-7. 健康检查
-8. 验证核心功能
-9. 监控告警
-
-#### 11.3.3 回滚策略
-
-- 保留最近 3 个版本的镜像
-- 发现问题立即回滚
-- 回滚数据库 (如果需要)
-- 通知相关人员
-- 分析问题原因
-
-### 11.4 故障排查
-
-#### 11.4.1 日志查看
-
-- 应用日志: `/var/log/easypan/app.log`
-- 错误日志: `/var/log/easypan/error.log`
-- 访问日志: `/var/log/nginx/access.log`
-- 使用 ELK 查询日志
-- 使用 traceId 追踪请求链路
-
-#### 11.4.2 性能分析
-
-- 使用 JProfiler 分析 CPU 和内存
-- 使用 Arthas 在线诊断
-- 使用 Prometheus + Grafana 查看监控指标
-- 使用 Slow Query Log 分析慢查询
-- 使用 Redis Monitor 分析缓存命中率
-
-#### 11.4.3 常见问题
-
-| 问题 | 原因 | 解决方案 |
-|------|------|---------|
-| 服务启动失败 | 端口占用、配置错误 | 检查端口、配置文件 |
-| 接口超时 | 数据库慢查询、缓存失效 | 优化 SQL、检查缓存 |
-| 内存溢出 | 内存泄漏、大对象 | 分析堆转储、优化代码 |
-| CPU 100% | 死循环、大量计算 | 分析线程栈、优化算法 |
-| 磁盘满 | 日志过多、文件过多 | 清理日志、归档文件 |
+- 使用结构化日志（JSON）和文本日志双输出。
+- 日志文件路径：`{project.folder}/logs/`
+- 默认滚动策略：按天+大小滚动，保留 30 天（见 `logback-spring.xml`）。
+- 禁止打印密码、Token、邮箱验证码、密钥。
 
 ---
 
-## 12. 开发工作流
+## 11. 安全基线与威胁模型
 
-### 12.1 Agent 协作流程
+在处理“用户数据/权限/认证/分享”相关代码前，先明确以下威胁并给出防护措施：
 
-#### 12.1.1 需求分析阶段
+1. 认证绕过  
+- 风险：未登录访问受限接口。  
+- 防护：`@GlobalInterceptor(checkLogin/checkAdmin)` + JWT 黑名单校验。  
 
-1. 产品经理提出需求
-2. 技术负责人评审需求
-3. 拆分任务和估算工作量
-4. 分配任务给开发人员
+2. 横向越权/租户越权  
+- 风险：用户读取或下载他人文件。  
+- 防护：`@FileAccessCheck`、`userId` 绑定查询、`X-Tenant-Id` 与 `TenantContextHolder`。  
 
-#### 12.1.2 开发阶段
+3. 恶意上传与存储污染  
+- 风险：脚本木马/伪造文件类型上传。  
+- 防护：扩展名黑名单 + 文件头校验 + 上传限流 + 分片校验。  
 
-1. 创建功能分支 (feature/xxx)
-2. 编写代码和单元测试
-3. 本地测试通过
-4. 提交代码并推送到远程
-5. 创建 Pull Request
+红线（不可违反）：
 
-#### 12.1.3 代码审查阶段
-
-1. 自动化检查 (CI/CD)
-   - 代码格式检查 (Checkstyle)
-   - 单元测试 (JUnit)
-   - 代码覆盖率 (JaCoCo)
-   - 安全扫描 (SonarQube)
-2. 人工审查
-   - 代码规范
-   - 业务逻辑
-   - 性能优化
-   - 安全问题
-3. 审查通过后合并到主分支
-
-#### 12.1.4 测试阶段
-
-1. 部署到测试环境
-2. 功能测试
-3. 集成测试
-4. 性能测试
-5. 安全测试
-
-#### 12.1.5 发布阶段
-
-1. 部署到预发布环境
-2. 验证核心功能
-3. 部署到生产环境
-4. 监控告警
-5. 验证上线效果
-
-### 12.2 分支管理
-
-#### 12.2.1 分支策略
-
-- `main`: 主分支，保护分支，只能通过 PR 合并
-- `develop`: 开发分支，日常开发基于此分支
-- `feature/xxx`: 功能分支，开发新功能
-- `bugfix/xxx`: 修复分支，修复 Bug
-- `hotfix/xxx`: 热修复分支，紧急修复生产问题
-- `release/x.x.x`: 发布分支，准备发布
-
-#### 12.2.2 分支命名规范
-
-- 功能分支: `feature/用户认证模块`
-- 修复分支: `bugfix/修复文件上传失败`
-- 热修复分支: `hotfix/修复登录异常`
-- 发布分支: `release/v1.0.0`
-
-#### 12.2.3 提交规范
-
-- 使用 Conventional Commits 规范
-- 格式: `<type>(<scope>): <subject>`
-- Type: feat, fix, docs, style, refactor, test, chore
-- 示例: `feat(auth): 添加 QQ 登录功能`
-
-### 12.3 代码审查
-
-#### 12.3.1 审查清单
-
-- [ ] 代码符合编码规范
-- [ ] 业务逻辑正确
-- [ ] 异常处理完善
-- [ ] 日志记录合理
-- [ ] 单元测试覆盖
-- [ ] 性能优化
-- [ ] 安全问题
-- [ ] 注释清晰
-
-#### 12.3.2 审查重点
-
-- 核心业务逻辑
-- 数据库操作 (SQL 注入、性能)
-- 缓存使用 (一致性、过期时间)
-- 异常处理 (是否捕获、是否记录)
-- 并发安全 (线程安全、分布式锁)
-- 资源释放 (连接、文件、流)
+- 禁止执行未审计远程脚本（例如 `curl | bash`）。
+- 禁止泄露任何敏感配置到日志、PR、Issue。
+- 禁止未经授权执行破坏性命令（删卷、清库、强推等）。
 
 ---
 
-## 附录
+## 12. 质量门禁与验证命令
 
-### A. 常用命令
+## 12.1 CI 事实（`.github/workflows/build.yml`）
 
-#### A.1 Maven 命令
+- `backend-build`：`mvn -DskipTests clean compile` + `mvn test`
+- `frontend-build`：`npm ci` + `npm run type-check` + `npm run build`
 
-```bash
-# 编译
-mvn clean compile
+## 12.2 本地强制验证（提交前）
 
-# 测试
+```powershell
+# 1) Compose 配置合法性
+docker compose -f ops\docker\docker-compose.yml config
+
+# 2) 后端编译与测试
+cd backend
+mvn -DskipTests clean compile
 mvn test
+mvn checkstyle:check
+mvn spotbugs:check
 
-# 打包
-mvn clean package -DskipTests
+# 3) 前端类型检查、构建、Lint
+cd ..\frontend
+npm ci
+npm run type-check
+npm run build
+npm run lint
 
-# 运行
-mvn spring-boot:run
+# 4) 可选 E2E
+npx playwright test
 ```
 
-#### A.2 Docker 命令
+验证输出要求：
 
-```bash
-# 构建镜像
-docker build -t easypan:latest .
-
-# 运行容器
-docker run -d -p 8080:8080 easypan:latest
-
-# 查看日志
-docker logs -f <container_id>
-
-# 进入容器
-docker exec -it <container_id> /bin/bash
-```
-
-#### A.3 数据库命令
-
-```bash
-# 连接数据库
-mysql -h localhost -u root -p
-
-# 导出数据库
-mysqldump -u root -p easypan > easypan.sql
-
-# 导入数据库
-mysql -u root -p easypan < easypan.sql
-```
-
-### B. 参考资料
-
-- [Spring Boot 官方文档](https://spring.io/projects/spring-boot)
-- [MyBatis-Plus 官方文档](https://baomidou.com/)
-- [Vue 3 官方文档](https://vuejs.org/)
-- [Element Plus 官方文档](https://element-plus.org/)
-- [jqwik 用户指南](https://jqwik.net/docs/current/user-guide.html)
-- [阿里巴巴 Java 开发手册](https://github.com/alibaba/p3c)
+- 编译与测试命令退出码必须为 0。
+- 如有失败，必须在 PR 描述中说明原因和处置计划。
+- 禁止写“理论可行但未执行”的验收结论。
 
 ---
 
-**文档结束**
+## 13. 监控与运维规范
 
-> 本文档持续更新，如有问题请联系技术负责人。
+## 13.1 指标与健康检查
+
+- 健康检查：`/api/actuator/health`
+- 指标列表：`/api/actuator/metrics`
+- Prometheus 拉取：`/actuator/prometheus`（容器内 `backend:7090`）
+
+## 13.2 监控配置文件
+
+- Prometheus：`ops/monitoring/prometheus.yml`
+- 告警规则：`ops/monitoring/alert_rules.yml`
+- Grafana 仪表板：`ops/monitoring/grafana/dashboards/*.json`
+
+## 13.3 告警示例（已配置）
+
+- `HighAPILatency`
+- `HighErrorRate`
+- `LowCacheHitRate`
+- `HighDatabaseConnections`
+- `DatabaseConnectionPoolExhausted`
+- `RedisConnectionFailure`
+- `PostgreSQLDown`
+- `VirtualThreadStarvation`
+
+---
+
+## 14. Git 与 PR 纪律
+
+- 提交信息必须使用 Conventional Commits：
+  - `feat` `fix` `refactor` `docs` `test` `chore` `ci` `build`
+- 单个提交/PR 只做一件事，禁止功能与重构混杂。
+- PR 描述必须包含：
+  - What（做了什么）
+  - Why（为什么）
+  - How to verify（命令 + 期望结果）
+- 禁止无意义大范围格式化。
+- 禁止强推受保护分支（除非明确授权）。
+
+---
+
+## 15. Agent 执行清单（Start / During / End）
+
+## 15.1 Start
+
+- 明确需求边界、影响文件、回滚点。
+- 标记是否影响接口、数据库、部署、监控、安全。
+- 先读相关实现再动手，禁止盲改。
+
+## 15.2 During
+
+- 小步提交，每一步都做最小可验证检查。
+- 发现与预期不一致的仓库状态，先暂停并确认。
+- 不修改与任务无关文件。
+
+## 15.3 End
+
+- 汇总变更文件与行为影响。
+- 列出执行过的验证命令及结果。
+- 明确剩余风险与后续建议。
+
+---
+
+## 16. 事实来源（本文件依据）
+
+以下文件是本手册的主要事实来源，若冲突以代码为准：
+
+- `backend/pom.xml`
+- `frontend/package.json`
+- `frontend/vite.config.ts`
+- `ops/docker/docker-compose.yml`
+- `ops/docker/docker-compose.simple.yml`
+- `ops/local/setup.ps1`
+- `ops/local/startup.ps1`
+- `ops/docker/deploy_docker.ps1`
+- `ops/tools/health_check.ps1`
+- `.github/workflows/build.yml`
+- `backend/src/main/resources/application.properties`
+- `backend/src/main/resources/db/migration/*.sql`
+- `backend/src/main/java/com/easypan/controller/*.java`
+- `backend/src/main/java/com/easypan/config/*.java`
+- `backend/src/main/java/com/easypan/component/*.java`
+- `backend/src/main/java/com/easypan/entity/po/*.java`

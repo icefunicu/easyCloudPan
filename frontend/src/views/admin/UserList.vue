@@ -49,21 +49,21 @@
             :options="tableOptions"
             @row-selected="rowSelected"
           >
-            <template #avatar="{ index, row }">
+            <template #avatar="{ row }">
               <div class="avatar">
                 <Avatar :user-id="row.userId" :avatar="row.qqAvatar"></Avatar>
               </div>
             </template>
-            <template #space="{ index, row }">
+            <template #space="{ row }">
               {{ proxy.Utils.size2Str(row.useSpace) }} / {{
                 proxy.Utils.size2Str(row.totalSpace)
               }}
             </template>
-            <template #status="{ index, row }">
+            <template #status="{ row }">
               <span v-if="row.status == 1" style="color: #529b2e">启用</span>
               <span v-if="row.status == 0" style="color: #f56c62">禁用</span>
             </template>
-            <template #op="{ index, row }">
+            <template #op="{ row }">
               <span class="a-link" @click="updateSpace(row)">分配空间</span>
               <el-divider direction="vertical"></el-divider>
               <span class="a-link" @click="updateUserStatus(row)">{{
@@ -106,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance, nextTick } from "vue";
 const { proxy } = getCurrentInstance();
 
 const api = {
@@ -205,7 +205,7 @@ const dialogConfig = ref({
         {
             type: "primary",
             text: "确定",
-            click: (e) => {
+            click: () => {
                 submitForm();
             },
         },

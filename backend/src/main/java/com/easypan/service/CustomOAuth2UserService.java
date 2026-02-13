@@ -70,7 +70,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         if (user == null) {
-            user = createOAuth2User(email, nickname, avatar, registrationId, providerUserId);
+            createOAuth2User(email, nickname, avatar, registrationId, providerUserId);
             logger.info("Created new user from OAuth2 provider: {}, email: {}", registrationId, email);
         } else {
             updateLastLoginTime(user);

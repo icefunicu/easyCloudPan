@@ -5,6 +5,7 @@ import com.easypan.entity.dto.SessionShareDto;
 import com.easypan.entity.enums.PageSize;
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.entity.enums.ShareValidTypeEnums;
+import com.easypan.entity.po.FileInfo;
 import com.easypan.entity.po.FileShare;
 import com.easypan.entity.query.FileShareQuery;
 import com.easypan.entity.query.SimplePage;
@@ -42,7 +43,7 @@ public class FileShareServiceImpl implements FileShareService {
 
     @Override
     public Integer findCountByParam(FileShareQuery param) {
-        QueryWrapper qw = QueryWrapperBuilder.build(param);
+        QueryWrapper qw = QueryWrapperBuilder.build(param, false);
         return Math.toIntExact(this.fileShareMapper.selectCountByQuery(qw));
     }
 
@@ -113,6 +114,16 @@ public class FileShareServiceImpl implements FileShareService {
             share.setCode(StringTools.getRandomString(Constants.LENGTH_5));
         }
         share.setShareId(StringTools.getRandomString(Constants.LENGTH_20));
+        
+        FileInfo fileInfo = this.fileShareMapper.selectFileInfoByFileId(share.getFileId());
+        if (fileInfo != null) {
+            share.setFileName(fileInfo.getFileName());
+            share.setFolderType(fileInfo.getFolderType());
+            share.setFileCategory(fileInfo.getFileCategory());
+            share.setFileType(fileInfo.getFileType());
+            share.setFileCover(fileInfo.getFileCover());
+        }
+        
         this.fileShareMapper.insert(share);
     }
 

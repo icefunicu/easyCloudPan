@@ -20,7 +20,7 @@
               :options="tableOptions"
               @row-selected="rowSelected"
             >
-            <template #fileName="{ index, row }">
+            <template #fileName="{ row }">
               <div
                 class="file-item"
                 @mouseenter="showOp(row)"
@@ -52,7 +52,7 @@
               </span>
               </div>
             </template>
-            <template #expireTime="{ index, row }">
+            <template #expireTime="{ row }">
               {{ row.validType == 3 ? "永久" : row.expireTime }}
             </template>
           </Table>
@@ -64,7 +64,7 @@
 import useClipboard from "vue-clipboard3";
 const { toClipboard } = useClipboard();
 
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance } from "vue";
 const { proxy } = getCurrentInstance();
 
 const api = {
@@ -95,12 +95,6 @@ const columns = [
         width: 200,
     },
 ];
-
-// 搜索
-const search = () => {
-    showLoading.value = true;
-    loadDataList();
-};
 
 const tableData = ref({});
 const tableOptions = {

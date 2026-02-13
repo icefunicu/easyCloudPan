@@ -18,6 +18,7 @@
       <div v-if="folderList.length > 0" class="folder-list">
         <div
           v-for="item in folderList"
+          :key="item.fileId"
           class="folder-item"
           @click="selectFolder(item)"
         >
@@ -46,11 +47,10 @@ const dialogConfig = ref({
     buttons: [
         {
             type: "primary",
-            text: "确定",
+            text: "移动到此",
             click: (e) => {
                 folderSelect();
             },
-            text: "移动到此",
         },
     ],
 });

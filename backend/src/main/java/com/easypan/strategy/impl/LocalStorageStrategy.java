@@ -32,8 +32,9 @@ public class LocalStorageStrategy implements StorageStrategy {
         try {
             String fullPath = getFullPath(path);
             File folder = new File(new File(fullPath).getParent());
-            if (!folder.exists()) {
-                folder.mkdirs();
+            if (!folder.exists() && !folder.mkdirs()) {
+                logger.error("Failed to create directory: {}", folder.getAbsolutePath());
+                throw new BusinessException("创建目录失败");
             }
             file.transferTo(new File(fullPath));
         } catch (IOException e) {
@@ -48,10 +49,10 @@ public class LocalStorageStrategy implements StorageStrategy {
             String fullPath = getFullPath(path);
             File targetFile = new File(fullPath);
             File folder = targetFile.getParentFile();
-            if (!folder.exists()) {
-                folder.mkdirs();
+            if (folder != null && !folder.exists() && !folder.mkdirs()) {
+                logger.error("Failed to create directory: {}", folder.getAbsolutePath());
+                throw new BusinessException("创建目录失败");
             }
-            // Avoid copying if source and target are the same file
             if (file.getAbsolutePath().equals(targetFile.getAbsolutePath())) {
                 return;
             }
@@ -90,8 +91,8 @@ public class LocalStorageStrategy implements StorageStrategy {
     @Override
     public void delete(String path) {
         File file = new File(getFullPath(path));
-        if (file.exists()) {
-            file.delete();
+        if (file.exists() && !file.delete()) {
+            logger.warn("Failed to delete file: {}", file.getAbsolutePath());
         }
     }
 
@@ -116,11 +117,10 @@ public class LocalStorageStrategy implements StorageStrategy {
 
     @Override
     public void init() {
-        // Check root folder exists
         String root = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
         File rootFile = new File(root);
-        if (!rootFile.exists()) {
-            rootFile.mkdirs();
+        if (!rootFile.exists() && !rootFile.mkdirs()) {
+            logger.error("Failed to create root directory: {}", root);
         }
     }
 

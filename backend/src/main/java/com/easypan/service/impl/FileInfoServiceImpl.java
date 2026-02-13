@@ -154,7 +154,7 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     @Override
     public Integer findCountByParam(FileInfoQuery param) {
-        QueryWrapper qw = QueryWrapperBuilder.build(param);
+        QueryWrapper qw = QueryWrapperBuilder.build(param, false);
         return Math.toIntExact(this.fileInfoMapper.selectCountByQuery(qw));
     }
 
@@ -329,8 +329,9 @@ public class FileInfoServiceImpl implements FileInfoService {
             String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
             String currentUserFolderName = webUserDto.getUserId() + fileId;
             tempFileFolder = new File(tempFolderName + currentUserFolderName);
-            if (!tempFileFolder.exists()) {
-                tempFileFolder.mkdirs();
+            if (!tempFileFolder.exists() && !tempFileFolder.mkdirs()) {
+                logger.error("Failed to create temp folder: {}", tempFileFolder.getAbsolutePath());
+                throw new BusinessException("创建临时目录失败");
             }
 
             Long currentTempSize = redisComponent.getFileTempSize(webUserDto.getUserId(), fileId);
@@ -453,15 +454,17 @@ public class FileInfoServiceImpl implements FileInfoService {
             String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
             String currentUserFolderName = webUserDto.getUserId() + fileId;
             File fileFolder = new File(tempFolderName + currentUserFolderName);
-            if (!fileFolder.exists()) {
-                fileFolder.mkdirs();
+            if (!fileFolder.exists() && !fileFolder.mkdirs()) {
+                logger.error("Failed to create folder: {}", fileFolder.getAbsolutePath());
+                throw new BusinessException("创建目录失败");
             }
             String fileSuffix = StringTools.getFileSuffix(fileInfo.getFileName());
             String month = DateUtil.format(fileInfo.getCreateTime(), DateTimePatternEnum.YYYYMM.getPattern());
             String targetFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
             File targetFolder = new File(targetFolderName + "/" + month);
-            if (!targetFolder.exists()) {
-                targetFolder.mkdirs();
+            if (!targetFolder.exists() && !targetFolder.mkdirs()) {
+                logger.error("Failed to create target folder: {}", targetFolder.getAbsolutePath());
+                throw new BusinessException("创建目标目录失败");
             }
             String realFileName = currentUserFolderName + fileSuffix;
             targetFilePath = targetFolder.getPath() + "/" + realFileName;
@@ -497,13 +500,16 @@ public class FileInfoServiceImpl implements FileInfoService {
                 }
                 storageStrategy.upload(coverFile, cover);
             }
+        } catch (RuntimeException e) {
+            logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
+            transferSuccess = false;
         } catch (Exception e) {
             logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
             transferSuccess = false;
         } finally {
             FileInfo updateInfo = new FileInfo();
-            File targetFile = new File(targetFilePath);
-            updateInfo.setFileSize(targetFile.exists() ? targetFile.length() : 0L);
+            File targetFile = targetFilePath != null ? new File(targetFilePath) : null;
+            updateInfo.setFileSize(targetFile != null && targetFile.exists() ? targetFile.length() : 0L);
             updateInfo.setFileCover(cover);
             updateInfo.setStatus(
                     transferSuccess ? FileStatusEnums.USING.getStatus() : FileStatusEnums.TRANSFER_FAIL.getStatus());
@@ -574,14 +580,18 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     private void cutFile4Video(String fileId, String videoFilePath) {
         File tsFolder = new File(videoFilePath.substring(0, videoFilePath.lastIndexOf(".")));
-        if (!tsFolder.exists()) {
-            tsFolder.mkdirs();
+        if (!tsFolder.exists() && !tsFolder.mkdirs()) {
+            logger.error("Failed to create ts folder: {}", tsFolder.getAbsolutePath());
+            return;
         }
 
         String tsPath = tsFolder + "/" + Constants.TS_NAME;
         mediaTranscodeService.transcodeToTs(videoFilePath, tsPath);
         mediaTranscodeService.cutToM3u8(tsPath, tsFolder.getPath(), fileId);
-        new File(tsPath).delete();
+        File tsFile = new File(tsPath);
+        if (tsFile.exists() && !tsFile.delete()) {
+            logger.warn("Failed to delete ts file: {}", tsPath);
+        }
     }
 
     @Override

@@ -29,7 +29,7 @@
 
 <script setup>
 import AvatarUpload from "@/components/AvatarUpload.vue";
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance } from "vue";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 const { proxy } = getCurrentInstance();
 const userInfoStore = useUserInfoStore();
@@ -56,24 +56,25 @@ const dialogConfig = ref({
         {
             type: "primary",
             text: "确定",
-            click: (e) => {
+            click: () => {
                 submitForm();
             },
         },
     ],
 });
-const emit = defineEmits();
+const emit = defineEmits(["updateAvatar"]);
 const submitForm = async () => {
     if (!(formData.value.avatar instanceof File)) {
         dialogConfig.value.show = false;
         return;
     }
 
-    const result = await proxy.Request ({
+    const result = await proxy.Request({
         url: api.updateUserAvatar,
         params: {
             avatar: formData.value.avatar,
         },
+        dataType: 'file',
     });
     if (!result) {
         return;

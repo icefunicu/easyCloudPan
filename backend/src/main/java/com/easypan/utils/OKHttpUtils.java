@@ -67,6 +67,10 @@ public class OKHttpUtils {
             Request request = requestBuilder.url(url).build();
             Response response = client.newCall(request).execute();
             responseBody = response.body();
+            if (responseBody == null) {
+                logger.error("OKhttp GET 请求响应体为空,url:{}", url);
+                return null;
+            }
             String responseStr = responseBody.string();
             logger.info("postRequest请求地址:{},返回信息:{}", url, responseStr);
             return responseStr;
@@ -119,6 +123,10 @@ public class OKHttpUtils {
             Request request = requestBuilder.url(url).post(requestBody).build();
             Response response = client.newCall(request).execute();
             body = response.body();
+            if (body == null) {
+                logger.error("OKhttp POST 请求响应体为空,url:{}", url);
+                return null;
+            }
             String responseStr = body.string();
             logger.info("postRequest请求地址:{},参数:{},返回信息:{}", url, JsonUtils.convertObj2Json(params), responseStr);
             return responseStr;
