@@ -7,6 +7,7 @@ import com.easypan.entity.enums.UserStatusEnum;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.mappers.UserInfoMapper;
 import com.easypan.utils.StringTools;
+import com.mybatisflex.core.query.QueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -19,9 +20,10 @@ import jakarta.annotation.Resource;
 import java.util.Date;
 import java.util.Map;
 
+import static com.easypan.entity.po.table.UserInfoTableDef.USER_INFO;
+
 /**
- * 自定义 OAuth2 用户服务
- * 用于处理第三方登录成功后的用户信息获取和本地用户映射
+ * 自定义 OAuth2 用户服务，处理第三方登录.
  */
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
@@ -41,13 +43,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
         logger.info("Loading user from provider: {}", registrationId);
-        
-        OAuth2User oAuth2User = super.loadUser(userRequest);
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        
+
+        OAuth2User oauth2User = super.loadUser(userRequest);
+        Map<String, Object> attributes = oauth2User.getAttributes();
+
         processOAuth2User(registrationId, attributes);
-        
-        return oAuth2User;
+
+        return oauth2User;
     }
 
     private void processOAuth2User(String registrationId, Map<String, Object> attributes) {
@@ -63,7 +65,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         UserInfo user = null;
         if (email != null) {
-            user = userInfoMapper.selectByEmail(email);
+            user = userInfoMapper.selectOneByQuery(
+                    QueryWrapper.create().where(USER_INFO.EMAIL.eq(email)));
         }
 
         if (user == null) {
@@ -139,30 +142,30 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return id != null ? id.toString() : null;
     }
 
-    private UserInfo createOAuth2User(String email, String nickname, String avatar, 
-                                       String registrationId, String providerUserId) {
-        Date curDate = new Date();
-        
+    private UserInfo createOAuth2User(String email, String nickname, String avatar,
+            String registrationId, String providerUserId) {
         UserInfo user = new UserInfo();
         user.setUserId(StringTools.getRandomString(Constants.LENGTH_10));
         user.setEmail(email);
-        
+
         String finalNickname = nickname;
         if (finalNickname == null) {
             finalNickname = "user_" + StringTools.getRandomString(Constants.LENGTH_5);
         }
-        
-        UserInfo existingNickName = userInfoMapper.selectByNickName(finalNickname);
+
+        UserInfo existingNickName = userInfoMapper.selectOneByQuery(
+                QueryWrapper.create().where(USER_INFO.NICK_NAME.eq(finalNickname)));
         if (existingNickName != null) {
             finalNickname = finalNickname + "_" + StringTools.getRandomString(Constants.LENGTH_5);
         }
         user.setNickName(finalNickname);
-        
+
         if ("qq".equalsIgnoreCase(registrationId)) {
             user.setQqOpenId(providerUserId);
             user.setQqAvatar(avatar);
         }
-        
+
+        Date curDate = new Date();
         user.setJoinTime(curDate);
         user.setLastLoginTime(curDate);
         user.setStatus(UserStatusEnum.ENABLE.getStatus());
@@ -179,6 +182,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private void updateLastLoginTime(UserInfo user) {
         UserInfo updateInfo = new UserInfo();
         updateInfo.setLastLoginTime(new Date());
-        userInfoMapper.updateByUserId(updateInfo, user.getUserId());
+        userInfoMapper.updateByQuery(updateInfo, 
+                QueryWrapper.create().where(USER_INFO.USER_ID.eq(user.getUserId())));
     }
 }

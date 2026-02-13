@@ -6,7 +6,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx --fix",
+    "format": "prettier --write src/"
   },
   "dependencies": {
     "@highlightjs/vue-plugin": "^2.1.0",
@@ -35,7 +37,13 @@
   },
   "devDependencies": {
     "@types/node": "^25.2.3",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "@vitejs/plugin-vue": "^6.0.4",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.22.0",
+    "prettier": "^3.2.5",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-compression": "^0.5.1",

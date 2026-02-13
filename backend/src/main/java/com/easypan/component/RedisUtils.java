@@ -9,8 +9,10 @@ import jakarta.annotation.Resource;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Redis 工具类，提供基本的缓存操作.
+ */
 @Component("redisUtils")
-@SuppressWarnings("all")
 public class RedisUtils<V> {
 
     @Resource
@@ -19,11 +21,10 @@ public class RedisUtils<V> {
     private static final Logger logger = LoggerFactory.getLogger(RedisUtils.class);
 
     /**
-     * 删除缓存
+     * 删除缓存.
      *
-     * @param key 可以传一个值 或多个
+     * @param key 可以传一个值或多个
      */
-    @SuppressWarnings("null")
     public void delete(String... key) {
         if (key != null && key.length > 0) {
             if (key.length == 1) {
@@ -34,19 +35,26 @@ public class RedisUtils<V> {
         }
     }
 
-    @SuppressWarnings("null")
+    /**
+     * 获取缓存值.
+     *
+     * @param key 键
+     * @return 值
+     */
     public V get(String key) {
-        return key == null ? null : redisTemplate.opsForValue().get(key);
+        if (key == null) {
+            return null;
+        }
+        return redisTemplate.opsForValue().get(key);
     }
 
     /**
-     * 普通缓存放入
+     * 普通缓存放入.
      *
-     * @param key   键
+     * @param key 键
      * @param value 值
      * @return true成功 false失败
      */
-    @SuppressWarnings("null")
     public boolean set(String key, V value) {
         try {
             redisTemplate.opsForValue().set(key, value);
@@ -58,12 +66,12 @@ public class RedisUtils<V> {
     }
 
     /**
-     * 普通缓存放入并设置时间
+     * 普通缓存放入并设置时间.
      *
-     * @param key   键
+     * @param key 键
      * @param value 值
-     * @param time  时间(秒) time要大于0 如果time小于等于0 将设置无限期
-     * @return true成功 false 失败
+     * @param time 时间(秒) time要大于0 如果time小于等于0 将设置无限期
+     * @return true成功 false失败
      */
     public boolean setex(String key, V value, long time) {
         try {

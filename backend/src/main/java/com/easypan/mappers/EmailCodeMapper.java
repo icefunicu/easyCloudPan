@@ -2,48 +2,29 @@ package com.easypan.mappers;
 
 import com.easypan.entity.po.EmailCode;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Insert;
 import com.mybatisflex.core.BaseMapper;
-
-import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 邮箱验证码 数据库操作接口
+ * 邮箱验证码数据库操作接口.
  */
 @Mapper
 public interface EmailCodeMapper extends BaseMapper<EmailCode> {
 
-    /**
-     * Custom selectList for legacy compatibility
-     */
-    List<EmailCode> selectList(@Param("query") Object query);
+    @Insert("<script>"
+            + "<foreach collection='list' item='item' separator=';'>"
+            + "INSERT INTO email_code (email, code, create_time, status) "
+            + "VALUES (#{item.email}, #{item.code}, #{item.createTime}, #{item.status}) "
+            + "ON DUPLICATE KEY UPDATE "
+            + "code = VALUES(code), create_time = VALUES(create_time), status = VALUES(status)"
+            + "</foreach>"
+            + "</script>")
+    int insertOrUpdateBatch(@Param("list") java.util.List<EmailCode> list);
 
-    /**
-     * Custom selectCount for legacy compatibility
-     */
-    Integer selectCount(@Param("query") Object query);
-
-    /**
-     * Batch insert or update
-     */
-    Integer insertOrUpdateBatch(@Param("list") List<EmailCode> list);
-
-    /**
-     * 根据EmailAndCode更新
-     */
-    Integer updateByEmailAndCode(@Param("bean") EmailCode t, @Param("email") String email, @Param("code") String code);
-
-    /**
-     * 根据EmailAndCode删除
-     */
-    Integer deleteByEmailAndCode(@Param("email") String email, @Param("code") String code);
-
-    /**
-     * 根据EmailAndCode获取对象
-     */
-    EmailCode selectByEmailAndCode(@Param("email") String email, @Param("code") String code);
-
+    @Update("UPDATE email_code SET status = 1 WHERE email = #{email}")
     void disableEmailCode(@Param("email") String email);
 
 }

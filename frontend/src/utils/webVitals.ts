@@ -41,7 +41,8 @@ function sendToAnalytics(metric: WebVitalMetric) {
   })
 
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/analytics/web-vitals', body)
+    const blob = new Blob([body], { type: 'application/json' })
+    navigator.sendBeacon('/api/analytics/web-vitals', blob)
   } else {
     fetch('/api/analytics/web-vitals', {
       body,

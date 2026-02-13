@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpSession;
 
+/**
+ * 回收站控制器类，处理回收站相关操作.
+ */
 @RestController("recycleController")
 @RequestMapping("/recycle")
 public class RecycleController extends ABaseController {
@@ -24,7 +27,12 @@ public class RecycleController extends ABaseController {
     private FileInfoService fileInfoService;
 
     /**
-     * 根据条件分页查询
+     * 根据条件分页查询回收站文件列表.
+     *
+     * @param session HTTP 会话
+     * @param pageNo 页码
+     * @param pageSize 每页大小
+     * @return 分页结果
      */
     @RequestMapping("/loadRecycleList")
     @GlobalInterceptor(checkParams = true)
@@ -40,6 +48,13 @@ public class RecycleController extends ABaseController {
         return getSuccessResponseVO(convert2PaginationVO(result, FileInfoVO.class));
     }
 
+    /**
+     * 恢复回收站文件.
+     *
+     * @param session HTTP 会话
+     * @param fileIds 文件ID列表
+     * @return 响应对象
+     */
     @RequestMapping("/recoverFile")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO<Void> recoverFile(HttpSession session, @VerifyParam(required = true) String fileIds) {
@@ -48,6 +63,13 @@ public class RecycleController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 彻底删除回收站文件.
+     *
+     * @param session HTTP 会话
+     * @param fileIds 文件ID列表
+     * @return 响应对象
+     */
     @RequestMapping("/delFile")
     @GlobalInterceptor(checkParams = true)
     public ResponseVO<Void> delFile(HttpSession session, @VerifyParam(required = true) String fileIds) {

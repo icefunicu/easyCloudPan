@@ -60,7 +60,7 @@
                 v-if="item.pause"
                 :width="28"
                 class="btn-item"
-                iconName="upload"
+                icon-name="upload"
                 title="上传"
                 @click="startUpload(item.uid)"
               ></Icon>
@@ -68,7 +68,7 @@
                 v-else
                 :width="28"
                 class="btn-item"
-                iconName="pause"
+                icon-name="pause"
                 title="暂停"
                 @click="pauseUpload(item.uid)"
               ></Icon>
@@ -77,7 +77,7 @@
               v-if="item.status != STATUS.init.value && item.status != STATUS.upload_finish.value && item.status != STATUS.upload_seconds.value"
               :width="28"
               class="del btn-item"
-              iconName="del"
+              icon-name="del"
               title="删除"
               @click="delUpload(item.uid, index)"
             ></Icon>
@@ -85,7 +85,7 @@
               v-if="item.status == STATUS.upload_finish.value || item.status == STATUS.upload_seconds.value"
               :width="28"
               class="clean btn-item"
-              iconName="clean"
+              icon-name="clean"
               title="清除"
               @click="delUpload(item.uid, index)"
             ></Icon>

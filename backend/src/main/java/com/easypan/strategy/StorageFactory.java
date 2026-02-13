@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 存储策略工厂，根据配置获取对应的存储策略实例.
+ */
 @Component
 public class StorageFactory implements ApplicationContextAware {
 
@@ -29,19 +32,23 @@ public class StorageFactory implements ApplicationContextAware {
                 STRATEGY_MAP.put(StorageTypeEnum.LOCAL.getCode(), strategy);
             } else if (strategy instanceof OssStorageStrategy) {
                 STRATEGY_MAP.put(StorageTypeEnum.OSS.getCode(), strategy);
-                STRATEGY_MAP.put(StorageTypeEnum.MINIO.getCode(), strategy); // MinIO shares logic with OSS usually
+                STRATEGY_MAP.put(StorageTypeEnum.MINIO.getCode(), strategy);
             }
         });
     }
 
+    /**
+     * 获取默认存储策略.
+     *
+     * @return 存储策略实例
+     */
     public StorageStrategy getStorageStrategy() {
         StorageStrategy strategy = STRATEGY_MAP.get(storageType);
         if (strategy == null) {
-            // Default to local if not found or configured
             strategy = STRATEGY_MAP.get(StorageTypeEnum.LOCAL.getCode());
         }
         if (strategy == null) {
-            throw new BusinessException("Storage configuration error: No storage strategy found.");
+            throw new BusinessException("存储配置错误，未找到有效的存储策略，请联系管理员");
         }
         return strategy;
     }

@@ -5,18 +5,21 @@ import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+/**
+ * 应用配置类，管理应用程序的各项配置参数.
+ */
 @Component("appConfig")
 @Data
 public class AppConfig {
 
     /**
-     * 文件目录
+     * 文件目录.
      */
     @Value("${project.folder:}")
-    private String projectFolder; // Can be absolute or relative path
+    private String projectFolder;
 
     /**
-     * 发送人
+     * 发送人邮箱.
      */
     @Value("${spring.mail.username:}")
     private String sendUserName;
@@ -24,6 +27,11 @@ public class AppConfig {
     @Value("${admin.emails:}")
     private String adminEmails;
 
+    /**
+     * 获取管理员邮箱列表.
+     *
+     * @return 管理员邮箱列表
+     */
     public String getAdminEmails() {
         return adminEmails;
     }
@@ -59,6 +67,11 @@ public class AppConfig {
     @Value("${spring.jackson.time-zone:GMT+8}")
     private String jsonTimeZone;
 
+    /**
+     * 获取项目文件夹路径.
+     *
+     * @return 项目文件夹路径
+     */
     public String getProjectFolder() {
         if (!StringTools.isEmpty(projectFolder) && !projectFolder.endsWith("/")) {
             projectFolder = projectFolder + "/";

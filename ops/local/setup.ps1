@@ -1,5 +1,5 @@
-# EasyCloudPan 本地环境初始化脚本
-# 用法: .\ops\local\setup.ps1 [-Force] [-SkipNpm]
+# EasyCloudPan Local Environment Setup Script
+# Usage: .\ops\local\setup.ps1 [-Force] [-SkipNpm]
 
 param(
     [switch]$Force,
@@ -7,7 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot = Split-Path -Parent $PSScriptRoot
+$RepoRoot = (Get-Item $PSScriptRoot).Parent.Parent.FullName
 
 function Print-Header {
     param([string]$Title)
@@ -43,7 +43,7 @@ function Test-NodeVersion {
 
 Print-Header "EasyCloudPan Local Setup"
 
-# 检查工具链
+# Check toolchain
 Write-Host "[1/5] Checking toolchain..."
 Test-Command "java" "Java (JDK 21+)"
 Test-Command "javac" "JDK compiler"
@@ -55,7 +55,7 @@ Test-JavaVersion
 Test-NodeVersion
 Write-Host "[OK] Toolchain check passed." -ForegroundColor Green
 
-# 安装前端依赖
+# Install frontend dependencies
 if ($SkipNpm) {
     Write-Host "[2/5] Skipping frontend dependency installation (--SkipNpm)."
 } else {
@@ -71,7 +71,7 @@ if ($SkipNpm) {
     Write-Host "[OK] Frontend dependencies are ready." -ForegroundColor Green
 }
 
-# 编译后端
+# Build backend
 Write-Host "[3/5] Building backend dependencies..."
 Push-Location "$RepoRoot\backend"
 mvn clean install -DskipTests
@@ -83,7 +83,7 @@ if ($LASTEXITCODE -ne 0) {
 Pop-Location
 Write-Host "[OK] Backend built successfully." -ForegroundColor Green
 
-# 创建目录
+# Create directories
 Write-Host "[4/5] Preparing local runtime directories..."
 $dirs = @(
     "$RepoRoot\backend\file",
@@ -98,7 +98,7 @@ foreach ($dir in $dirs) {
 }
 Write-Host "[OK] Local directories prepared." -ForegroundColor Green
 
-# 创建配置文件
+# Create config file
 Write-Host "[5/5] Setting up environment configuration..."
 $envFile = "$RepoRoot\ops\docker\.env"
 $envExample = "$RepoRoot\ops\docker\.env.example"

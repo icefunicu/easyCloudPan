@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import static com.easypan.entity.po.table.FileInfoTableDef.FILE_INFO;
 
 /**
- * 租户配额管理服务
+ * 租户配额管理服务.
  */
 @Service
 public class TenantQuotaService {
@@ -32,7 +32,8 @@ public class TenantQuotaService {
     private UserInfoMapper userInfoMapper;
 
     /**
-     * 检查存储配额
+     * 检查存储配额.
+     *
      * @param fileSize 待上传文件大小
      */
     public void checkStorageQuota(Long fileSize) {
@@ -65,10 +66,10 @@ public class TenantQuotaService {
         
         // sum(file_size) where del_flag in (1, 2)
         Long usedStorage = fileInfoMapper.selectObjectByQueryAs(
-            QueryWrapper.create().select("sum(file_size)")
-                .from(FILE_INFO)
-                .where(FILE_INFO.DEL_FLAG.in(1, 2)),
-            Long.class
+                QueryWrapper.create().select("sum(file_size)")
+                        .from(FILE_INFO)
+                        .where(FILE_INFO.DEL_FLAG.in(1, 2)),
+                Long.class
         );
 
         if (usedStorage == null) {
@@ -82,7 +83,7 @@ public class TenantQuotaService {
     }
 
     /**
-     * 检查用户配额
+     * 检查用户配额.
      */
     public void checkUserQuota() {
         String tenantId = TenantContextHolder.getTenantId();
@@ -99,7 +100,9 @@ public class TenantQuotaService {
     }
 
     /**
-     * 获取租户使用情况
+     * 获取租户使用情况.
+     *
+     * @return 租户信息
      */
     public TenantInfo getTenantUsage() {
         String tenantId = TenantContextHolder.getTenantId();

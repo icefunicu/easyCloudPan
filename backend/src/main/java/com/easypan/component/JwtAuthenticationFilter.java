@@ -17,10 +17,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 
+/**
+ * JWT 认证过滤器，用于解析和验证 JWT Token.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final Logger logger =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Autowired
     private JwtTokenProvider tokenProvider;
@@ -32,13 +36,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private com.easypan.service.TokenSecurityAuditService tokenSecurityAuditService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+            HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
         try {
             String jwt = getJwtFromRequest(request);
 
             if (StringUtils.hasText(jwt)) {
                 if (jwtBlacklistService.isBlacklisted(jwt)) {
-                    logger.warn("[SECURITY_ALERT] Rejected blacklisted JWT token from IP: {}", 
+                    logger.warn("[SECURITY_ALERT] Rejected blacklisted JWT from IP: {}",
                             getClientIp(request));
                     tokenSecurityAuditService.reportSuspiciousActivity(
                             "unknown", "BLACKLISTED_TOKEN", "IP: " + getClientIp(request));
@@ -46,17 +52,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String userId = tokenProvider.getUserIdFromJWT(jwt);
 
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userId, null, new ArrayList<>());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            new UsernamePasswordAuthenticationToken(
+                                    userId, null, new ArrayList<>());
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request));
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    
+
                     tokenSecurityAuditService.recordTokenUsage(
-                            userId, jwt, getClientIp(request), request.getHeader("User-Agent"));
-                    
+                            userId, jwt, getClientIp(request),
+                            request.getHeader("User-Agent"));
+
                     logger.debug("Set Authentication to security context for '{}'", userId);
                 } else {
-                    logger.warn("[TOKEN_AUDIT] Invalid token used from IP: {}", getClientIp(request));
+                    logger.warn("[TOKEN_AUDIT] Invalid token used from IP: {}",
+                            getClientIp(request));
                 }
             }
         } catch (Exception ex) {

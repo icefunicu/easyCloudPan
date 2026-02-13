@@ -1,6 +1,8 @@
 package com.easypan.entity.enums;
 
-
+/**
+ * 文件夹类型枚举.
+ */
 public enum FileFolderTypeEnums {
     FILE(0, "文件"),
     FOLDER(1, "目录");

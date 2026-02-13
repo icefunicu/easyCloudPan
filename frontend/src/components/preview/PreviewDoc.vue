@@ -15,7 +15,7 @@ const props = defineProps({
 
 const docRef = ref();
 const initDoc = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: props.url,
         responseType: "blob",
     });

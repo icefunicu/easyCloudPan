@@ -14,7 +14,9 @@ import com.easypan.exception.BusinessException;
 import com.easypan.mappers.EmailCodeMapper;
 import com.easypan.mappers.UserInfoMapper;
 import com.easypan.service.EmailCodeService;
+import com.easypan.utils.QueryWrapperBuilder;
 import com.easypan.utils.StringTools;
+import com.mybatisflex.core.query.QueryWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -27,8 +29,11 @@ import jakarta.mail.internet.MimeMessage;
 import java.util.Date;
 import java.util.List;
 
+import static com.easypan.entity.po.table.EmailCodeTableDef.EMAIL_CODE;
+import static com.easypan.entity.po.table.UserInfoTableDef.USER_INFO;
+
 /**
- * 邮箱验证码 业务接口实现
+ * 邮箱验证码服务实现类.
  */
 @Service("emailCodeService")
 @SuppressWarnings("all")
@@ -51,25 +56,18 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     @Resource
     private RedisComponent redisComponent;
 
-    /**
-     * 根据条件查询列表
-     */
     @Override
     public List<EmailCode> findListByParam(EmailCodeQuery param) {
-        return this.emailCodeMapper.selectList(param);
+        QueryWrapper qw = QueryWrapperBuilder.build(param);
+        return this.emailCodeMapper.selectListByQuery(qw);
     }
 
-    /**
-     * 根据条件查询列表
-     */
     @Override
     public Integer findCountByParam(EmailCodeQuery param) {
-        return this.emailCodeMapper.selectCount(param);
+        QueryWrapper qw = QueryWrapperBuilder.build(param);
+        return Math.toIntExact(this.emailCodeMapper.selectCountByQuery(qw));
     }
 
-    /**
-     * 分页查询方法
-     */
     @Override
     public PaginationResultVO<EmailCode> findListByPage(EmailCodeQuery param) {
         int count = this.findCountByParam(param);
@@ -83,17 +81,11 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         return result;
     }
 
-    /**
-     * 新增
-     */
     @Override
     public Integer add(EmailCode bean) {
         return this.emailCodeMapper.insert(bean);
     }
 
-    /**
-     * 批量新增
-     */
     @Override
     public Integer addBatch(List<EmailCode> listBean) {
         if (listBean == null || listBean.isEmpty()) {
@@ -102,9 +94,6 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         return this.emailCodeMapper.insertBatch(listBean);
     }
 
-    /**
-     * 批量新增或者修改
-     */
     @Override
     public Integer addOrUpdateBatch(List<EmailCode> listBean) {
         if (listBean == null || listBean.isEmpty()) {
@@ -113,28 +102,28 @@ public class EmailCodeServiceImpl implements EmailCodeService {
         return this.emailCodeMapper.insertOrUpdateBatch(listBean);
     }
 
-    /**
-     * 根据EmailAndCode获取对象
-     */
     @Override
     public EmailCode getEmailCodeByEmailAndCode(String email, String code) {
-        return this.emailCodeMapper.selectByEmailAndCode(email, code);
+        return this.emailCodeMapper.selectOneByQuery(
+                QueryWrapper.create()
+                        .where(EMAIL_CODE.EMAIL.eq(email))
+                        .and(EMAIL_CODE.CODE.eq(code)));
     }
 
-    /**
-     * 根据EmailAndCode修改
-     */
     @Override
     public Integer updateEmailCodeByEmailAndCode(EmailCode bean, String email, String code) {
-        return this.emailCodeMapper.updateByEmailAndCode(bean, email, code);
+        return this.emailCodeMapper.updateByQuery(bean,
+                QueryWrapper.create()
+                        .where(EMAIL_CODE.EMAIL.eq(email))
+                        .and(EMAIL_CODE.CODE.eq(code)));
     }
 
-    /**
-     * 根据EmailAndCode删除
-     */
     @Override
     public Integer deleteEmailCodeByEmailAndCode(String email, String code) {
-        return this.emailCodeMapper.deleteByEmailAndCode(email, code);
+        return this.emailCodeMapper.deleteByQuery(
+                QueryWrapper.create()
+                        .where(EMAIL_CODE.EMAIL.eq(email))
+                        .and(EMAIL_CODE.CODE.eq(code)));
     }
 
     private void sendEmailCode(String toEmail, String code) {
@@ -142,18 +131,13 @@ public class EmailCodeServiceImpl implements EmailCodeService {
             MimeMessage message = javaMailSender.createMimeMessage();
 
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
-            // 邮件发件人
             helper.setFrom(appConfig.getSendUserName());
-            // 邮件收件人 1或多个
             helper.setTo(toEmail);
 
             SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
 
-            // 邮件主题
             helper.setSubject(sysSettingsDto.getRegisterEmailTitle());
-            // 邮件内容
             helper.setText(String.format(sysSettingsDto.getRegisterEmailContent(), code));
-            // 邮件发送时间
             helper.setSentDate(new Date());
             javaMailSender.send(message);
         } catch (Exception e) {
@@ -165,9 +149,9 @@ public class EmailCodeServiceImpl implements EmailCodeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendEmailCode(String toEmail, Integer type) {
-        // 如果是注册，校验邮箱是否已存在
         if (type == Constants.ZERO) {
-            UserInfo userInfo = userInfoMapper.selectByEmail(toEmail);
+            UserInfo userInfo = userInfoMapper.selectOneByQuery(
+                    QueryWrapper.create().where(USER_INFO.EMAIL.eq(toEmail)));
             if (null != userInfo) {
                 throw new BusinessException("邮箱已经存在");
             }
@@ -187,7 +171,10 @@ public class EmailCodeServiceImpl implements EmailCodeService {
 
     @Override
     public void checkCode(String email, String code) {
-        EmailCode emailCode = emailCodeMapper.selectByEmailAndCode(email, code);
+        EmailCode emailCode = emailCodeMapper.selectOneByQuery(
+                QueryWrapper.create()
+                        .where(EMAIL_CODE.EMAIL.eq(email))
+                        .and(EMAIL_CODE.CODE.eq(code)));
         if (null == emailCode) {
             throw new BusinessException("邮箱验证码不正确");
         }

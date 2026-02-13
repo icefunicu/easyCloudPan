@@ -7,9 +7,9 @@
         </div>
         <div class="right-panel">
             <el-popover
+              v-model:visible="showUploader"
               :width="800"
               trigger="click"
-              v-model:visible="showUploader"
               :offset="20"
               transition="none"
               :hide-after="0"
@@ -21,7 +21,7 @@
             <template #default>
               <Uploader
                 ref="uploaderRef"
-                @uploadCallback="uploadCallbackHandler"
+                @upload-callback="uploadCallbackHandler"
             ></Uploader>
             </template>
           </el-popover>
@@ -30,7 +30,7 @@
             <div class="user-info">
                 <div class="avatar">
                     <Avatar
-                      :userId="userInfo.userId"
+                      :user-id="userInfo.userId"
                       :avatar="userInfo.avatar"
                       :timestamp="timestamp"
                       :width="46"
@@ -58,11 +58,11 @@
                 <template v-for="item in menus">
                 <div
                 v-if="item.allShow || (!item.allShow && userInfo.admin)"
-                @click="jump(item)"
                 :class="[
                     'menu-item',
                     item.menuCode == currentMenu.menuCode ? 'active' : '',
                     ]"
+                @click="jump(item)"
                 >
                     <div :class="['iconfont', 'icon-' + item.icon]"></div>
                     <div class="text">{{ item.name }}</div>
@@ -71,17 +71,17 @@
               </div>
             <div class="menu-sub-list">
                 <div
-                  @click="jump(sub)"
-                  :class="['menu-item-sub', currentPath == sub.path ? 'active' : '']"
                   v-for="sub in currentMenu.children"
+                  :class="['menu-item-sub', currentPath == sub.path ? 'active' : '']"
+                  @click="jump(sub)"
                 >
                   <span
-                  :class="['iconfont', 'icon-' + sub.icon]"
                   v-if="sub.icon"
+                  :class="['iconfont', 'icon-' + sub.icon]"
                   ></span>
                   <span class="text">{{ sub.name }}</span>
               </div>
-              <div class="tips" v-if="currentMenu && currentMenu.tips">
+              <div v-if="currentMenu && currentMenu.tips" class="tips">
                 {{ currentMenu.tips }}
               </div>
               <div class="space-info">
@@ -110,9 +110,9 @@
         <div class="body-content">
             <router-view v-slot="{ Component }">
                 <component
-                  ref="routerViewRef"
                   :is="Component"
-                  @addFile="addFile"
+                  ref="routerViewRef"
+                  @add-file="addFile"
                   @reload="getUseSpace"
                 ></component>
             </router-view>
@@ -121,7 +121,7 @@
       <!-- 修改头像 -->
       <UpdateAvatar
         ref="updateAvatarRef"
-        @updateAvatar="reloadAvatar"
+        @update-avatar="reloadAvatar"
       ></UpdateAvatar>
       <!-- 修改密码 -->
       <UpdatePassword ref="updatePasswordRef"></UpdatePassword>
@@ -311,7 +311,7 @@ const updatePassword = () => {
 // 退出
 const logout = async () => {
     proxy.Confirm(`你确定要退出吗`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
         url: api.logout,
         });
         if (!result){
@@ -325,7 +325,7 @@ const logout = async () => {
 // 使用空间
 const useSpaceInfo = ref({ useSpace: 0, totalSpace: 1 });
 const getUseSpace = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.getUseSpace,
         showLoading: false,
     });

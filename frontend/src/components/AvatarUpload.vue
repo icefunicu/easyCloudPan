@@ -6,10 +6,10 @@
           </template>
           <template v-else>
             <img
-              :src="`${modelValue.qqAvatar}`"
               v-if="modelValue && modelValue.qqAvatar"
+              :src="`${modelValue.qqAvatar}`"
             />
-            <img :src="`/api/getAvatar/${modelValue.userId}`" v-else />
+            <img v-else :src="`/api/getAvatar/${modelValue.userId}`" />
           </template>
         </div>
         <div class="select-btn">
@@ -46,7 +46,7 @@ const localFile = ref(null);
 const emit = defineEmits();
 const uploadImage = async (file) => {
     file = file.file;
-    let img = new FileReader();
+    const img = new FileReader();
     img.readAsDataURL(file);
     img.onload = ({ target }) => {
         localFile.value = target.result;

@@ -4,40 +4,40 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 分享信息参数
+ * 分享信息查询参数类.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class FileShareQuery extends BaseParam {
 
     /**
-     * 分享ID
+     * 分享ID.
      */
     private String shareId;
 
     private String shareIdFuzzy;
 
     /**
-     * 文件ID
+     * 文件ID.
      */
     private String fileId;
 
     private String fileIdFuzzy;
 
     /**
-     * 用户ID
+     * 用户ID.
      */
     private String userId;
 
     private String userIdFuzzy;
 
     /**
-     * 有效期类型 0:1天 1:7天 2:30天 3:永久有效
+     * 有效期类型 0:1天 1:7天 2:30天 3:永久有效.
      */
     private Integer validType;
 
     /**
-     * 失效时间
+     * 失效时间.
      */
     private String expireTime;
 
@@ -46,7 +46,7 @@ public class FileShareQuery extends BaseParam {
     private String expireTimeEnd;
 
     /**
-     * 分享时间
+     * 分享时间.
      */
     private String shareTime;
 
@@ -55,14 +55,14 @@ public class FileShareQuery extends BaseParam {
     private String shareTimeEnd;
 
     /**
-     * 提取码
+     * 提取码.
      */
     private String code;
 
     private String codeFuzzy;
 
     /**
-     * 浏览次数
+     * 浏览次数.
      */
     private Integer showCount;
 

@@ -10,6 +10,9 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.Resource;
 import java.util.Date;
 
+/**
+ * 分享访问日志服务实现类.
+ */
 @Slf4j
 @Service
 public class ShareAccessLogServiceImpl implements ShareAccessLogService {
@@ -19,8 +22,8 @@ public class ShareAccessLogServiceImpl implements ShareAccessLogService {
 
     @Override
     public void logAccess(String shareId, String fileId, String visitorId,
-                          String visitorIp, String userAgent, String accessType,
-                          boolean success, String errorMessage) {
+            String visitorIp, String userAgent, String accessType,
+            boolean success, String errorMessage) {
         try {
             ShareAccessLog accessLog = new ShareAccessLog();
             accessLog.setShareId(shareId);
@@ -32,10 +35,10 @@ public class ShareAccessLogServiceImpl implements ShareAccessLogService {
             accessLog.setAccessTime(new Date());
             accessLog.setSuccess(success);
             accessLog.setErrorMessage(truncate(errorMessage, 500));
-            
-            shareAccessLogMapper.insert(accessLog);
+
+            shareAccessLogMapper.insertLog(accessLog);
         } catch (Exception e) {
-            log.error("[SHARE_ACCESS_LOG] Failed to log share access: shareId={}, error={}", 
+            log.error("[SHARE_ACCESS_LOG] Failed to log share access: shareId={}, error={}",
                     shareId, e.getMessage(), e);
         }
     }
@@ -43,8 +46,8 @@ public class ShareAccessLogServiceImpl implements ShareAccessLogService {
     @Override
     @Async
     public void logAccessAsync(String shareId, String fileId, String visitorId,
-                               String visitorIp, String userAgent, String accessType,
-                               boolean success, String errorMessage) {
+            String visitorIp, String userAgent, String accessType,
+            boolean success, String errorMessage) {
         logAccess(shareId, fileId, visitorId, visitorIp, userAgent, accessType, success, errorMessage);
     }
 

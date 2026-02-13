@@ -5,6 +5,9 @@ import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.NoArgsConstructor;
 
+/**
+ * Session 用户信息数据传输对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,7 +18,7 @@ public class SessionWebUserDto {
     @Schema(description = "User ID")
     private String userId;
     /**
-     * 将字段名从 isAdmin 改为 admin，使 Lombok 生成 getAdmin 和 setAdmin 以保持兼容性
+     * 将字段名从 isAdmin 改为 admin，使 Lombok 生成 getAdmin 和 setAdmin 以保持兼容性.
      */
     @Schema(description = "Is Admin")
     private Boolean admin;

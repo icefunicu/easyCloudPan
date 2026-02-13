@@ -23,14 +23,12 @@
 
     <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
-            <TimeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <MaxFileSize>50MB</MaxFileSize>
-            </TimeBasedFileNamingAndTriggeringPolicy>
+            <MaxFileSize>50MB</MaxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder>
             <charset>UTF-8</charset>
@@ -41,14 +39,12 @@
 
     <appender name="json-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
-            <TimeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <MaxFileSize>50MB</MaxFileSize>
-            </TimeBasedFileNamingAndTriggeringPolicy>
+            <MaxFileSize>50MB</MaxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">

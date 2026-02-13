@@ -11,8 +11,9 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 分片清理定时任务
- * 清理过期或残留的分片文件，防止存储空间浪费
+ * 分片清理定时任务.
+ *
+ * <p>清理过期或残留的分片文件，防止存储空间浪费
  */
 @Component
 @Slf4j
@@ -27,6 +28,9 @@ public class ChunkCleanupTask {
     private static final String UPLOAD_PROGRESS_KEY_PREFIX = "upload:progress:";
     private static final String CHUNK_PATH_PREFIX = "chunks/";
 
+    /**
+     * 清理过期分片文件.
+     */
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanupExpiredChunks() {
         log.info("[ChunkCleanup] 开始清理过期分片文件...");

@@ -1,37 +1,52 @@
 package com.easypan.entity.dto;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Random;
 
+/**
+ * 验证码图片生成器.
+ */
 public class CreateImageCode {
-    // 图片的宽度。
     private int width = 160;
-    // 图片的高度。
     private int height = 40;
-    // 验证码字符个数
     private int codeCount = 4;
-    // 验证码干扰线数
     private int lineCount = 20;
-    // 验证码
     private String code = null;
-    // 验证码图片Buffer
     private BufferedImage buffImg = null;
     Random random = new Random();
 
+    /**
+     * 默认构造函数.
+     */
     public CreateImageCode() {
         creatImage();
     }
 
+    /**
+     * 指定宽度和高度的构造函数.
+     *
+     * @param width 图片宽度
+     * @param height 图片高度
+     */
     public CreateImageCode(int width, int height) {
         this.width = width;
         this.height = height;
         creatImage();
     }
 
+    /**
+     * 指定宽度、高度和验证码字符数的构造函数.
+     *
+     * @param width 图片宽度
+     * @param height 图片高度
+     * @param codeCount 验证码字符数
+     */
     public CreateImageCode(int width, int height, int codeCount) {
         this.width = width;
         this.height = height;
@@ -39,6 +54,14 @@ public class CreateImageCode {
         creatImage();
     }
 
+    /**
+     * 指定宽度、高度、验证码字符数和干扰线数的构造函数.
+     *
+     * @param width 图片宽度
+     * @param height 图片高度
+     * @param codeCount 验证码字符数
+     * @param lineCount 干扰线数
+     */
     public CreateImageCode(int width, int height, int codeCount, int lineCount) {
         this.width = width;
         this.height = height;
@@ -47,25 +70,18 @@ public class CreateImageCode {
         creatImage();
     }
 
-    // 生成图片
     private void creatImage() {
-        int fontWidth = width / codeCount;// 字体的宽度
-        int fontHeight = height - 5;// 字体的高度
+        int fontWidth = width / codeCount;
         int codeY = height - 8;
 
-        // 图像buffer
         buffImg = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics g = buffImg.getGraphics();
-        //Graphics2D g = buffImg.createGraphics();
-        // 设置背景色
         g.setColor(getRandColor(200, 250));
         g.fillRect(0, 0, width, height);
-        // 设置字体
-        //Font font1 = getFont(fontHeight);
+        int fontHeight = height - 5;
         Font font = new Font("Fixedsys", Font.BOLD, fontHeight);
         g.setFont(font);
 
-        // 设置干扰线
         for (int i = 0; i < lineCount; i++) {
             int xs = random.nextInt(width);
             int ys = random.nextInt(height);
@@ -75,8 +91,7 @@ public class CreateImageCode {
             g.drawLine(xs, ys, xe, ye);
         }
 
-        // 添加噪点
-        float yawpRate = 0.01f;// 噪声率
+        float yawpRate = 0.01f;
         int area = (int) (yawpRate * width * height);
         for (int i = 0; i < area; i++) {
             int x = random.nextInt(width);
@@ -84,19 +99,15 @@ public class CreateImageCode {
             buffImg.setRGB(x, y, random.nextInt(255));
         }
 
-        String str1 = randomStr(codeCount);// 得到随机字符
+        String str1 = randomStr(codeCount);
         this.code = str1;
         for (int i = 0; i < codeCount; i++) {
             String strRand = str1.substring(i, i + 1);
             g.setColor(getRandColor(1, 255));
-            // g.drawString(a,x,y);
-            // a为要画出来的东西，x和y表示要画的东西最左侧字符的基线位于此图形上下文坐标系的 (x, y) 位置处
-
             g.drawString(strRand, i * fontWidth + 3, codeY);
         }
     }
 
-    // 得到随机字符
     private String randomStr(int n) {
         String str1 = "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz123456789";
         String str2 = "";
@@ -109,16 +120,25 @@ public class CreateImageCode {
         return str2;
     }
 
-    // 得到随机颜色
-    private Color getRandColor(int fc, int bc) {// 给定范围获得随机颜色
-        if (fc > 255) fc = 255;
-        if (bc > 255) bc = 255;
+    private Color getRandColor(int fc, int bc) {
+        if (fc > 255) {
+            fc = 255;
+        }
+        if (bc > 255) {
+            bc = 255;
+        }
         int r = fc + random.nextInt(bc - fc);
         int g = fc + random.nextInt(bc - fc);
         int b = fc + random.nextInt(bc - fc);
         return new Color(r, g, b);
     }
 
+    /**
+     * 将验证码图片写入输出流.
+     *
+     * @param sos 输出流
+     * @throws IOException IO 异常
+     */
     public void write(OutputStream sos) throws IOException {
         ImageIO.write(buffImg, "png", sos);
         sos.close();

@@ -5,23 +5,23 @@
       :title="dialogConfig.title"
       :buttons="dialogConfig.buttons"
       width="600px"
-      :showCancel="false"
+      :show-cancel="false"
       @close="dialogConfig.show = false"
     >
       <div class="navigation-panel">
         <Navigation
           ref="navigationRef"
-          @navChange="navChange"
-          :watchPath="false"
+          :watch-path="false"
+          @nav-change="navChange"
         ></Navigation>
       </div>
-      <div class="folder-list" v-if="folderList.length > 0">
+      <div v-if="folderList.length > 0" class="folder-list">
         <div
-          class="folder-item"
           v-for="item in folderList"
+          class="folder-item"
           @click="selectFolder(item)"
         >
-          <Icon :fileType="0"></Icon>
+          <Icon :file-type="0"></Icon>
           <span class="file-name">{{ item.fileName }}</span>
         </div>
       </div>
@@ -61,7 +61,7 @@ const folderList = ref([]);
 const currentFolder = ref({});
 
 const loadAllFolder = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.loadAllFolder,
         params: {
             filePid: filePid.value,

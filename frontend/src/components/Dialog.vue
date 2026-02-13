@@ -19,10 +19,10 @@
     </div>
     <template v-if="(buttons && buttons.length > 0) || showCancel">
         <div class="dialog-footer">
-            <el-button  link @click="close" v-if="showCancel"> 取消 </el-button>
+            <el-button  v-if="showCancel" link @click="close"> 取消 </el-button>
             <el-button
-                class="dialog-buttons"
                 v-for="btn in buttons"
+                class="dialog-buttons"
                 :type="btn.type || 'primary' "
                 @click="btn.click"
             >

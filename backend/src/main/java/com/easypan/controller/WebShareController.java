@@ -35,6 +35,9 @@ import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * Web分享控制器类，处理分享文件的Web访问操作.
+ */
 @RestController("webShareController")
 @RequestMapping("/showShare")
 public class WebShareController extends CommonFileController {
@@ -58,7 +61,10 @@ public class WebShareController extends CommonFileController {
     private CustomMetrics customMetrics;
 
     /**
-     * 通过分享ID获取分享文件信息
+     * 通过分享ID获取分享文件信息.
+     *
+     * @param shareId 分享ID
+     * @return 分享信息
      */
     private ShareInfoVO getShareInfoCommon(String shareId) {
         FileShare share = fileShareService.getFileShareByShareId(shareId);
@@ -79,11 +85,11 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 校验分享是否失效
+     * 校验分享是否失效.
      *
-     * @param session
-     * @param shareId
-     * @return
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @return 分享会话信息
      */
     private SessionShareDto checkShare(HttpSession session, String shareId) {
         SessionShareDto shareSessionDto = getSessionShareFromSession(session, shareId);
@@ -97,11 +103,11 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取分享登录信息
+     * 获取分享登录信息.
      *
-     * @param session
-     * @param shareId
-     * @return
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @return 分享登录信息
      */
     @RequestMapping("/getShareLoginInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -122,10 +128,10 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取分享信息
+     * 获取分享信息.
      *
-     * @param shareId
-     * @return
+     * @param shareId 分享ID
+     * @return 分享信息
      */
     @RequestMapping("/getShareInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -134,12 +140,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 校验分享码
+     * 校验分享码.
      *
-     * @param session
-     * @param shareId
-     * @param code
-     * @return
+     * @param session HTTP 会话
+     * @param request HTTP 请求
+     * @param shareId 分享ID
+     * @param code 分享码
+     * @return 响应对象
      */
     @RequestMapping("/checkShareCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -166,11 +173,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取文件列表
+     * 获取文件列表.
      *
-     * @param session
-     * @param shareId
-     * @return
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @param filePid 文件父ID
+     * @return 文件列表
      */
     @RequestMapping("/loadFileList")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -192,12 +200,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取目录信息
+     * 获取目录信息.
      *
-     * @param session
-     * @param shareId
-     * @param path
-     * @return
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @param path 路径
+     * @return 目录信息列表
      */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -208,6 +216,15 @@ public class WebShareController extends CommonFileController {
         return super.getFolderInfo(path, shareSessionDto.getShareUserId());
     }
 
+    /**
+     * 获取文件.
+     *
+     * @param response HTTP 响应
+     * @param session HTTP 会话
+     * @param request HTTP 请求
+     * @param shareId 分享ID
+     * @param fileId 文件ID
+     */
     @RequestMapping("/getFile/{shareId}/{fileId}")
     public void getFile(HttpServletResponse response, HttpSession session, HttpServletRequest request,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
@@ -252,11 +269,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 下载
+     * 下载文件.
      *
-     * @param request
-     * @param response
-     * @throws Exception
+     * @param request HTTP 请求
+     * @param response HTTP 响应
+     * @param code 下载码
+     * @throws Exception 异常
      */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -266,13 +284,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 保存分享
+     * 保存分享文件到自己的网盘.
      *
-     * @param session
-     * @param shareId
-     * @param shareFileIds
-     * @param myFolderId
-     * @return
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @param shareFileIds 分享文件ID列表
+     * @param myFolderId 目标文件夹ID
+     * @return 响应对象
      */
     @RequestMapping("/saveShare")
     @GlobalInterceptor(checkParams = true)

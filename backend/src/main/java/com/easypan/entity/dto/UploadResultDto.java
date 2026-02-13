@@ -7,6 +7,9 @@ import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.NoArgsConstructor;
 
+/**
+ * 上传结果数据传输对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

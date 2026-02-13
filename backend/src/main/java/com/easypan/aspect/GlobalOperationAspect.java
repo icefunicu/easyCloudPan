@@ -6,6 +6,7 @@ import com.easypan.entity.config.AppConfig;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionWebUserDto;
 import com.easypan.entity.enums.ResponseCodeEnum;
+import com.easypan.entity.enums.VerifyRegexEnum;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.entity.query.UserInfoQuery;
 import com.easypan.exception.BusinessException;
@@ -31,6 +32,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
 
+/**
+ * 全局操作切面，处理登录校验和参数校验.
+ */
 @Component("operationAspect")
 @Aspect
 public class GlobalOperationAspect {
@@ -46,32 +50,31 @@ public class GlobalOperationAspect {
     @Resource
     private AppConfig appConfig;
 
-
     @Pointcut("@annotation(com.easypan.annotation.GlobalInterceptor)")
     private void requestInterceptor() {
     }
 
+    /**
+     * 拦截器前置处理.
+     */
     @Before("requestInterceptor()")
     public void interceptorDo(JoinPoint point) throws BusinessException {
         try {
             Object target = point.getTarget();
             Object[] arguments = point.getArgs();
             String methodName = point.getSignature().getName();
-            Class<?>[] parameterTypes = ((MethodSignature) point.getSignature()).getMethod().getParameterTypes();
+            Class<?>[] parameterTypes =
+                    ((MethodSignature) point.getSignature()).getMethod().getParameterTypes();
             Method method = target.getClass().getMethod(methodName, parameterTypes);
             GlobalInterceptor interceptor = method.getAnnotation(GlobalInterceptor.class);
             if (null == interceptor) {
                 return;
             }
-            /**
-             * 校验登录
-             */
+            // 校验登录
             if (interceptor.checkLogin() || interceptor.checkAdmin()) {
                 checkLogin(interceptor.checkAdmin());
             }
-            /**
-             * 校验参数
-             */
+            // 校验参数
             if (interceptor.checkParams()) {
                 validateParams(method, arguments);
             }
@@ -84,16 +87,16 @@ public class GlobalOperationAspect {
         }
     }
 
-
-    //校验登录
     private void checkLogin(Boolean checkAdmin) {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             throw new BusinessException(ResponseCodeEnum.CODE_901);
         }
         HttpServletRequest request = attributes.getRequest();
         HttpSession session = request.getSession();
-        SessionWebUserDto sessionUser = (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
+        SessionWebUserDto sessionUser =
+                (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
         if (sessionUser == null && appConfig.getDev() != null && appConfig.getDev()) {
             List<UserInfo> userInfoList = userInfoService.findListByParam(new UserInfoQuery());
             if (!userInfoList.isEmpty()) {
@@ -114,7 +117,6 @@ public class GlobalOperationAspect {
         }
     }
 
-
     private void validateParams(Method m, Object[] arguments) throws BusinessException {
         Parameter[] parameters = m.getParameters();
         for (int i = 0; i < parameters.length; i++) {
@@ -124,10 +126,11 @@ public class GlobalOperationAspect {
             if (verifyParam == null) {
                 continue;
             }
-            //基本数据类型
-            if (TYPE_STRING.equals(parameter.getParameterizedType().getTypeName()) || TYPE_LONG.equals(parameter.getParameterizedType().getTypeName()) || TYPE_INTEGER.equals(parameter.getParameterizedType().getTypeName())) {
-                checkValue(value, verifyParam);
-                //如果传递的是对象
+            String typeName = parameter.getParameterizedType().getTypeName();
+            if (TYPE_STRING.equals(typeName)
+                    || TYPE_LONG.equals(typeName)
+                    || TYPE_INTEGER.equals(typeName)) {
+                checkValue(parameter.getName(), value, verifyParam);
             } else {
                 checkObjValue(parameter, value);
             }
@@ -146,46 +149,85 @@ public class GlobalOperationAspect {
                 }
                 field.setAccessible(true);
                 Object resultValue = field.get(value);
-                checkValue(resultValue, fieldVerifyParam);
+                checkValue(field.getName(), resultValue, fieldVerifyParam);
             }
         } catch (BusinessException e) {
             logger.error("校验参数失败", e);
             throw e;
         } catch (Exception e) {
             logger.error("校验参数失败", e);
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "参数格式不正确，请检查输入");
         }
     }
 
     /**
-     * 校验参数
+     * 校验参数.
      *
-     * @param value
-     * @param verifyParam
-     * @throws BusinessException
+     * @param paramName 参数名
+     * @param value 参数值
+     * @param verifyParam 校验注解
+     * @throws BusinessException 业务异常
      */
-    private void checkValue(Object value, VerifyParam verifyParam) throws BusinessException {
+    private void checkValue(String paramName, Object value, VerifyParam verifyParam) throws BusinessException {
         Boolean isEmpty = value == null || StringTools.isEmpty(value.toString());
         Integer length = value == null ? 0 : value.toString().length();
+        String paramDisplayName = getParamDisplayName(paramName);
 
-        /**
-         * 校验空
-         */
         if (isEmpty && verifyParam.required()) {
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+            String errorMsg = String.format("%s不能为空", paramDisplayName);
+            logger.warn("参数校验失败: {}", errorMsg);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), errorMsg);
         }
 
-        /**
-         * 校验长度
-         */
-        if (!isEmpty && (verifyParam.max() != -1 && verifyParam.max() < length || verifyParam.min() != -1 && verifyParam.min() > length)) {
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+        boolean maxCheck = verifyParam.max() != -1 && verifyParam.max() < length;
+        boolean minCheck = verifyParam.min() != -1 && verifyParam.min() > length;
+        if (!isEmpty && (maxCheck || minCheck)) {
+            String errorMsg = String.format("%s长度%d不符合要求(需要%d-%d位)", 
+                    paramDisplayName, length, 
+                    verifyParam.min() == -1 ? 0 : verifyParam.min(), 
+                    verifyParam.max() == -1 ? 999 : verifyParam.max());
+            logger.warn("参数校验失败: {}", errorMsg);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), errorMsg);
         }
-        /**
-         * 校验正则
-         */
-        if (!isEmpty && !StringTools.isEmpty(verifyParam.regex().getRegex()) && !VerifyUtils.verify(verifyParam.regex(), String.valueOf(value))) {
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+        boolean hasRegex = !StringTools.isEmpty(verifyParam.regex().getRegex());
+        if (!isEmpty && hasRegex
+                && !VerifyUtils.verify(verifyParam.regex(), String.valueOf(value))) {
+            String errorMsg = getRegexErrorMessage(paramDisplayName, verifyParam.regex());
+            logger.warn("参数校验失败: {} (输入值: {}, 规则: {})", errorMsg, value, verifyParam.regex().name());
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), errorMsg);
+        }
+    }
+
+    private String getParamDisplayName(String paramName) {
+        java.util.Map<String, String> nameMap = new java.util.HashMap<>();
+        nameMap.put("email", "邮箱");
+        nameMap.put("password", "密码");
+        nameMap.put("nickName", "昵称");
+        nameMap.put("checkCode", "图片验证码");
+        nameMap.put("emailCode", "邮箱验证码");
+        nameMap.put("fileName", "文件名");
+        nameMap.put("fileId", "文件ID");
+        nameMap.put("shareId", "分享ID");
+        nameMap.put("shareCode", "提取码");
+        return nameMap.getOrDefault(paramName, paramName);
+    }
+
+    private String getRegexErrorMessage(String paramDisplayName, VerifyRegexEnum regex) {
+        switch (regex) {
+            case EMAIL:
+                return paramDisplayName + "格式不正确，请输入有效的邮箱地址";
+            case PASSWORD:
+                return paramDisplayName + "格式不正确，必须包含数字、字母和特殊字符(~!@#$%^&*_)，长度8-32位";
+            case PHONE:
+                return paramDisplayName + "格式不正确，请输入有效的手机号码";
+            case ACCOUNT:
+                return paramDisplayName + "只能包含字母、数字和下划线";
+            case COMMON:
+                return paramDisplayName + "只能包含数字、字母、中文和下划线";
+            case NUMBER_LETTER_UNDER_LINE:
+                return paramDisplayName + "只能包含数字、字母和下划线";
+            default:
+                return paramDisplayName + "格式不正确";
         }
     }
 }

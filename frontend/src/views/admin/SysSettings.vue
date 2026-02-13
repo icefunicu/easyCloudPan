@@ -1,34 +1,34 @@
 <template>
     <div class="sys-setting-panel">
       <el-form
+        ref="formDataRef"
         :model="formData"
         :rules="rules"
-        ref="formDataRef"
         label-width="150px"
         @submit.prevent
       >
         <!-- 用户配置 -->
         <el-form-item label="注册邮箱标题" prop="registerEmailTitle">
           <el-input
+            v-model.trim="formData.registerEmailTitle"
             clearable
             placeholder="请输入注册邮件验证码邮件标题"
-            v-model.trim="formData.registerEmailTitle"
           ></el-input>
         </el-form-item>
         <!-- 用户配置 -->
         <el-form-item label="注册邮箱内容" prop="registerEmailContent">
           <el-input
+            v-model.trim="formData.registerEmailContent"
             clearable
             placeholder="请输入注册邮件验证码邮件内容%s占位符为验证码内容"
-            v-model.trim="formData.registerEmailContent"
           ></el-input>
         </el-form-item>
         <!-- 用户配置 -->
         <el-form-item label="初始空间大小" prop="userInitUseSpace">
           <el-input
+            v-model.trim="formData.userInitUseSpace"
             clearable
             placeholder="初始化空间大小"
-            v-model.trim="formData.userInitUseSpace"
           >
             <template #suffix>MB</template>
           </el-input>
@@ -72,7 +72,7 @@ const rules = {
 };
 
 const getSysSettings = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.getSysSettings,
     });
     if (!result) {
@@ -87,9 +87,9 @@ const saveSettings = async () => {
         if (!valid) {
             return;
         }
-        let params = {};
+        const params = {};
         Object.assign(params, formData.value);
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.saveSettings,
             params: params,
         });

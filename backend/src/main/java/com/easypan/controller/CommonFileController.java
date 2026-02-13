@@ -25,6 +25,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
 import java.util.List;
 
+/**
+ * 公共文件控制器类.
+ */
 @Slf4j
 public class CommonFileController extends ABaseController {
 
@@ -37,6 +40,13 @@ public class CommonFileController extends ABaseController {
     @Resource
     private RedisComponent redisComponent;
 
+    /**
+     * 获取文件夹信息.
+     *
+     * @param path 路径
+     * @param userId 用户ID
+     * @return 文件夹列表
+     */
     public ResponseVO<List<FolderVO>> getFolderInfo(String path, String userId) {
         String[] pathArray = path.split("/");
         FileInfoQuery infoQuery = new FileInfoQuery();
@@ -49,46 +59,54 @@ public class CommonFileController extends ABaseController {
         return getSuccessResponseVO(CopyTools.copyList(fileInfoList, FolderVO.class));
     }
 
+    /**
+     * 获取图片.
+     *
+     * @param response HTTP 响应
+     * @param imageFolder 图片文件夹
+     * @param imageName 图片名称
+     * @param userId 用户ID
+     */
     public void getImage(HttpServletResponse response, String imageFolder, String imageName, String userId) {
         if (StringTools.isEmpty(imageFolder) || StringUtils.isBlank(imageName)) {
             return;
         }
-        
+
         if (!validateImageAccess(imageFolder, imageName, userId)) {
-            log.warn("[IMAGE_ACCESS] Unauthorized access attempt: imageFolder={}, imageName={}, userId={}", 
+            log.warn("[IMAGE_ACCESS] Unauthorized access attempt: imageFolder={}, imageName={}, userId={}",
                     imageFolder, imageName, userId);
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
-        
+
         String imageSuffix = StringTools.getFileSuffix(imageName);
-        String filePath = imageFolder + "/" + imageName;
         imageSuffix = imageSuffix.replace(".", "");
         String contentType = "image/" + imageSuffix;
         response.setContentType(contentType);
         response.setHeader("Cache-Control", "max-age=2592000");
+        String filePath = imageFolder + "/" + imageName;
         readFile(response, filePath);
     }
-    
+
     private boolean validateImageAccess(String imageFolder, String imageName, String userId) {
         if (userId == null) {
             return false;
         }
-        
+
         String imageNameWithoutSuffix = StringTools.getFileNameNoSuffix(imageName);
         if (imageNameWithoutSuffix == null || imageNameWithoutSuffix.length() < 32) {
             return false;
         }
-        
+
         String ownerId = extractOwnerIdFromImageName(imageNameWithoutSuffix);
         if (ownerId == null) {
             return false;
         }
-        
+
         if (ownerId.equals(userId)) {
             return true;
         }
-        
+
         String fileId = extractFileIdFromImageName(imageNameWithoutSuffix, ownerId);
         if (fileId != null) {
             FileInfoQuery query = new FileInfoQuery();
@@ -97,17 +115,17 @@ public class CommonFileController extends ABaseController {
             Integer count = fileInfoService.findCountByParam(query);
             return count != null && count > 0;
         }
-        
+
         return false;
     }
-    
+
     private String extractOwnerIdFromImageName(String imageName) {
         if (imageName == null || imageName.length() < 32) {
             return null;
         }
         return imageName.substring(0, 32);
     }
-    
+
     private String extractFileIdFromImageName(String imageName, String ownerId) {
         if (imageName == null || ownerId == null) {
             return null;
@@ -118,6 +136,13 @@ public class CommonFileController extends ABaseController {
         return null;
     }
 
+    /**
+     * 获取文件.
+     *
+     * @param response HTTP 响应
+     * @param fileId 文件ID
+     * @param userId 用户ID
+     */
     @FileAccessCheck
     protected void getFile(HttpServletResponse response, String fileId, String userId) {
         String filePath = null;
@@ -163,18 +188,24 @@ public class CommonFileController extends ABaseController {
             }
         }
 
-        // Remove local file check as logic is abstracted to storage strategy
         readFile(response, filePath);
     }
 
+    /**
+     * 创建下载链接.
+     *
+     * @param fileId 文件ID
+     * @param userId 用户ID
+     * @return 下载码
+     */
     @FileAccessCheck
     protected ResponseVO<String> createDownloadUrl(String fileId, String userId) {
         FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, userId);
         if (fileInfo == null) {
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "文件不存在或无权访问");
         }
         if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
-            throw new BusinessException(ResponseCodeEnum.CODE_600);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "文件夹不支持下载，请选择文件");
         }
         String code = StringTools.getRandomString(Constants.LENGTH_50);
         DownloadFileDto downloadFileDto = new DownloadFileDto();
@@ -187,6 +218,14 @@ public class CommonFileController extends ABaseController {
         return getSuccessResponseVO(code);
     }
 
+    /**
+     * 下载文件.
+     *
+     * @param request HTTP 请求
+     * @param response HTTP 响应
+     * @param code 下载码
+     * @throws Exception 异常
+     */
     protected void download(HttpServletRequest request, HttpServletResponse response, String code) throws Exception {
         long startTime = System.currentTimeMillis();
         String fileName = "unknown";
@@ -199,26 +238,21 @@ public class CommonFileController extends ABaseController {
             }
 
             fileName = downloadFileDto.getFileName();
-            String filePath = downloadFileDto.getFilePath();
 
             log.info("[DOWNLOAD] Start downloading file: {} (code: {})", fileName, code);
 
-            // 优化响应头设置
             response.setContentType("application/octet-stream");
             response.setCharacterEncoding("UTF-8");
-
-            // 设置缓冲区大小（8KB）
             response.setBufferSize(8192);
 
-            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {// IE浏览器
+            String filePath = downloadFileDto.getFilePath();
+
+            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {
                 fileName = URLEncoder.encode(fileName, "UTF-8");
             } else {
                 fileName = new String(fileName.getBytes("UTF-8"), "ISO8859-1");
             }
             response.setHeader("Content-Disposition", "attachment;filename=\"" + fileName + "\"");
-
-            // 支持断点续传 logic removed as it relied on local file system check
-            // storage strategy streams content directly
 
             readFile(response, filePath);
 

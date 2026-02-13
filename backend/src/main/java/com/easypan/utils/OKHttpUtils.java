@@ -2,7 +2,12 @@ package com.easypan.utils;
 
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.exception.BusinessException;
-import okhttp3.*;
+import okhttp3.FormBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,9 +17,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * HTTP 请求工具类，基于 OkHttp 实现.
+ */
 public class OKHttpUtils {
     /**
-     * 请求超时时间5秒
+     * 请求超时时间 8 秒.
      */
     private static final int TIME_OUT_SECONDS = 8;
 
@@ -43,6 +51,13 @@ public class OKHttpUtils {
         return requestBuilder;
     }
 
+    /**
+     * 发送 GET 请求.
+     *
+     * @param url 请求地址
+     * @return 响应字符串
+     * @throws BusinessException 业务异常
+     */
     public static String getRequest(String url) throws BusinessException {
         ResponseBody responseBody = null;
         try {
@@ -68,6 +83,14 @@ public class OKHttpUtils {
         }
     }
 
+    /**
+     * 发送 POST 请求.
+     *
+     * @param url 请求地址
+     * @param params 请求参数
+     * @return 响应字符串
+     * @throws BusinessException 业务异常
+     */
     public static String postRequest(String url, Map<String, String> params) throws BusinessException {
         ResponseBody body = null;
         try {

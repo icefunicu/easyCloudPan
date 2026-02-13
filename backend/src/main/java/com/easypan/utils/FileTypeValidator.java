@@ -5,11 +5,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * 文件类型校验工具类
- * 通过文件头（Magic Number）验证真实文件类型
+ * 文件类型校验工具类.
+ *
+ * <p>通过文件头（Magic Number）验证真实文件类型
  */
 public class FileTypeValidator {
 
@@ -65,10 +71,10 @@ public class FileTypeValidator {
     }
 
     /**
-     * 验证文件类型是否匹配
+     * 验证文件类型是否匹配.
      *
      * @param inputStream 文件输入流
-     * @param extension   声称的文件扩展名
+     * @param extension 声称的文件扩展名
      * @return true 如果文件类型匹配
      */
     public static boolean validateFileType(InputStream inputStream, String extension) {
@@ -110,11 +116,12 @@ public class FileTypeValidator {
     }
 
     /**
-     * 读取文件头
+     * 读取文件头.
      *
      * @param inputStream 文件输入流
-     * @param length      读取长度（字节）
+     * @param length 读取长度（字节）
      * @return 文件头十六进制字符串
+     * @throws IOException IO 异常
      */
     private static String getFileHeader(InputStream inputStream, int length) throws IOException {
         byte[] bytes = new byte[length];
@@ -134,7 +141,7 @@ public class FileTypeValidator {
     }
 
     /**
-     * 检查文件扩展名是否在黑名单中
+     * 检查文件扩展名是否在黑名单中.
      *
      * @param extension 文件扩展名
      * @return true 如果是危险文件类型
@@ -148,7 +155,7 @@ public class FileTypeValidator {
     }
 
     /**
-     * 获取支持的文件类型列表
+     * 获取支持的文件类型列表.
      *
      * @return 支持的文件扩展名集合
      */

@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
+/**
+ * 用户空间数据传输对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

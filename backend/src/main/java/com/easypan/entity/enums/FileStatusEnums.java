@@ -1,6 +1,8 @@
 package com.easypan.entity.enums;
 
-
+/**
+ * 文件状态枚举.
+ */
 public enum FileStatusEnums {
     TRANSFER(0, "转码中"),
     TRANSFER_FAIL(1, "转码失败"),

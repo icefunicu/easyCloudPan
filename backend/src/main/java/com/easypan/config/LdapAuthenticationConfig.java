@@ -8,8 +8,8 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * LDAP 认证配置
- * 仅在配置 ldap.enabled=true 时生效
+ * LDAP 认证配置.
+ * 仅在配置 ldap.enabled=true 时生效.
  */
 @Configuration
 @ConditionalOnProperty(name = "ldap.enabled", havingValue = "true")
@@ -24,14 +24,21 @@ public class LdapAuthenticationConfig {
     @Value("${ldap.user-dn-pattern:uid={0},ou=people}")
     private String userDnPattern;
 
+    /**
+     * 配置 LDAP 认证.
+     *
+     * @param auth 认证管理器构建器
+     * @param passwordEncoder 密码编码器
+     * @throws Exception 配置异常
+     */
     @Autowired
     public void configureGlobal(AuthenticationManagerBuilder auth, PasswordEncoder passwordEncoder) throws Exception {
         auth.ldapAuthentication()
-            .userDnPatterns(userDnPattern)
-            .contextSource()
+                .userDnPatterns(userDnPattern)
+                .contextSource()
                 .url(ldapUrls + ldapBaseDn)
                 .and()
-            .passwordCompare()
+                .passwordCompare()
                 .passwordEncoder(passwordEncoder)
                 .passwordAttribute("userPassword");
     }

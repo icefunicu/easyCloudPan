@@ -8,13 +8,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
+/**
+ * Spring 应用上下文提供者，用于获取 Spring 容器中的 Bean.
+ */
 @Component("applicationContextProvider")
 @SuppressWarnings("all")
 public class ApplicationContextProvider implements ApplicationContextAware {
     private static final Logger logger = LoggerFactory.getLogger(ApplicationContextProvider.class);
-    /**
-     * 上下文对象实例
-     */
+
     private static ApplicationContext applicationContext;
 
     @Override
@@ -23,19 +24,19 @@ public class ApplicationContextProvider implements ApplicationContextAware {
     }
 
     /**
-     * 获取applicationContext
+     * 获取应用上下文.
      *
-     * @return
+     * @return 应用上下文
      */
     public static ApplicationContext getApplicationContext() {
         return applicationContext;
     }
 
     /**
-     * 通过name获取 Bean.
+     * 通过名称获取 Bean.
      *
-     * @param name
-     * @return
+     * @param name Bean 名称
+     * @return Bean 对象
      */
     public static Object getBean(String name) {
         try {
@@ -48,11 +49,11 @@ public class ApplicationContextProvider implements ApplicationContextAware {
     }
 
     /**
-     * 通过class获取Bean.
+     * 通过类型获取 Bean.
      *
-     * @param clazz
-     * @param <T>
-     * @return
+     * @param clazz Bean 类型
+     * @param <T> Bean 类型
+     * @return Bean 对象
      */
     @SuppressWarnings("null")
     public static <T> T getBean(Class<T> clazz) {
@@ -60,12 +61,12 @@ public class ApplicationContextProvider implements ApplicationContextAware {
     }
 
     /**
-     * 通过name,以及Clazz返回指定的Bean
+     * 通过名称和类型获取 Bean.
      *
-     * @param name
-     * @param clazz
-     * @param <T>
-     * @return
+     * @param name Bean 名称
+     * @param clazz Bean 类型
+     * @param <T> Bean 类型
+     * @return Bean 对象
      */
     public static <T> T getBean(String name, Class<T> clazz) {
         return getApplicationContext().getBean(name, clazz);

@@ -12,27 +12,29 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * 缓存预热服务
- * 
- * 在应用启动完成后自动预热热点数据到缓存中，提升系统响应速度
- * 
- * 需求：2.2.2
+ * 缓存预热服务.
+ *
+ * <p>在应用启动完成后自动预热热点数据到缓存中，提升系统响应速度
+ *
+ * <p>需求：2.2.2
  */
 @Component
 @Slf4j
 public class CacheWarmupService {
-    
+
     @Autowired
     private UserInfoMapper userInfoMapper;
-    
+
     @Autowired
     private CacheService cacheService;
 
     @Autowired
     private RedisComponent redisComponent;
-    
+
     /**
-     * 应用启动完成后执行一次缓存预热。
+     * 应用启动完成后执行一次缓存预热.
+     *
+     * @param event 应用就绪事件
      */
     @EventListener(ApplicationReadyEvent.class)
     public void warmupOnStartup(ApplicationReadyEvent event) {
@@ -40,7 +42,7 @@ public class CacheWarmupService {
     }
 
     /**
-     * 每天凌晨 2 点定时预热缓存。
+     * 每天凌晨 2 点定时预热缓存.
      */
     @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 2 * * ?")
     public void warmupOnSchedule() {

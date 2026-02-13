@@ -83,6 +83,7 @@ ops/docker/.env
 agent_runs/
 .agent_runs/
 .kiro/
+ARTIFACTS/
 
 # Temporary files
 *.tmp

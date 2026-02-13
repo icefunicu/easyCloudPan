@@ -9,7 +9,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 
 /**
- * 虚拟线程监控组件
+ * 虚拟线程监控组件.
  */
 @Component
 public class VirtualThreadMonitor {
@@ -19,7 +19,7 @@ public class VirtualThreadMonitor {
     private final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
     /**
-     * 每分钟打印一次线程统计信息
+     * 每分钟打印一次线程统计信息.
      */
     @Scheduled(fixedRate = 60000)
     public void monitorThreads() {

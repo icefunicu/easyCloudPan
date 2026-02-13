@@ -1,11 +1,11 @@
 <template>
     <div class="image-viewer"></div>
     <el-image-viewer
+      v-if="previewImgIndex != null"
       :initial-index="previewImgIndex"
       hide-on-click-modal
       :url-list="imageList"
       @close="closeImgViewer"
-      v-if="previewImgIndex != null"
     >
     </el-image-viewer>
 </template>

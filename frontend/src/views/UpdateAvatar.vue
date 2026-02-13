@@ -5,12 +5,12 @@
           :title="dialogConfig.title"
           :buttons="dialogConfig.buttons"
           width="500px"
-          :showCancel="false"
+          :show-cancel="false"
           @close="dialogConfig.show = false"
           >
         <el-form
-          :model="formData"
           ref="formDataRef"
+          :model="formData"
           label-width="80px"
           @submit.prevent
         >
@@ -69,7 +69,7 @@ const submitForm = async () => {
         return;
     }
 
-    let result = await proxy.Request ({
+    const result = await proxy.Request ({
         url: api.updateUserAvatar,
         params: {
             avatar: formData.value.avatar,

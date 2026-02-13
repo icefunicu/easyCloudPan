@@ -4,6 +4,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 文件夹视图对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

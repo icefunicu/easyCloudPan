@@ -17,6 +17,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+/**
+ * 基础控制器类.
+ */
 public class ABaseController {
 
     private static final Logger logger = LoggerFactory.getLogger(ABaseController.class);
@@ -29,6 +32,13 @@ public class ABaseController {
 
     protected static final String STATUC_ERROR = "error";
 
+    /**
+     * 获取成功响应.
+     *
+     * @param t 响应数据
+     * @param <T> 数据类型
+     * @return 响应对象
+     */
     protected <T> ResponseVO<T> getSuccessResponseVO(T t) {
         ResponseVO<T> responseVO = new ResponseVO<>();
         responseVO.setStatus(STATUC_SUCCESS);
@@ -38,6 +48,15 @@ public class ABaseController {
         return responseVO;
     }
 
+    /**
+     * 转换分页结果.
+     *
+     * @param result 原始分页结果
+     * @param classz 目标类型
+     * @param <S> 源类型
+     * @param <T> 目标类型
+     * @return 转换后的分页结果
+     */
     protected <S, T> PaginationResultVO<T> convert2PaginationVO(PaginationResultVO<S> result, Class<T> classz) {
         PaginationResultVO<T> resultVO = new PaginationResultVO<>();
         resultVO.setList(CopyTools.copyList(result.getList(), classz));
@@ -48,16 +67,35 @@ public class ABaseController {
         return resultVO;
     }
 
+    /**
+     * 从会话获取用户信息.
+     *
+     * @param session HTTP 会话
+     * @return 用户信息
+     */
     protected SessionWebUserDto getUserInfoFromSession(HttpSession session) {
         SessionWebUserDto sessionWebUserDto = (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
         return sessionWebUserDto;
     }
 
+    /**
+     * 从会话获取分享信息.
+     *
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @return 分享信息
+     */
     protected SessionShareDto getSessionShareFromSession(HttpSession session, String shareId) {
         SessionShareDto sessionShareDto = (SessionShareDto) session.getAttribute(Constants.SESSION_SHARE_KEY + shareId);
         return sessionShareDto;
     }
 
+    /**
+     * 读取文件并写入响应.
+     *
+     * @param response HTTP 响应
+     * @param filePath 文件路径
+     */
     protected void readFile(HttpServletResponse response, String filePath) {
         OutputStream out = null;
         InputStream in = null;

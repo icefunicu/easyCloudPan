@@ -1,6 +1,6 @@
 <template>
-    <div class="window" v-if="show">
-        <div class="window-mask" @click="close" v-if="show"></div>
+    <div v-if="show" class="window">
+        <div v-if="show" class="window-mask" @click="close"></div>
         <div class="close" @click="close">
           <span class="iconfont icon-close2"></span>
         </div>
@@ -46,7 +46,7 @@ const windowContentWidth = computed(() => {
     return props.width > windowWidth.value ? windowWidth.value : props.width;
 });
 const windowContentLeft = computed(() => {
-    let left = windowWidth.value - props.width;
+    const left = windowWidth.value - props.width;
     return left < 0 ? 0 : left / 2;
 });
 

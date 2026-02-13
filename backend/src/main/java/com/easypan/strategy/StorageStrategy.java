@@ -3,6 +3,9 @@ package com.easypan.strategy;
 import java.io.InputStream;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 存储策略接口，定义文件存储的基本操作.
+ */
 public interface StorageStrategy {
     void upload(MultipartFile file, String path);
 

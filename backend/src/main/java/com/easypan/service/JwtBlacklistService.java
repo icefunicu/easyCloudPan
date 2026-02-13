@@ -1,20 +1,22 @@
 package com.easypan.service;
 
 /**
- * JWT Blacklist Service Interface
+ * JWT 黑名单服务接口.
  */
 public interface JwtBlacklistService {
     /**
-     * Add token to blacklist
-     * @param token JWT token
-     * @param expirationTimeInMs Token remaining expiration time in milliseconds
+     * 将令牌添加到黑名单.
+     *
+     * @param token JWT 令牌
+     * @param expirationTimeInMs 令牌剩余过期时间（毫秒）
      */
     void addToBlacklist(String token, long expirationTimeInMs);
 
     /**
-     * Check if token is blacklisted
-     * @param token JWT token
-     * @return true if blacklisted
+     * 检查令牌是否在黑名单中.
+     *
+     * @param token JWT 令牌
+     * @return 如果在黑名单中则返回 true
      */
     boolean isBlacklisted(String token);
 }

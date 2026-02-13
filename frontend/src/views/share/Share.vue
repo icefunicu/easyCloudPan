@@ -14,11 +14,11 @@
             <Table
               ref="dataTableRef"
               :columns="columns"
-              :dataSource="tableData"
+              :data-source="tableData"
               :fetch="loadDataList"
-              :initFetch="true"
+              :init-fetch="true"
               :options="tableOptions"
-              @rowSelected="rowSelected"
+              @row-selected="rowSelected"
             >
             <template #fileName="{ index, row }">
               <div
@@ -34,8 +34,8 @@
                 <Icon :cover="row.fileCover"></Icon>
               </template>
               <template v-else>
-                <Icon v-if="row.folderType == 0" :fileType="row.fileType"></Icon>
-                <Icon v-if="row.folderType == 1" :fileType="0"></Icon>
+                <Icon v-if="row.folderType == 0" :file-type="row.fileType"></Icon>
+                <Icon v-if="row.folderType == 1" :file-type="0"></Icon>
               </template>
               <span class="file-name" :title="row.fileName">{{
                 row.fileName
@@ -109,11 +109,11 @@ const tableOptions = {
 };
 
 const loadDataList = async () => {
-    let params = {
+    const params = {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
     };
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.loadDataList,
         params,
     });
@@ -168,7 +168,7 @@ const cancelShare = (row) => {
 
 const cancelShareDone = () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.cancelShare,
             params: {
                 shareIds: cancelShareIdList.value.join(","),

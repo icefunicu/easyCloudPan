@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * 文件清理定时任务，清理回收站中过期的文件.
+ */
 @Component
 public class FileCleanTask {
 
@@ -34,6 +37,9 @@ public class FileCleanTask {
     @Value("${app.file-clean.max-rounds:" + DEFAULT_MAX_ROUNDS + "}")
     private int maxRounds;
 
+    /**
+     * 执行文件清理任务.
+     */
     @Scheduled(fixedDelayString = "${app.file-clean.fixed-delay-ms:180000}")
     public void execute() {
         int effectiveBatchSize = batchSize > 0 ? batchSize : DEFAULT_BATCH_SIZE;

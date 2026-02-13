@@ -2,6 +2,7 @@ package com.easypan.unit.component;
 
 import com.easypan.component.RedisComponent;
 import com.easypan.component.RedisUtils;
+import com.easypan.entity.constants.CacheTTL;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.DownloadFileDto;
 import com.easypan.entity.dto.SysSettingsDto;
@@ -9,6 +10,7 @@ import com.easypan.entity.dto.UserSpaceDto;
 import com.easypan.entity.po.UserInfo;
 import com.easypan.mappers.FileInfoMapper;
 import com.easypan.mappers.UserInfoMapper;
+import com.mybatisflex.core.query.QueryWrapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,10 +23,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/**
- * RedisComponent 单元测试
- * 测试缓存操作、会话管理、分布式锁等功能
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RedisComponent 单元测试")
 class RedisComponentTest {
@@ -53,75 +51,60 @@ class RedisComponentTest {
         testFileId = "file_456";
 
         testSysSettings = new SysSettingsDto();
-        testSysSettings.setUserInitUseSpace(5); // 5MB
+        testSysSettings.setUserInitUseSpace(5);
 
         testUserSpace = new UserSpaceDto();
-        testUserSpace.setUseSpace(1024L * 1024L); // 1MB
-        testUserSpace.setTotalSpace(5L * 1024L * 1024L); // 5MB
+        testUserSpace.setUseSpace(1024L * 1024L);
+        testUserSpace.setTotalSpace(5L * 1024L * 1024L);
 
         testUserInfo = new UserInfo();
         testUserInfo.setUserId(testUserId);
-        testUserInfo.setTotalSpace(10L * 1024L * 1024L); // 10MB
+        testUserInfo.setTotalSpace(10L * 1024L * 1024L);
     }
-
-    // ==================== 系统设置缓存测试 ====================
 
     @Test
     @DisplayName("获取系统设置 - 缓存命中")
     void testGetSysSettingsDto_CacheHit() {
-        // Given
         when(redisUtils.get(Constants.REDIS_KEY_SYS_SETTING)).thenReturn(testSysSettings);
 
-        // When
         SysSettingsDto result = redisComponent.getSysSettingsDto();
 
-        // Then
         assertNotNull(result);
         assertEquals(testSysSettings.getUserInitUseSpace(), result.getUserInitUseSpace());
         verify(redisUtils, times(1)).get(Constants.REDIS_KEY_SYS_SETTING);
-        verify(redisUtils, never()).set(anyString(), any());
+        verify(redisUtils, never()).setex(anyString(), any(), anyLong());
     }
 
     @Test
     @DisplayName("获取系统设置 - 缓存未命中，创建默认值")
     void testGetSysSettingsDto_CacheMiss() {
-        // Given
         when(redisUtils.get(Constants.REDIS_KEY_SYS_SETTING)).thenReturn(null);
 
-        // When
         SysSettingsDto result = redisComponent.getSysSettingsDto();
 
-        // Then
         assertNotNull(result);
         verify(redisUtils, times(1)).get(Constants.REDIS_KEY_SYS_SETTING);
-        verify(redisUtils, times(1)).set(eq(Constants.REDIS_KEY_SYS_SETTING), any(SysSettingsDto.class));
+        verify(redisUtils, times(1)).setex(eq(Constants.REDIS_KEY_SYS_SETTING), any(SysSettingsDto.class), eq((long) CacheTTL.SYS_CONFIG));
     }
 
     @Test
     @DisplayName("保存系统设置")
     void testSaveSysSettingsDto() {
-        // When
         redisComponent.saveSysSettingsDto(testSysSettings);
 
-        // Then
-        verify(redisUtils, times(1)).set(Constants.REDIS_KEY_SYS_SETTING, testSysSettings);
+        verify(redisUtils, times(1)).setex(Constants.REDIS_KEY_SYS_SETTING, testSysSettings, CacheTTL.SYS_CONFIG);
     }
-
-    // ==================== 下载码缓存测试 ====================
 
     @Test
     @DisplayName("保存下载码")
     void testSaveDownloadCode() {
-        // Given
         String code = "download_123";
         DownloadFileDto downloadDto = new DownloadFileDto();
         downloadDto.setFileName("test.txt");
         downloadDto.setFilePath("/files/test.txt");
 
-        // When
         redisComponent.saveDownloadCode(code, downloadDto);
 
-        // Then
         verify(redisUtils, times(1)).setex(
                 eq(Constants.REDIS_KEY_DOWNLOAD + code),
                 eq(downloadDto),
@@ -132,16 +115,13 @@ class RedisComponentTest {
     @Test
     @DisplayName("获取下载码")
     void testGetDownloadCode() {
-        // Given
         String code = "download_123";
         DownloadFileDto downloadDto = new DownloadFileDto();
         downloadDto.setFileName("test.txt");
         when(redisUtils.get(Constants.REDIS_KEY_DOWNLOAD + code)).thenReturn(downloadDto);
 
-        // When
         DownloadFileDto result = redisComponent.getDownloadCode(code);
 
-        // Then
         assertNotNull(result);
         assertEquals("test.txt", result.getFileName());
         verify(redisUtils, times(1)).get(Constants.REDIS_KEY_DOWNLOAD + code);
@@ -150,29 +130,21 @@ class RedisComponentTest {
     @Test
     @DisplayName("获取下载码 - 不存在")
     void testGetDownloadCode_NotFound() {
-        // Given
         String code = "invalid_code";
         when(redisUtils.get(Constants.REDIS_KEY_DOWNLOAD + code)).thenReturn(null);
 
-        // When
         DownloadFileDto result = redisComponent.getDownloadCode(code);
 
-        // Then
         assertNull(result);
     }
-
-    // ==================== 用户空间缓存测试 ====================
 
     @Test
     @DisplayName("获取用户空间使用情况 - 缓存命中")
     void testGetUserSpaceUse_CacheHit() {
-        // Given
         when(redisUtils.get(Constants.REDIS_KEY_USER_SPACE_USE + testUserId)).thenReturn(testUserSpace);
 
-        // When
         UserSpaceDto result = redisComponent.getUserSpaceUse(testUserId);
 
-        // Then
         assertNotNull(result);
         assertEquals(testUserSpace.getUseSpace(), result.getUseSpace());
         assertEquals(testUserSpace.getTotalSpace(), result.getTotalSpace());
@@ -182,16 +154,13 @@ class RedisComponentTest {
     @Test
     @DisplayName("获取用户空间使用情况 - 缓存未命中")
     void testGetUserSpaceUse_CacheMiss() {
-        // Given
-        Long usedSpace = 2L * 1024L * 1024L; // 2MB
+        Long usedSpace = 2L * 1024L * 1024L;
         when(redisUtils.get(Constants.REDIS_KEY_USER_SPACE_USE + testUserId)).thenReturn(null);
         when(fileInfoMapper.selectUseSpace(testUserId)).thenReturn(usedSpace);
         when(redisUtils.get(Constants.REDIS_KEY_SYS_SETTING)).thenReturn(testSysSettings);
 
-        // When
         UserSpaceDto result = redisComponent.getUserSpaceUse(testUserId);
 
-        // Then
         assertNotNull(result);
         assertEquals(usedSpace, result.getUseSpace());
         assertEquals(5L * Constants.MB, result.getTotalSpace());
@@ -199,62 +168,52 @@ class RedisComponentTest {
         verify(redisUtils, times(1)).setex(
                 eq(Constants.REDIS_KEY_USER_SPACE_USE + testUserId),
                 any(UserSpaceDto.class),
-                eq((long) Constants.REDIS_KEY_EXPIRES_DAY)
+                eq((long) CacheTTL.WARM_DATA)
         );
     }
 
     @Test
     @DisplayName("保存用户空间使用情况")
     void testSaveUserSpaceUse() {
-        // When
         redisComponent.saveUserSpaceUse(testUserId, testUserSpace);
 
-        // Then
         verify(redisUtils, times(1)).setex(
                 eq(Constants.REDIS_KEY_USER_SPACE_USE + testUserId),
                 eq(testUserSpace),
-                eq((long) Constants.REDIS_KEY_EXPIRES_DAY)
+                eq((long) CacheTTL.WARM_DATA)
         );
     }
 
     @Test
     @DisplayName("重置用户空间使用情况")
     void testResetUserSpaceUse() {
-        // Given
-        Long usedSpace = 3L * 1024L * 1024L; // 3MB
+        Long usedSpace = 3L * 1024L * 1024L;
         when(fileInfoMapper.selectUseSpace(testUserId)).thenReturn(usedSpace);
-        when(userInfoMapper.selectByUserId(testUserId)).thenReturn(testUserInfo);
+        when(userInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(testUserInfo);
 
-        // When
         UserSpaceDto result = redisComponent.resetUserSpaceUse(testUserId);
 
-        // Then
         assertNotNull(result);
         assertEquals(usedSpace, result.getUseSpace());
         assertEquals(testUserInfo.getTotalSpace(), result.getTotalSpace());
         verify(fileInfoMapper, times(1)).selectUseSpace(testUserId);
-        verify(userInfoMapper, times(1)).selectByUserId(testUserId);
+        verify(userInfoMapper, times(1)).selectOneByQuery(any(QueryWrapper.class));
         verify(redisUtils, times(1)).setex(
                 eq(Constants.REDIS_KEY_USER_SPACE_USE + testUserId),
                 any(UserSpaceDto.class),
-                eq((long) Constants.REDIS_KEY_EXPIRES_DAY)
+                eq((long) CacheTTL.WARM_DATA)
         );
     }
-
-    // ==================== 文件临时大小缓存测试 ====================
 
     @Test
     @DisplayName("保存文件临时大小 - 首次保存")
     void testSaveFileTempSize_FirstTime() {
-        // Given
-        Long fileSize = 1024L * 1024L; // 1MB
+        Long fileSize = 1024L * 1024L;
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(null);
 
-        // When
         redisComponent.saveFileTempSize(testUserId, testFileId, fileSize);
 
-        // Then
         verify(redisUtils, times(1)).get(key);
         verify(redisUtils, times(1)).setex(
                 eq(key),
@@ -266,16 +225,13 @@ class RedisComponentTest {
     @Test
     @DisplayName("保存文件临时大小 - 累加")
     void testSaveFileTempSize_Accumulate() {
-        // Given
-        Long existingSize = 1024L * 1024L; // 1MB
-        Long additionalSize = 512L * 1024L; // 512KB
+        Long existingSize = 1024L * 1024L;
+        Long additionalSize = 512L * 1024L;
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(existingSize);
 
-        // When
         redisComponent.saveFileTempSize(testUserId, testFileId, additionalSize);
 
-        // Then
         verify(redisUtils, times(1)).get(key);
         verify(redisUtils, times(1)).setex(
                 eq(key),
@@ -287,77 +243,60 @@ class RedisComponentTest {
     @Test
     @DisplayName("获取文件临时大小 - 存在")
     void testGetFileTempSize_Exists() {
-        // Given
-        Long fileSize = 2L * 1024L * 1024L; // 2MB
+        Long fileSize = 2L * 1024L * 1024L;
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(fileSize);
 
-        // When
         Long result = redisComponent.getFileTempSize(testUserId, testFileId);
 
-        // Then
         assertEquals(fileSize, result);
     }
 
     @Test
     @DisplayName("获取文件临时大小 - 不存在")
     void testGetFileTempSize_NotExists() {
-        // Given
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(null);
 
-        // When
         Long result = redisComponent.getFileTempSize(testUserId, testFileId);
 
-        // Then
         assertEquals(0L, result);
     }
 
     @Test
     @DisplayName("获取文件临时大小 - Integer类型转换")
     void testGetFileTempSize_IntegerType() {
-        // Given
-        Integer fileSize = 1024 * 1024; // 1MB as Integer
+        Integer fileSize = 1024 * 1024;
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(fileSize);
 
-        // When
         Long result = redisComponent.getFileTempSize(testUserId, testFileId);
 
-        // Then
         assertEquals(fileSize.longValue(), result);
     }
-
-    // ==================== 边界条件测试 ====================
 
     @Test
     @DisplayName("获取用户空间 - 数据库返回null")
     void testGetUserSpaceUse_DatabaseReturnsNull() {
-        // Given
         when(redisUtils.get(Constants.REDIS_KEY_USER_SPACE_USE + testUserId)).thenReturn(null);
         when(fileInfoMapper.selectUseSpace(testUserId)).thenReturn(null);
         when(redisUtils.get(Constants.REDIS_KEY_SYS_SETTING)).thenReturn(testSysSettings);
 
-        // When
         UserSpaceDto result = redisComponent.getUserSpaceUse(testUserId);
 
-        // Then
         assertNotNull(result);
-        assertNull(result.getUseSpace()); // 应该保持null
+        assertNull(result.getUseSpace());
         assertEquals(5L * Constants.MB, result.getTotalSpace());
     }
 
     @Test
     @DisplayName("保存文件临时大小 - 零大小")
     void testSaveFileTempSize_ZeroSize() {
-        // Given
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(null);
 
-        // When
         redisComponent.saveFileTempSize(testUserId, testFileId, 0L);
 
-        // Then
         verify(redisUtils, times(1)).setex(
                 eq(key),
                 eq(0L),
@@ -368,19 +307,102 @@ class RedisComponentTest {
     @Test
     @DisplayName("保存文件临时大小 - 大文件")
     void testSaveFileTempSize_LargeFile() {
-        // Given
-        Long largeSize = 5L * 1024L * 1024L * 1024L; // 5GB
+        Long largeSize = 5L * 1024L * 1024L * 1024L;
         String key = Constants.REDIS_KEY_USER_FILE_TEMP_SIZE + testUserId + testFileId;
         when(redisUtils.get(key)).thenReturn(null);
 
-        // When
         redisComponent.saveFileTempSize(testUserId, testFileId, largeSize);
 
-        // Then
         verify(redisUtils, times(1)).setex(
                 eq(key),
                 eq(largeSize),
                 eq((long) Constants.REDIS_KEY_EXPIRES_ONE_HOUR)
         );
+    }
+
+    @Test
+    @DisplayName("添加 Token 到黑名单")
+    void testAddBlacklistToken() {
+        String token = "test_token";
+        long expirationTime = 3600L;
+
+        redisComponent.addBlacklistToken(token, expirationTime);
+
+        verify(redisUtils).setex(Constants.REDIS_KEY_JWT_BLACKLIST + token, "", expirationTime);
+    }
+
+    @Test
+    @DisplayName("检查 Token 是否在黑名单 - 已存在")
+    void testIsTokenBlacklisted_Exists() {
+        String token = "test_token";
+        when(redisUtils.get(Constants.REDIS_KEY_JWT_BLACKLIST + token)).thenReturn("");
+
+        boolean result = redisComponent.isTokenBlacklisted(token);
+
+        assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("检查 Token 是否在黑名单 - 不存在")
+    void testIsTokenBlacklisted_NotExists() {
+        String token = "test_token";
+        when(redisUtils.get(Constants.REDIS_KEY_JWT_BLACKLIST + token)).thenReturn(null);
+
+        boolean result = redisComponent.isTokenBlacklisted(token);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("保存刷新 Token")
+    void testSaveRefreshToken() {
+        String refreshToken = "refresh_token_123";
+        long expirationTime = 86400L;
+
+        redisComponent.saveRefreshToken(testUserId, refreshToken, expirationTime);
+
+        verify(redisUtils).setex(Constants.REDIS_KEY_REFRESH_TOKEN + testUserId, refreshToken, expirationTime);
+    }
+
+    @Test
+    @DisplayName("获取刷新 Token")
+    void testGetRefreshToken() {
+        String refreshToken = "refresh_token_123";
+        when(redisUtils.get(Constants.REDIS_KEY_REFRESH_TOKEN + testUserId)).thenReturn(refreshToken);
+
+        String result = redisComponent.getRefreshToken(testUserId);
+
+        assertEquals(refreshToken, result);
+    }
+
+    @Test
+    @DisplayName("验证刷新 Token - 成功")
+    void testValidateRefreshToken_Success() {
+        String refreshToken = "refresh_token_123";
+        when(redisUtils.get(Constants.REDIS_KEY_REFRESH_TOKEN + testUserId)).thenReturn(refreshToken);
+
+        boolean result = redisComponent.validateRefreshToken(testUserId, refreshToken);
+
+        assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("验证刷新 Token - 失败")
+    void testValidateRefreshToken_Failure() {
+        String refreshToken = "refresh_token_123";
+        String storedToken = "different_token";
+        when(redisUtils.get(Constants.REDIS_KEY_REFRESH_TOKEN + testUserId)).thenReturn(storedToken);
+
+        boolean result = redisComponent.validateRefreshToken(testUserId, refreshToken);
+
+        assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("删除刷新 Token")
+    void testDeleteRefreshToken() {
+        redisComponent.deleteRefreshToken(testUserId);
+
+        verify(redisUtils).delete(Constants.REDIS_KEY_REFRESH_TOKEN + testUserId);
     }
 }

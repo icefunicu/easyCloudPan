@@ -15,8 +15,8 @@
         <template v-for="(item, index) in folderList">
             <span class="iconfont icon-right"></span>
             <span
-              class="link"
               v-if="index < folderList.length - 1"
+              class="link"
               @click="setCurrentFolder(index)"
               >{{ item.fileName }}</span
             >
@@ -109,7 +109,7 @@ const setPath = () => {
         doCallback();
         return;
     }
-    let pathArray = [];
+    const pathArray = [];
     folderList.value.forEach(item => {
         pathArray.push(item.fileId);
     })
@@ -128,7 +128,7 @@ const getNavigationFolder = async (path) => {
     if (props.adminShow) {
         url = api.getFolderInfo4Admin;
     }
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: url,
         showLoading: false,
         params: {
@@ -168,7 +168,7 @@ watch(
             init();
         } else {
             getNavigationFolder(path);
-            let pathArray = path.split("/");
+            const pathArray = path.split("/");
             currentFolder.value = {
                 fileId: pathArray[pathArray.length - 1],
             };

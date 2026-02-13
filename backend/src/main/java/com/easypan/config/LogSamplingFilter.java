@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 日志采样过滤器.
+ * 用于减少重复日志输出，提高日志可读性.
+ */
 public class LogSamplingFilter extends TurboFilter {
 
     private double sampleRate = 0.1;
@@ -62,24 +66,44 @@ public class LogSamplingFilter extends TurboFilter {
         return loggerName + ":" + level + ":" + format.hashCode();
     }
 
+    /**
+     * 设置采样率.
+     *
+     * @param sampleRate 采样率（0.0-1.0）
+     */
     public void setSampleRate(double sampleRate) {
         this.sampleRate = Math.max(0.0, Math.min(1.0, sampleRate));
     }
 
+    /**
+     * 设置去重窗口时间（秒）.
+     *
+     * @param deduplicationWindowSeconds 窗口时间
+     */
     public void setDeduplicationWindowSeconds(int deduplicationWindowSeconds) {
         this.deduplicationWindowSeconds = deduplicationWindowSeconds;
     }
 
+    /**
+     * 设置窗口内最大重复数.
+     *
+     * @param maxDuplicatesPerWindow 最大重复数
+     */
     public void setMaxDuplicatesPerWindow(int maxDuplicatesPerWindow) {
         this.maxDuplicatesPerWindow = maxDuplicatesPerWindow;
     }
 
+    /**
+     * 获取统计信息.
+     *
+     * @return 统计信息
+     */
     public Map<String, Object> getStats() {
         return Map.of(
-            "totalSampled", totalSampled.get(),
-            "totalDropped", totalDropped.get(),
-            "sampleRate", sampleRate,
-            "uniqueLogKeys", recentLogs.size()
+                "totalSampled", totalSampled.get(),
+                "totalDropped", totalDropped.get(),
+                "sampleRate", sampleRate,
+                "uniqueLogKeys", recentLogs.size()
         );
     }
 

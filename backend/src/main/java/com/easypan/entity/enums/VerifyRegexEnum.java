@@ -1,5 +1,8 @@
 package com.easypan.entity.enums;
 
+/**
+ * 验证正则表达式枚举.
+ */
 public enum VerifyRegexEnum {
     NO("", "不校验"),
     IP("([1-9]|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])(\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])){3}", "IP地址"),

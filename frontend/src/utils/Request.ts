@@ -19,9 +19,9 @@ const instance = axios.create({
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
     showLoading?: boolean;
-    errorCallback?: Function;
+    errorCallback?: (errorMsg: string) => void;
     showError?: boolean;
-    uploadProgressCallback?: Function;
+    uploadProgressCallback?: (event: ProgressEvent) => void;
     dataType?: string;
     skipAuthRefresh?: boolean;
 }
@@ -172,22 +172,34 @@ const request = (config: {
     dataType?: string;
     showLoading?: boolean;
     responseType?: any;
-    errorCallback?: Function;
+    errorCallback?: (errorMsg: string) => void;
     showError?: boolean;
-    uploadProgressCallback?: Function;
+    uploadProgressCallback?: (event: ProgressEvent) => void;
 }) => {
     const { url, params, dataType, showLoading = true, responseType = responseTypeJson } = config;
     let contentType = contentTypeForm;
-    let formData = new FormData();
-    for (let key in params) {
-        formData.append(key, params[key] == undefined ? "" : params[key]);
-    }
+    let requestData: any;
+    const headers: any = {
+        'X-Requested-with': 'XMLHttpRequest',
+    };
+    
     if (dataType != null && dataType == 'json') {
         contentType = contentTypeJson;
-    }
-    let headers = {
-        'Content-Type': contentType,
-        'X-Requested-with': 'XMLHttpRequest',
+        requestData = params;
+        headers['Content-Type'] = contentType;
+    } else if (dataType === 'file') {
+        const formData = new FormData();
+        for (const key in params) {
+            formData.append(key, params[key] == undefined ? "" : params[key]);
+        }
+        requestData = formData;
+    } else {
+        const urlSearchParams = new URLSearchParams();
+        for (const key in params) {
+            urlSearchParams.append(key, params[key] == undefined ? "" : params[key]);
+        }
+        requestData = urlSearchParams.toString();
+        headers['Content-Type'] = contentType;
     }
 
     const axiosConfig: CustomAxiosRequestConfig = {
@@ -203,7 +215,7 @@ const request = (config: {
         }
     } as any;
 
-    return instance.post(url, formData, axiosConfig).catch(error => {
+    return instance.post(url, requestData, axiosConfig).catch(error => {
         if (import.meta.env.DEV) {
             console.error('Request error:', error);
         }

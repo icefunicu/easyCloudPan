@@ -18,6 +18,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+/**
+ * 虚拟线程配置类.
+ */
 @Configuration
 @EnableAsync
 public class VirtualThreadConfig implements AsyncConfigurer {
@@ -31,7 +34,9 @@ public class VirtualThreadConfig implements AsyncConfigurer {
     private String namePrefix;
 
     /**
-     * 配置 Spring Boot 的嵌入式 Tomcat 使用虚拟线程处理 HTTP 请求
+     * 配置 Spring Boot 的嵌入式 Tomcat 使用虚拟线程处理 HTTP 请求.
+     *
+     * @return Tomcat 协议处理器定制器
      */
     @Bean
     @ConditionalOnProperty(name = "spring.threads.virtual.enabled", havingValue = "true", matchIfMissing = true)
@@ -43,14 +48,15 @@ public class VirtualThreadConfig implements AsyncConfigurer {
     }
 
     /**
-     * 配置 @Async 异步任务默认执行器
-     * 支持通过 spring.threads.virtual.enabled 开启或关闭虚拟线程
+     * 配置 @Async 异步任务默认执行器.
+     * 支持通过 spring.threads.virtual.enabled 开启或关闭虚拟线程.
+     *
+     * @return 异步任务执行器
      */
     @Bean("taskExecutor")
     public AsyncTaskExecutor applicationTaskExecutor() {
         if (virtualThreadsEnabled) {
             logger.info("Configuring Virtual Thread executor for @Async operations with prefix: {}", namePrefix);
-            // 使用自定义前缀的虚拟线程工厂
             ThreadFactory factory = Thread.ofVirtual().name(namePrefix, 0).factory();
             return new TaskExecutorAdapter(Executors.newThreadPerTaskExecutor(factory));
         } else {
@@ -66,7 +72,9 @@ public class VirtualThreadConfig implements AsyncConfigurer {
     }
 
     /**
-     * 实现 AsyncConfigurer 接口，返回 applicationTaskExecutor Bean
+     * 实现 AsyncConfigurer 接口，返回 applicationTaskExecutor Bean.
+     *
+     * @return 异步任务执行器
      */
     @Override
     public AsyncTaskExecutor getAsyncExecutor() {
@@ -79,8 +87,10 @@ public class VirtualThreadConfig implements AsyncConfigurer {
     }
 
     /**
-     * 定义名为 virtualThreadExecutor 的 Bean，用于手动提交任务
-     * 总是返回虚拟线程执行器 (如果 JDK 支持)
+     * 定义名为 virtualThreadExecutor 的 Bean，用于手动提交任务.
+     * 总是返回虚拟线程执行器 (如果 JDK 支持).
+     *
+     * @return 虚拟线程执行器
      */
     @Bean("virtualThreadExecutor")
     public AsyncTaskExecutor virtualThreadExecutor() {

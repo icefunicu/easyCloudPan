@@ -1,6 +1,8 @@
 package com.easypan.entity.enums;
 
-
+/**
+ * 响应代码枚举.
+ */
 public enum ResponseCodeEnum {
     CODE_200(200, "请求成功", null),
     CODE_404(404, "请求地址不存在", "请检查请求路径是否正确"),
@@ -70,6 +72,12 @@ public enum ResponseCodeEnum {
         return suggestion;
     }
 
+    /**
+     * 根据代码获取枚举.
+     *
+     * @param code 响应代码
+     * @return 枚举对象
+     */
     public static ResponseCodeEnum getByCode(Integer code) {
         if (code == null) {
             return null;

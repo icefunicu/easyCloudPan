@@ -4,18 +4,24 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.mybatisflex.annotation.Id;
+import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ * 分享访问日志实体类.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Table("share_access_log")
 public class ShareAccessLog implements Serializable {
 
+    @Id(keyType = KeyType.Auto)
     private Long id;
 
     private String shareId;

@@ -8,9 +8,17 @@ import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Swagger API 文档配置类.
+ */
 @Configuration
 public class SwaggerConfig {
 
+    /**
+     * 创建 OpenAPI 配置.
+     *
+     * @return OpenAPI 实例
+     */
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
@@ -26,6 +34,11 @@ public class SwaggerConfig {
                         .url("https://github.com/easypan/docs"));
     }
 
+    /**
+     * 用户模块 API 分组.
+     *
+     * @return 分组配置
+     */
     @Bean
     public GroupedOpenApi userApi() {
         return GroupedOpenApi.builder()
@@ -34,6 +47,11 @@ public class SwaggerConfig {
                 .build();
     }
 
+    /**
+     * 文件模块 API 分组.
+     *
+     * @return 分组配置
+     */
     @Bean
     public GroupedOpenApi fileApi() {
         return GroupedOpenApi.builder()
@@ -42,6 +60,11 @@ public class SwaggerConfig {
                 .build();
     }
 
+    /**
+     * 分享模块 API 分组.
+     *
+     * @return 分组配置
+     */
     @Bean
     public GroupedOpenApi shareApi() {
         return GroupedOpenApi.builder()
@@ -50,6 +73,11 @@ public class SwaggerConfig {
                 .build();
     }
 
+    /**
+     * 管理员模块 API 分组.
+     *
+     * @return 分组配置
+     */
     @Bean
     public GroupedOpenApi adminApi() {
         return GroupedOpenApi.builder()

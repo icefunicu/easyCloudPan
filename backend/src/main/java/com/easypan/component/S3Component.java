@@ -6,15 +6,28 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import jakarta.annotation.Resource;
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+/**
+ * S3 存储操作组件，封装 MinIO/S3 的常用操作.
+ */
 @Component
 @Slf4j
 public class S3Component {
@@ -26,7 +39,10 @@ public class S3Component {
     private String bucketName;
 
     /**
-     * 上传文件
+     * 上传文件.
+     *
+     * @param key S3 对象键
+     * @param file 要上传的文件
      */
     public void uploadFile(String key, File file) {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -37,7 +53,10 @@ public class S3Component {
     }
 
     /**
-     * 上传字节数组
+     * 上传字节数组.
+     *
+     * @param key S3 对象键
+     * @param content 字节数组
      */
     public void uploadBytes(String key, byte[] content) {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -48,7 +67,10 @@ public class S3Component {
     }
 
     /**
-     * 下载到本地文件
+     * 下载到本地文件.
+     *
+     * @param key S3 对象键
+     * @param path 下载到的本地路径
      */
     public void downloadFile(String key, Path path) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -59,7 +81,9 @@ public class S3Component {
     }
 
     /**
-     * 删除文件
+     * 删除文件.
+     *
+     * @param key S3 对象键
      */
     public void deleteFile(String key) {
         DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
@@ -70,9 +94,12 @@ public class S3Component {
     }
 
     /**
-     * 获取文件输入流
+     * 获取文件输入流.
+     *
+     * @param key S3 对象键
+     * @return 输入流
      */
-    public java.io.InputStream getInputStream(String key) {
+    public InputStream getInputStream(String key) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(bucketName)
                 .key(key)
@@ -81,7 +108,10 @@ public class S3Component {
     }
 
     /**
-     * 判断对象是否存在
+     * 判断对象是否存在.
+     *
+     * @param key S3 对象键
+     * @return 是否存在
      */
     public boolean exists(String key) {
         try {
@@ -97,7 +127,10 @@ public class S3Component {
     }
 
     /**
-     * 批量上传目录下的文件
+     * 批量上传目录下的文件.
+     *
+     * @param keyPrefix S3 键前缀
+     * @param directory 本地目录
      */
     public void uploadDirectory(String keyPrefix, File directory) {
         if (!directory.exists() || !directory.isDirectory()) {
@@ -117,7 +150,9 @@ public class S3Component {
     }
 
     /**
-     * 递归删除 S3 目录 (按前缀删除)
+     * 递归删除 S3 目录（按前缀删除）.
+     *
+     * @param prefix S3 键前缀
      */
     public void deleteDirectory(String prefix) {
         String continuationToken = null;
@@ -136,7 +171,6 @@ public class S3Component {
                 break;
             }
 
-            // Batch delete
             List<ObjectIdentifier> objectsToDelete = listRes.contents().stream()
                     .map(s3Object -> ObjectIdentifier.builder().key(s3Object.key()).build())
                     .collect(Collectors.toList());
@@ -160,15 +194,13 @@ public class S3Component {
         } while (continuationToken != null);
     }
 
-    // ==================== 异步方法 (使用 Virtual Threads) ====================
-
     /**
-     * 异步上传文件到 S3
-     * 使用 @Async 注解在 Virtual Thread 上执行
+     * 异步上传文件到 S3.
+     * 使用 Async 注解在 Virtual Thread 上执行。
      *
-     * @param key  S3 对象键
+     * @param key S3 对象键
      * @param file 要上传的文件
-     * @return CompletableFuture<Void> 异步操作结果
+     * @return 异步操作结果
      */
     @Async
     public CompletableFuture<Void> uploadFileAsync(String key, File file) {
@@ -184,12 +216,12 @@ public class S3Component {
     }
 
     /**
-     * 异步从 S3 下载文件
-     * 使用 @Async 注解在 Virtual Thread 上执行
+     * 异步从 S3 下载文件.
+     * 使用 Async 注解在 Virtual Thread 上执行。
      *
-     * @param key  S3 对象键
+     * @param key S3 对象键
      * @param path 下载到的本地路径
-     * @return CompletableFuture<Void> 异步操作结果
+     * @return 异步操作结果
      */
     @Async
     public CompletableFuture<Void> downloadFileAsync(String key, Path path) {
@@ -205,11 +237,11 @@ public class S3Component {
     }
 
     /**
-     * 异步从 S3 删除文件
-     * 使用 @Async 注解在 Virtual Thread 上执行
+     * 异步从 S3 删除文件.
+     * 使用 Async 注解在 Virtual Thread 上执行。
      *
      * @param key S3 对象键
-     * @return CompletableFuture<Void> 异步操作结果
+     * @return 异步操作结果
      */
     @Async
     public CompletableFuture<Void> deleteFileAsync(String key) {
@@ -225,11 +257,11 @@ public class S3Component {
     }
 
     /**
-     * 异步批量删除 S3 目录
-     * 使用 @Async 注解在 Virtual Thread 上执行
+     * 异步批量删除 S3 目录.
+     * 使用 Async 注解在 Virtual Thread 上执行。
      *
      * @param prefix S3 对象键前缀
-     * @return CompletableFuture<Void> 异步操作结果
+     * @return 异步操作结果
      */
     @Async
     public CompletableFuture<Void> deleteDirectoryAsync(String prefix) {

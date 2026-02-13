@@ -16,6 +16,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * 本地存储策略实现类.
+ */
 @Service
 public class LocalStorageStrategy implements StorageStrategy {
 
@@ -35,7 +38,7 @@ public class LocalStorageStrategy implements StorageStrategy {
             file.transferTo(new File(fullPath));
         } catch (IOException e) {
             logger.error("Upload file to local failed", e);
-            throw new BusinessException("Upload failed");
+            throw new BusinessException("文件上传失败，请重试");
         }
     }
 
@@ -55,7 +58,7 @@ public class LocalStorageStrategy implements StorageStrategy {
             FileUtils.copyFile(file, targetFile);
         } catch (IOException e) {
             logger.error("Upload file to local failed", e);
-            throw new BusinessException("Upload failed");
+            throw new BusinessException("文件上传失败，请重试");
         }
     }
 
@@ -64,14 +67,13 @@ public class LocalStorageStrategy implements StorageStrategy {
         try {
             String fullPath = getFullPath(prefix);
             File targetDir = new File(fullPath);
-            // If source and target are the same, do nothing
             if (directory.getAbsolutePath().equals(targetDir.getAbsolutePath())) {
                 return;
             }
             FileUtils.copyDirectory(directory, targetDir);
         } catch (IOException e) {
             logger.error("Upload directory to local failed", e);
-            throw new BusinessException("Upload directory failed");
+            throw new BusinessException("目录上传失败，请重试");
         }
     }
 
@@ -81,7 +83,7 @@ public class LocalStorageStrategy implements StorageStrategy {
             return new FileInputStream(getFullPath(path));
         } catch (IOException e) {
             logger.error("Download file from local failed", e);
-            throw new BusinessException("Download failed");
+            throw new BusinessException("文件下载失败，请重试");
         }
     }
 
@@ -101,7 +103,7 @@ public class LocalStorageStrategy implements StorageStrategy {
                 FileUtils.deleteDirectory(file);
             } catch (IOException e) {
                 logger.error("Delete directory failed: {}", path, e);
-                throw new BusinessException("Delete directory failed");
+                throw new BusinessException("目录删除失败，请重试");
             }
         }
     }

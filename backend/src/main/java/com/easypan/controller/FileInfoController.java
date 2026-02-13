@@ -2,17 +2,21 @@ package com.easypan.controller;
 
 import com.easypan.annotation.GlobalInterceptor;
 import com.easypan.annotation.VerifyParam;
+import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionWebUserDto;
 import com.easypan.entity.dto.UploadResultDto;
 import com.easypan.entity.enums.FileCategoryEnums;
 import com.easypan.entity.enums.FileDelFlagEnums;
 import com.easypan.entity.enums.FileFolderTypeEnums;
 import com.easypan.entity.po.FileInfo;
+import com.easypan.entity.query.CursorPage;
 import com.easypan.entity.query.FileInfoQuery;
 import com.easypan.entity.vo.FileInfoVO;
-import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.FolderVO;
+import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
+import com.easypan.exception.BusinessException;
+import com.easypan.service.FileOperationService;
 import com.easypan.utils.CopyTools;
 import com.easypan.utils.StringTools;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,14 +28,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import jakarta.annotation.Resource;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
- * 文件信息 Controller
+ * 文件信息控制器类.
  */
 @Component
 @RestController("fileInfoController")
@@ -39,8 +47,16 @@ import java.util.List;
 @Tag(name = "File Management", description = "File operations including upload, download, and management")
 public class FileInfoController extends CommonFileController {
 
+    @Resource
+    private FileOperationService fileOperationService;
+
     /**
-     * 根据条件分页查询
+     * 根据条件分页查询.
+     *
+     * @param session HTTP 会话
+     * @param query 查询参数
+     * @param category 分类
+     * @return 分页结果
      */
     @RequestMapping("/loadDataList")
     @GlobalInterceptor(checkParams = true)
@@ -59,29 +75,44 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 游标分页查询（性能优于 OFFSET 分页）
-     * 适用于大数据量场景，避免深分页性能问题
+     * 游标分页查询（性能优于 OFFSET 分页）.
+     * 适用于大数据量场景，避免深分页性能问题.
+     *
+     * @param session HTTP 会话
+     * @param cursor 游标
+     * @param pageSize 每页大小
+     * @return 分页结果
      */
     @RequestMapping("/loadDataListCursor")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Load Data List with Cursor", description = "Cursor-based pagination for better performance")
-    public ResponseVO<com.easypan.entity.query.CursorPage<FileInfoVO>> loadDataListCursor(
+    public ResponseVO<CursorPage<FileInfoVO>> loadDataListCursor(
             HttpSession session,
             String cursor,
             Integer pageSize) {
         SessionWebUserDto userDto = getUserInfoFromSession(session);
-        com.easypan.entity.query.CursorPage<FileInfo> result = 
-            fileInfoService.findListByCursor(userDto.getUserId(), cursor, pageSize);
-        
+        CursorPage<FileInfo> result =
+                fileInfoService.findListByCursor(userDto.getUserId(), cursor, pageSize);
+
         List<FileInfoVO> voList = CopyTools.copyList(result.getList(), FileInfoVO.class);
-        com.easypan.entity.query.CursorPage<FileInfoVO> voResult = 
-            com.easypan.entity.query.CursorPage.of(voList, result.getNextCursor(), result.getPageSize());
-        
+        CursorPage<FileInfoVO> voResult =
+                CursorPage.of(voList, result.getNextCursor(), result.getPageSize());
+
         return getSuccessResponseVO(voResult);
     }
 
     /**
-     * 上传文件
+     * 上传文件.
+     *
+     * @param session HTTP 会话
+     * @param fileId 文件ID
+     * @param file 文件
+     * @param fileName 文件名
+     * @param filePid 父目录ID
+     * @param fileMd5 文件MD5
+     * @param chunkIndex 分片索引
+     * @param chunks 总分片数
+     * @return 上传结果
      */
     @RequestMapping("/uploadFile")
     @GlobalInterceptor(checkParams = true)
@@ -102,36 +133,40 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取已上传分片信息（用于断点续传）
+     * 获取已上传分片信息（用于断点续传）.
+     *
+     * @param session HTTP 会话
+     * @param fileId 文件ID
+     * @param filePid 父目录ID
+     * @return 已上传分片列表
      */
     @RequestMapping("/uploadedChunks")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Get Uploaded Chunks", description = "Get already uploaded chunk indices for resumable upload")
-    public ResponseVO<java.util.List<Integer>> getUploadedChunks(HttpSession session,
+    public ResponseVO<List<Integer>> getUploadedChunks(HttpSession session,
             @VerifyParam(required = true) String fileId,
             @VerifyParam(required = true) String filePid) {
 
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         String userId = webUserDto.getUserId();
 
-        // 复用已有的临时目录结构：/temp/{userId}{fileId}
         String tempFolder = appConfig.getProjectFolder()
-                + com.easypan.entity.constants.Constants.FILE_FOLDER_TEMP
+                + Constants.FILE_FOLDER_TEMP
                 + userId + fileId;
 
-        java.io.File folder = new java.io.File(tempFolder);
+        File folder = new File(tempFolder);
         if (!folder.exists() || !folder.isDirectory()) {
-            return getSuccessResponseVO(java.util.Collections.emptyList());
+            return getSuccessResponseVO(Collections.emptyList());
         }
 
-        java.io.File[] files = folder.listFiles();
+        File[] files = folder.listFiles();
         if (files == null || files.length == 0) {
-            return getSuccessResponseVO(java.util.Collections.emptyList());
+            return getSuccessResponseVO(Collections.emptyList());
         }
 
-        java.util.List<Integer> uploadedChunks = java.util.Arrays.stream(files)
-                .filter(java.io.File::isFile)
-                .map(java.io.File::getName)
+        List<Integer> uploadedChunks = Arrays.stream(files)
+                .filter(File::isFile)
+                .map(File::getName)
                 .filter(name -> name.chars().allMatch(Character::isDigit))
                 .map(Integer::valueOf)
                 .sorted()
@@ -141,12 +176,17 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取图片
+     * 获取图片.
+     *
+     * @param session HTTP 会话
+     * @param response HTTP 响应
+     * @param imageFolder 图片文件夹
+     * @param imageName 图片名称
      */
     @RequestMapping("/getImage/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkLogin = true)
     @Operation(summary = "Get Image", description = "Get image by folder and name")
-    public void getImage(HttpSession session, HttpServletResponse response, 
+    public void getImage(HttpSession session, HttpServletResponse response,
             @PathVariable("imageFolder") String imageFolder,
             @PathVariable("imageName") String imageName) {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
@@ -154,7 +194,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 根据视频id获取视频分片
+     * 根据视频id获取视频分片.
+     *
+     * @param response HTTP 响应
+     * @param session HTTP 会话
+     * @param fileId 文件ID
      */
     @RequestMapping("/ts/getVideoInfo/{fileId}")
     @Operation(summary = "Get Video Info", description = "Get video m3u8 or ts file")
@@ -165,7 +209,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 根据文件id获取文件
+     * 根据文件id获取文件.
+     *
+     * @param response HTTP 响应
+     * @param session HTTP 会话
+     * @param fileId 文件ID
      */
     @RequestMapping("/getFile/{fileId}")
     @Operation(summary = "Get File", description = "Get file content")
@@ -176,7 +224,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 新建文件夹
+     * 新建文件夹.
+     *
+     * @param session HTTP 会话
+     * @param filePid 父目录ID
+     * @param fileName 文件名
+     * @return 文件信息
      */
     @RequestMapping("/newFoloder")
     @GlobalInterceptor(checkParams = true)
@@ -190,7 +243,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取文件夹信息
+     * 获取文件夹信息.
+     *
+     * @param session HTTP 会话
+     * @param path 路径
+     * @return 文件夹列表
      */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkParams = true)
@@ -201,7 +258,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 重命名
+     * 重命名.
+     *
+     * @param session HTTP 会话
+     * @param fileId 文件ID
+     * @param fileName 新文件名
+     * @return 文件信息
      */
     @RequestMapping("/rename")
     @GlobalInterceptor(checkParams = true)
@@ -215,12 +277,18 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 加载所有文件
+     * 加载所有文件.
+     *
+     * @param session HTTP 会话
+     * @param filePid 父目录ID
+     * @param currentFileIds 当前文件ID列表
+     * @return 文件列表
      */
     @RequestMapping("/loadAllFolder")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Load All Folders", description = "Load all folders for moving files")
-    public ResponseVO<List<FileInfoVO>> loadAllFolder(HttpSession session, @VerifyParam(required = true) String filePid,
+    public ResponseVO<List<FileInfoVO>> loadAllFolder(HttpSession session,
+            @VerifyParam(required = true) String filePid,
             String currentFileIds) {
         FileInfoQuery query = new FileInfoQuery();
         query.setUserId(getUserInfoFromSession(session).getUserId());
@@ -236,7 +304,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 更改文件目录
+     * 更改文件目录.
+     *
+     * @param session HTTP 会话
+     * @param fileIds 文件ID列表
+     * @param filePid 目标目录ID
+     * @return 响应对象
      */
     @RequestMapping("/changeFileFolder")
     @GlobalInterceptor(checkParams = true)
@@ -250,7 +323,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 创建下载链接
+     * 创建下载链接.
+     *
+     * @param session HTTP 会话
+     * @param fileId 文件ID
+     * @return 下载码
      */
     @RequestMapping("/createDownloadUrl/{fileId}")
     @GlobalInterceptor(checkParams = true)
@@ -261,7 +338,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 下载
+     * 下载.
+     *
+     * @param request HTTP 请求
+     * @param response HTTP 响应
+     * @param code 下载码
+     * @throws Exception 异常
      */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -271,9 +353,13 @@ public class FileInfoController extends CommonFileController {
         super.download(request, response, code);
     }
 
-    @Resource
-    private com.easypan.service.FileOperationService fileOperationService;
-
+    /**
+     * 删除文件.
+     *
+     * @param session HTTP 会话
+     * @param fileIds 文件ID列表
+     * @return 响应对象
+     */
     @RequestMapping("/delFile")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Delete File", description = "Delete files to recycle bin")
@@ -282,7 +368,14 @@ public class FileInfoController extends CommonFileController {
         fileInfoService.removeFile2RecycleBatch(webUserDto.getUserId(), fileIds);
         return getSuccessResponseVO(null);
     }
-    
+
+    /**
+     * 批量下载.
+     *
+     * @param response HTTP 响应
+     * @param session HTTP 会话
+     * @param fileIds 文件ID列表
+     */
     @RequestMapping("/batchDownload/{fileIds}")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Batch Download", description = "Download multiple files as zip")
@@ -291,9 +384,10 @@ public class FileInfoController extends CommonFileController {
         try {
             response.setContentType("application/zip");
             response.setHeader("Content-Disposition", "attachment; filename=\"download.zip\"");
-            fileOperationService.downloadMultipleFiles(java.util.Arrays.asList(fileIds.split(",")), response.getOutputStream());
-        } catch (java.io.IOException e) {
-            throw new com.easypan.exception.BusinessException("Download failed");
+            fileOperationService.downloadMultipleFiles(
+                    Arrays.asList(fileIds.split(",")), response.getOutputStream());
+        } catch (IOException e) {
+            throw new BusinessException("文件下载失败，请重试");
         }
     }
 }

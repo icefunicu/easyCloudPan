@@ -4,84 +4,84 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 用户信息参数
+ * 用户信息查询参数类.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class UserInfoQuery extends BaseParam {
 
-	/**
-	 * 用户ID
-	 */
-	private String userId;
+    /**
+     * 用户ID.
+     */
+    private String userId;
 
-	private String userIdFuzzy;
+    private String userIdFuzzy;
 
-	/**
-	 * 昵称
-	 */
-	private String nickName;
+    /**
+     * 昵称.
+     */
+    private String nickName;
 
-	private String nickNameFuzzy;
+    private String nickNameFuzzy;
 
-	/**
-	 * 邮箱
-	 */
-	private String email;
+    /**
+     * 邮箱.
+     */
+    private String email;
 
-	private String emailFuzzy;
+    private String emailFuzzy;
 
-	/**
-	 * QQ头像
-	 */
-	private String qqAvatar;
+    /**
+     * QQ头像.
+     */
+    private String qqAvatar;
 
-	private String qqAvatarFuzzy;
+    private String qqAvatarFuzzy;
 
-	/**
-	 * QQ OpenID
-	 */
-	private String qqOpenId;
+    /**
+     * QQ OpenID.
+     */
+    private String qqOpenId;
 
-	private String qqOpenIdFuzzy;
+    private String qqOpenIdFuzzy;
 
-	/**
-	 * 密码
-	 */
-	private String password;
+    /**
+     * 密码.
+     */
+    private String password;
 
-	private String passwordFuzzy;
+    private String passwordFuzzy;
 
-	/**
-	 * 加入时间
-	 */
-	private String joinTime;
+    /**
+     * 加入时间.
+     */
+    private String joinTime;
 
-	private String joinTimeStart;
+    private String joinTimeStart;
 
-	private String joinTimeEnd;
+    private String joinTimeEnd;
 
-	/**
-	 * 最后登录时间
-	 */
-	private String lastLoginTime;
+    /**
+     * 最后登录时间.
+     */
+    private String lastLoginTime;
 
-	private String lastLoginTimeStart;
+    private String lastLoginTimeStart;
 
-	private String lastLoginTimeEnd;
+    private String lastLoginTimeEnd;
 
-	/**
-	 * 0:禁用 1:正常
-	 */
-	private Integer status;
+    /**
+     * 0:禁用 1:正常.
+     */
+    private Integer status;
 
-	/**
-	 * 已使用空间
-	 */
-	private Long useSpace;
+    /**
+     * 已使用空间.
+     */
+    private Long useSpace;
 
-	/**
-	 * 总空间
-	 */
-	private Long totalSpace;
+    /**
+     * 总空间.
+     */
+    private Long totalSpace;
 }

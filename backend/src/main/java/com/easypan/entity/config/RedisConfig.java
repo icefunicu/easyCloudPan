@@ -6,6 +6,9 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
+/**
+ * Redis 配置类，配置 Redis 连接和序列化方式.
+ */
 @Configuration("redisConfig")
 public class RedisConfig<V> {
 

@@ -39,6 +39,9 @@ import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 账户控制器类.
+ */
 @RestController("accountController")
 @Tag(name = "Account Management", description = "User account and authentication operations")
 public class AccountController extends ABaseController {
@@ -58,7 +61,7 @@ public class AccountController extends ABaseController {
 
     @Resource
     private RedisComponent redisComponent;
-    
+
     @Resource
     private com.easypan.component.JwtTokenProvider jwtTokenProvider;
 
@@ -66,34 +69,38 @@ public class AccountController extends ABaseController {
     private com.easypan.service.JwtBlacklistService jwtBlacklistService;
 
     /**
-     * 验证码
+     * 获取验证码.
      *
-     * @param response
-     * @param session
-     * @param type
-     * @throws IOException
+     * @param response HTTP 响应
+     * @param session HTTP 会话
+     * @param type 验证码类型
+     * @throws IOException IO 异常
      */
     @RequestMapping(value = "/checkCode")
     @Operation(summary = "Get Check Code", description = "Get graphic verification code")
     public void checkCode(HttpServletResponse response, HttpSession session, Integer type) throws IOException {
-        CreateImageCode vCode = new CreateImageCode(130, 38, 5, 10);
+        CreateImageCode verifyCode = new CreateImageCode(130, 38, 5, 10);
         response.setHeader("Pragma", "no-cache");
         response.setHeader("Cache-Control", "no-cache");
         response.setDateHeader("Expires", 0);
         response.setContentType("image/jpeg");
-        String code = vCode.getCode();
+        String code = verifyCode.getCode();
         if (type == null || type == 0) {
             session.setAttribute(Constants.CHECK_CODE_KEY, code);
         } else {
             session.setAttribute(Constants.CHECK_CODE_KEY_EMAIL, code);
         }
-        vCode.write(response.getOutputStream());
+        verifyCode.write(response.getOutputStream());
     }
 
     /**
-     * @Description: 发送邮箱验证码
-     * @param: [session, email, checkCode, type]
-     * @return: com.easypan.entity.vo.ResponseVO
+     * 发送邮箱验证码.
+     *
+     * @param session HTTP 会话
+     * @param email 邮箱地址
+     * @param checkCode 验证码
+     * @param type 类型
+     * @return 响应对象
      */
     @RequestMapping("/sendEmailCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -114,9 +121,15 @@ public class AccountController extends ABaseController {
     }
 
     /**
-     * @Description: 注册
-     * @param: [session, email, nickName, password, checkCode, emailCode]
-     * @return: com.easypan.entity.vo.ResponseVO
+     * 用户注册.
+     *
+     * @param session HTTP 会话
+     * @param email 邮箱地址
+     * @param nickName 昵称
+     * @param password 密码
+     * @param checkCode 验证码
+     * @param emailCode 邮箱验证码
+     * @return 响应对象
      */
     @RequestMapping("/register")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -139,9 +152,14 @@ public class AccountController extends ABaseController {
     }
 
     /**
-     * @Description: 登录
-     * @param: [session, request, email, password, checkCode]
-     * @return: com.easypan.entity.vo.ResponseVO
+     * 用户登录.
+     *
+     * @param session HTTP 会话
+     * @param request HTTP 请求
+     * @param email 邮箱地址
+     * @param password 密码
+     * @param checkCode 验证码
+     * @return 响应对象
      */
     @RequestMapping("/login")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -156,24 +174,34 @@ public class AccountController extends ABaseController {
             }
             SessionWebUserDto sessionWebUserDto = userInfoService.login(email, password);
             session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
-            
+
             String token = jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null);
             String refreshToken = jwtTokenProvider.generateRefreshToken(sessionWebUserDto.getUserId(), null);
-            
+
             long refreshExpirationSeconds = 2592000L;
             redisComponent.saveRefreshToken(sessionWebUserDto.getUserId(), refreshToken, refreshExpirationSeconds);
-            
+
             Map<String, Object> result = new HashMap<>();
             result.put("userInfo", sessionWebUserDto);
             result.put("token", token);
             result.put("refreshToken", refreshToken);
-            
+
             return getSuccessResponseVO(result);
         } finally {
             session.removeAttribute(Constants.CHECK_CODE_KEY);
         }
     }
 
+    /**
+     * 重置密码.
+     *
+     * @param session HTTP 会话
+     * @param email 邮箱地址
+     * @param password 新密码
+     * @param checkCode 验证码
+     * @param emailCode 邮箱验证码
+     * @return 响应对象
+     */
     @RequestMapping("/resetPwd")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     @Operation(summary = "Reset Password", description = "Reset user password")
@@ -193,6 +221,12 @@ public class AccountController extends ABaseController {
         }
     }
 
+    /**
+     * 获取用户头像.
+     *
+     * @param response HTTP 响应
+     * @param userId 用户ID
+     */
     @RequestMapping("/getAvatar/{userId}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     @Operation(summary = "Get Avatar", description = "Get user avatar image")
@@ -227,6 +261,12 @@ public class AccountController extends ABaseController {
         }
     }
 
+    /**
+     * 获取用户信息.
+     *
+     * @param session HTTP 会话
+     * @return 响应对象
+     */
     @RequestMapping("/getUserInfo")
     @GlobalInterceptor
     @Operation(summary = "Get User Info", description = "Get current user information")
@@ -235,6 +275,12 @@ public class AccountController extends ABaseController {
         return getSuccessResponseVO(sessionWebUserDto);
     }
 
+    /**
+     * 获取用户空间使用情况.
+     *
+     * @param session HTTP 会话
+     * @return 响应对象
+     */
     @RequestMapping("/getUseSpace")
     @GlobalInterceptor
     @Operation(summary = "Get User Space", description = "Get user storage space usage")
@@ -243,6 +289,13 @@ public class AccountController extends ABaseController {
         return getSuccessResponseVO(redisComponent.getUserSpaceUse(sessionWebUserDto.getUserId()));
     }
 
+    /**
+     * 用户登出.
+     *
+     * @param session HTTP 会话
+     * @param request HTTP 请求
+     * @return 响应对象
+     */
     @RequestMapping("/logout")
     @Operation(summary = "Logout", description = "User logout")
     public ResponseVO<Void> logout(HttpSession session, HttpServletRequest request) {
@@ -250,7 +303,7 @@ public class AccountController extends ABaseController {
         if (userDto != null) {
             redisComponent.deleteRefreshToken(userDto.getUserId());
         }
-        
+
         session.invalidate();
         String token = getJwtFromRequest(request);
         if (token != null) {
@@ -262,28 +315,34 @@ public class AccountController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 刷新令牌.
+     *
+     * @param refreshToken 刷新令牌
+     * @return 响应对象
+     */
     @RequestMapping("/refreshToken")
     @GlobalInterceptor(checkLogin = false)
     @Operation(summary = "Refresh Token", description = "Refresh access token using refresh token")
     public ResponseVO<Map<String, Object>> refreshToken(@VerifyParam(required = true) String refreshToken) {
-         if (!jwtTokenProvider.validateToken(refreshToken)) {
-             throw new BusinessException(ResponseCodeEnum.CODE_901);
-         }
-         
-         String userId = jwtTokenProvider.getUserIdFromJWT(refreshToken);
-         
-         if (!redisComponent.validateRefreshToken(userId, refreshToken)) {
-             redisComponent.deleteRefreshToken(userId);
-             throw new BusinessException(ResponseCodeEnum.CODE_901);
-         }
-         
-         String newAccessToken = jwtTokenProvider.generateToken(userId, null);
-         
-         Map<String, Object> result = new HashMap<>();
-         result.put("token", newAccessToken);
-         result.put("refreshToken", refreshToken);
-         
-         return getSuccessResponseVO(result);
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new BusinessException(ResponseCodeEnum.CODE_901);
+        }
+
+        String userId = jwtTokenProvider.getUserIdFromJWT(refreshToken);
+
+        if (!redisComponent.validateRefreshToken(userId, refreshToken)) {
+            redisComponent.deleteRefreshToken(userId);
+            throw new BusinessException(ResponseCodeEnum.CODE_901);
+        }
+
+        String newAccessToken = jwtTokenProvider.generateToken(userId, null);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", newAccessToken);
+        result.put("refreshToken", refreshToken);
+
+        return getSuccessResponseVO(result);
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
@@ -297,6 +356,13 @@ public class AccountController extends ABaseController {
         return bearerToken;
     }
 
+    /**
+     * 更新用户头像.
+     *
+     * @param session HTTP 会话
+     * @param avatar 头像文件
+     * @return 响应对象
+     */
     @RequestMapping("/updateUserAvatar")
     @GlobalInterceptor
     @Operation(summary = "Update Avatar", description = "Update user avatar")
@@ -322,6 +388,13 @@ public class AccountController extends ABaseController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 更新密码.
+     *
+     * @param session HTTP 会话
+     * @param password 新密码
+     * @return 响应对象
+     */
     @RequestMapping("/updatePassword")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Update Password", description = "Change user password")
@@ -335,8 +408,12 @@ public class AccountController extends ABaseController {
     }
 
     /**
-     * QQ登录部分
-     * QQ登录需要进行网站认证，因此只做了逻辑实现
+     * QQ登录.
+     *
+     * @param session HTTP 会话
+     * @param callbackUrl 回调URL
+     * @return 响应对象
+     * @throws UnsupportedEncodingException 编码异常
      */
     @RequestMapping("qqlogin")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -351,6 +428,14 @@ public class AccountController extends ABaseController {
         return getSuccessResponseVO(url);
     }
 
+    /**
+     * QQ登录回调.
+     *
+     * @param session HTTP 会话
+     * @param code 授权码
+     * @param state 状态参数
+     * @return 响应对象
+     */
     @RequestMapping("qqlogin/callback")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     @Operation(summary = "QQ Login Callback", description = "Callback for QQ login")

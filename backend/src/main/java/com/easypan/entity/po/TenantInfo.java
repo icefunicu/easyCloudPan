@@ -12,7 +12,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 租户信息
+ * 租户信息实体类.
  */
 @Data
 @NoArgsConstructor
@@ -21,45 +21,45 @@ import java.util.Date;
 public class TenantInfo implements Serializable {
 
     /**
-     * 租户ID
+     * 租户ID.
      */
     @Id
     private String tenantId;
 
     /**
-     * 租户名称
+     * 租户名称.
      */
     private String tenantName;
 
     /**
-     * 租户代码 (唯一标识)
+     * 租户代码（唯一标识）.
      */
     private String tenantCode;
 
     /**
-     * 存储配额 (字节)
+     * 存储配额（字节）.
      */
     private Long storageQuota;
 
     /**
-     * 用户配额 (数量)
+     * 用户配额（数量）.
      */
     private Integer userQuota;
 
     /**
-     * 状态 0:禁用 1:启用
+     * 状态 0:禁用 1:启用.
      */
     private Integer status;
 
     /**
-     * 创建时间
+     * 创建时间.
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date createTime;
 
     /**
-     * 过期时间
+     * 过期时间.
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")

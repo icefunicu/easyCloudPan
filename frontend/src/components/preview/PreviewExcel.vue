@@ -1,5 +1,5 @@
 <template>
-    <div v-html="excelContent" class="table-info"></div>
+    <div class="table-info" v-html="excelContent"></div>
 </template>
 
 <script setup>
@@ -15,15 +15,15 @@ const props = defineProps({
 
 const excelContent = ref();
 const initExcel = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: props.url,
         responseType: "arraybuffer",
     });
     if (!result) {
         return;
     }
-    let workbook = XLSX.read(new Uint8Array(result), {type: "array"});
-    var worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const workbook = XLSX.read(new Uint8Array(result), {type: "array"});
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
     excelContent.value = XLSX.utils.sheet_to_html(worksheet);
 };
 onMounted(() => {

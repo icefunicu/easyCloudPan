@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 自定义监控指标类.
+ */
 @Component
 public class CustomMetrics {
 
@@ -28,6 +31,11 @@ public class CustomMetrics {
     private final AtomicLong dbConnectionIdle = new AtomicLong(0);
     private final ConcurrentHashMap<String, Timer> fileOperationTimers = new ConcurrentHashMap<>();
 
+    /**
+     * 构造函数，初始化所有监控指标.
+     *
+     * @param meterRegistry 指标注册器
+     */
     public CustomMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
         
@@ -165,16 +173,29 @@ public class CustomMetrics {
         return Timer.start(meterRegistry);
     }
 
+    /**
+     * 记录文件操作时间.
+     *
+     * @param operation 操作名称
+     * @param sample 计时器样本
+     */
     public void recordFileOperationTime(String operation, Timer.Sample sample) {
-        Timer timer = fileOperationTimers.computeIfAbsent(operation, op -> 
-            Timer.builder("easypan_file_operation_duration")
-                .description("File operation duration")
-                .tag("operation", op)
-                .register(meterRegistry)
+        Timer timer = fileOperationTimers.computeIfAbsent(operation, op ->
+                Timer.builder("easypan_file_operation_duration")
+                        .description("File operation duration")
+                        .tag("operation", op)
+                        .register(meterRegistry)
         );
         sample.stop(timer);
     }
 
+    /**
+     * 记录自定义计数器.
+     *
+     * @param name 计数器名称
+     * @param tagName 标签名
+     * @param tagValue 标签值
+     */
     public void recordCustomCounter(String name, String tagName, String tagValue) {
         Counter.builder(name)
                 .tag(tagName, tagValue)

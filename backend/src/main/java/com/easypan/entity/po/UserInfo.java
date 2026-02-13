@@ -14,7 +14,7 @@ import com.mybatisflex.annotation.KeyType;
 import com.mybatisflex.annotation.Table;
 
 /**
- * 用户信息
+ * 用户信息实体类.
  */
 @Data
 @NoArgsConstructor
@@ -23,62 +23,72 @@ import com.mybatisflex.annotation.Table;
 public class UserInfo implements Serializable {
 
     /**
-     * 用户ID
+     * 用户ID.
      */
     @Id(keyType = KeyType.None)
     private String userId;
 
     /**
-     * 昵称
+     * 昵称.
      */
     private String nickName;
 
     /**
-     * 邮箱
+     * 邮箱.
      */
     private String email;
 
     /**
-     * qq 头像
+     * qq 头像.
      */
     private String qqAvatar;
 
     /**
-     * qq openID
+     * qq openID.
      */
     private String qqOpenId;
 
     /**
-     * 密码
+     * 密码.
      */
     private String password;
 
     /**
-     * 加入时间
+     * 加入时间.
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date joinTime;
 
     /**
-     * 最后登录时间
+     * 最后登录时间.
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastLoginTime;
 
     /**
-     * 0:禁用 1:正常
+     * 0:禁用 1:正常.
      */
     private Integer status;
 
     /**
-     * 使用空间单位byte
+     * 使用空间单位byte.
      */
     private Long useSpace;
 
     /**
-     * 总空间单位byte
+     * 总空间单位byte.
      */
     private Long totalSpace;
+
+    /**
+     * 头像.
+     */
+    private String avatar;
+
+    /**
+     * 是否管理员.
+     */
+    private Boolean isAdmin;
 }

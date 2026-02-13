@@ -12,6 +12,9 @@ import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.InputStream;
 
+/**
+ * 存储故障转移服务，实现主备存储切换.
+ */
 @Service("storageFailoverService")
 public class StorageFailoverService implements StorageStrategy {
 
@@ -79,9 +82,7 @@ public class StorageFailoverService implements StorageStrategy {
         try {
             getBackup().delete(path);
         } catch (Exception e) {
-             // Ignore if backup delete fails (file might not exist there)
-             // But log debug
-             logger.debug("Backup storage delete failed (optional). Path: {}", path, e);
+            logger.debug("Backup storage delete failed (optional). Path: {}", path, e);
         }
     }
 
@@ -104,8 +105,8 @@ public class StorageFailoverService implements StorageStrategy {
         try {
             return getPrimary().getUrl(path);
         } catch (Exception e) {
-             logger.warn("Primary storage getUrl failed, attempting backup. Path: {}", path, e);
-             return getBackup().getUrl(path);
+            logger.warn("Primary storage getUrl failed, attempting backup. Path: {}", path, e);
+            return getBackup().getUrl(path);
         }
     }
 

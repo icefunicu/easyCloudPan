@@ -1,6 +1,8 @@
 package com.easypan.entity.enums;
 
-
+/**
+ * 文件分类枚举.
+ */
 public enum FileCategoryEnums {
     VIDEO(1, "video", "视频"),
     MUSIC(2, "music", "音频"),
@@ -16,6 +18,12 @@ public enum FileCategoryEnums {
         this.code = code;
     }
 
+    /**
+     * 根据代码获取枚举.
+     *
+     * @param code 代码
+     * @return 枚举对象
+     */
     public static FileCategoryEnums getByCode(String code) {
         for (FileCategoryEnums item : FileCategoryEnums.values()) {
             if (item.getCode().equals(code)) {

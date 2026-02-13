@@ -5,13 +5,13 @@
       :title="dialogConfig.title"
       :buttons="dialogConfig.buttons"
       width="600px"
-      :showCancel="showCancel"
+      :show-cancel="showCancel"
       @close="dialogConfig.show = false"
     >
       <el-form
+        ref="formDataRef"
         :model="formData"
         :rules="rules"
-        ref="formDataRef"
         label-width="100px"
         @submit.prevent
       >
@@ -36,12 +36,12 @@
             </el-radio-group>
           </el-form-item>
           <!-- 自定义提取码 -->
-          <el-form-item prop="code" v-if="formData.codeType == 0">
+          <el-form-item v-if="formData.codeType == 0" prop="code">
             <el-input
+              v-model="formData.code"
               clearable
               placeholder="请输入5位提取码"
-              v-model="formData.code"
-              maxLength="5"
+              max-length="5"
               :style="{ width: '130px' }"
             ></el-input>
           </el-form-item>
@@ -115,9 +115,9 @@ const share = async () => {
         if (!valid) {
             return;
         }
-        let params = {};
+        const params = {};
         Object.assign(params, formData.value);
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.shareFile,
             params: params,
         });

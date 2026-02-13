@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
 
+/**
+ * Token 安全审计服务实现类.
+ */
 @Slf4j
 @Service
 public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService {
@@ -31,17 +34,17 @@ public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService 
 
     @Override
     public void recordTokenUsage(String userId, String token, String ipAddress, String userAgent) {
-        log.info("[TOKEN_AUDIT] Token usage recorded: userId={}, ip={}, userAgent={}", 
+        log.info("[TOKEN_AUDIT] Token usage recorded: userId={}, ip={}, userAgent={}",
                 userId, ipAddress, userAgent);
     }
 
     @Override
     public void reportSuspiciousActivity(String userId, String activityType, String details) {
-        log.warn("[SECURITY_ALERT] Suspicious activity detected: userId={}, type={}, details={}", 
+        log.warn("[SECURITY_ALERT] Suspicious activity detected: userId={}, type={}, details={}",
                 userId, activityType, details);
-        
+
         customMetrics.recordCustomCounter("easypan_security_alerts_total", "type", activityType);
-        
+
         log.warn("[SECURITY_ALERT] Alert recorded for user: userId={}, activityType={}", userId, activityType);
     }
 

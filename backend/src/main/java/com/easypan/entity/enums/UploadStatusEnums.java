@@ -1,6 +1,8 @@
 package com.easypan.entity.enums;
 
-
+/**
+ * 上传状态枚举.
+ */
 public enum UploadStatusEnums {
     UPLOAD_SECONDS("upload_seconds", "秒传"),
     UPLOADING("uploading", "上传中"),

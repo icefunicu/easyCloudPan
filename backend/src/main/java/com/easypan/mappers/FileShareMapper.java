@@ -2,49 +2,39 @@ package com.easypan.mappers;
 
 import com.easypan.entity.po.FileShare;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Insert;
 import com.mybatisflex.core.BaseMapper;
-
-import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 分享信息 数据库操作接口
+ * 文件分享数据库操作接口.
  */
 @Mapper
 public interface FileShareMapper extends BaseMapper<FileShare> {
 
-    /**
-     * Custom selectList for legacy compatibility
-     */
-    List<FileShare> selectList(@Param("query") Object query);
+    @Insert("<script>"
+            + "<foreach collection='list' item='item' separator=';'>"
+            + "INSERT INTO file_share "
+            + "(share_id, user_id, file_id, share_time, expire_time, code, show_count, file_name) "
+            + "VALUES (#{item.shareId}, #{item.userId}, #{item.fileId}, "
+            + "#{item.shareTime}, #{item.expireTime}, #{item.code}, #{item.showCount}, #{item.fileName}) "
+            + "ON DUPLICATE KEY UPDATE "
+            + "expire_time = VALUES(expire_time), code = VALUES(code), "
+            + "show_count = VALUES(show_count), file_name = VALUES(file_name)"
+            + "</foreach>"
+            + "</script>")
+    int insertOrUpdateBatch(@Param("list") java.util.List<FileShare> list);
 
-    /**
-     * Custom selectCount for legacy compatibility
-     */
-    Integer selectCount(@Param("query") Object query);
+    @Update("UPDATE file_share SET show_count = show_count + 1 WHERE share_id = #{shareId}")
+    void updateShareShowCount(@Param("shareId") String shareId);
 
-    /**
-     * Batch insert or update
-     */
-    Integer insertOrUpdateBatch(@Param("list") List<FileShare> list);
-
-    /**
-     * 根据ShareId更新
-     */
-    Integer updateByShareId(@Param("bean") FileShare t, @Param("shareId") String shareId);
-
-    /**
-     * 根据ShareId删除
-     */
-    Integer deleteByShareId(@Param("shareId") String shareId);
-
-    /**
-     * 根据ShareId获取对象
-     */
-    FileShare selectByShareId(@Param("shareId") String shareId);
-
+    @Delete("<script>"
+            + "DELETE FROM file_share WHERE user_id = #{userId} "
+            + "AND share_id IN <foreach collection='shareIdArray' item='sid' open='(' separator=',' close=')'>#{sid}</foreach>"
+            + "</script>")
     Integer deleteFileShareBatch(@Param("shareIdArray") String[] shareIdArray, @Param("userId") String userId);
 
-    void updateShareShowCount(@Param("shareId") String shareId);
 }

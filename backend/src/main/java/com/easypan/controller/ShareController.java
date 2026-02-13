@@ -21,6 +21,9 @@ import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 分享控制器类，处理文件分享相关操作.
+ */
 @Slf4j
 @RestController("shareController")
 @RequestMapping("/share")
@@ -29,6 +32,13 @@ public class ShareController extends ABaseController {
     @Resource
     private FileShareService fileShareService;
 
+    /**
+     * 加载分享列表.
+     *
+     * @param session HTTP 会话
+     * @param query 查询条件
+     * @return 分页结果
+     */
     @RequestMapping("/loadShareList")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Load Share List", description = "Pagination query for shared files")
@@ -41,6 +51,15 @@ public class ShareController extends ABaseController {
         return getSuccessResponseVO(resultVO);
     }
 
+    /**
+     * 分享文件.
+     *
+     * @param session HTTP 会话
+     * @param fileId 文件ID
+     * @param validType 有效期类型
+     * @param code 分享码
+     * @return 分享信息
+     */
     @RequestMapping("/shareFile")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Share File", description = "Create a new share link")
@@ -64,6 +83,13 @@ public class ShareController extends ABaseController {
         return getSuccessResponseVO(share);
     }
 
+    /**
+     * 取消分享.
+     *
+     * @param session HTTP 会话
+     * @param shareIds 分享ID列表
+     * @return 响应结果
+     */
     @RequestMapping("/cancelShare")
     @GlobalInterceptor(checkParams = true)
     @Operation(summary = "Cancel Share", description = "Cancel shared files")
@@ -79,7 +105,11 @@ public class ShareController extends ABaseController {
     }
 
     /**
-     * 获取分享链接
+     * 获取分享链接.
+     *
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @return 分享链接信息
      */
     @RequestMapping("/getShareUrl")
     @GlobalInterceptor(checkParams = true)
@@ -110,7 +140,11 @@ public class ShareController extends ABaseController {
     }
 
     /**
-     * 检查分享状态
+     * 检查分享状态.
+     *
+     * @param session HTTP 会话
+     * @param shareId 分享ID
+     * @return 分享状态信息
      */
     @RequestMapping("/checkShareStatus")
     @GlobalInterceptor(checkParams = true)

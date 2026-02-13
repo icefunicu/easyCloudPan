@@ -22,11 +22,11 @@
       <Table
         ref="dataTableRef"
         :columns="columns"
-        :dataSource="tableData"
+        :data-source="tableData"
         :fetch="loadDataList"
-        :initFetch="true"
+        :init-fetch="true"
         :options="tableOptions"
-        @rowSelected="rowSelected"
+        @row-selected="rowSelected"
       >
         <template #fileName="{ index, row }">
           <div
@@ -42,8 +42,8 @@
               <Icon :cover="row.fileCover"></Icon>
             </template>
               <template v-else>
-                <Icon v-if="row.folderType == 0" :fileType="row.fileType"></Icon>
-                <Icon v-if="row.folderType == 1" :fileType="0"></Icon>
+                <Icon v-if="row.folderType == 0" :file-type="row.fileType"></Icon>
+                <Icon v-if="row.folderType == 1" :file-type="0"></Icon>
               </template>
                 <span class="file-name" :title="row.fileName">{{
                   row.fileName
@@ -104,11 +104,11 @@ const tableOptions = {
 };
 
 const loadDataList = async () => {
-    let params = {
+    const params = {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
     };
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.loadDataList,
         params,
     });
@@ -141,7 +141,7 @@ const cancelShowOp = (row) => {
 // 恢复
 const revert = (row) => {
     proxy.Confirm(`你确定要还原【${row.fileName}】吗?`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.recoverFile,
             params: {
                 fileIds: row.fileId,
@@ -156,7 +156,7 @@ const revert = (row) => {
 
 const revertBatch = () => {
     proxy.Confirm(`你确定要还原这些文件吗?`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.recoverFile,
             params: {
                 fileIds: selectIdList.value.join(","),
@@ -173,7 +173,7 @@ const revertBatch = () => {
 const emit = defineEmits(["reload"]);
 const delFile = (row) => {
     proxy.Confirm(`你确定要删除【${row.fileName}】吗? 删除后无法恢复`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.delFile,
             params: {
                 fileIds: row.fileId,
@@ -189,7 +189,7 @@ const delFile = (row) => {
 
 const delBatch = () => {
     proxy.Confirm(`你确定要删除这些文件吗? 删除后无法恢复`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.delFile,
             params: {
                 fileIds: selectIdList.value.join(","),

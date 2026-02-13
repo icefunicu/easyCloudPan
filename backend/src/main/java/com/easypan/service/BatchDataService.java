@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * 批量数据服务 - 使用虚拟线程优化并发查询
+ * 批量数据服务，使用虚拟线程优化并发查询.
  */
 @Service
 public class BatchDataService {
@@ -26,7 +26,10 @@ public class BatchDataService {
     private FileInfoMapper fileInfoMapper;
 
     /**
-     * 并发获取多个文件的详细信息
+     * 并发获取多个文件的详细信息.
+     *
+     * @param fileIds 文件ID列表
+     * @return 文件信息列表
      */
     public List<FileInfo> batchGetFileInfos(List<String> fileIds) {
         List<CompletableFuture<FileInfo>> futures = fileIds.stream()

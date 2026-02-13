@@ -3,21 +3,21 @@
         <div class="bg"></div>
         <div class="login-panel">
             <el-form
-            class="login-register"
+            ref="formDataRef"
+                class="login-register"
                 :model="formData"
                 :rules="rules"
-                ref="formDataRef"
                 @submit.prevent
             >
             <div class="login-title">Easy云盘</div>
             <!-- input输入 -->
             <el-form-item prop="email" >
                 <el-input
+                v-model.trim="formData.email"
                 size="large"
                 clearable
                 placeholder="请输入邮箱"
-                v-model.trim="formData.email"
-                maxLength="150"
+                max-length="150"
                 >
                 <template #prefix>
                     <span class="iconfont icon-account"></span>
@@ -25,12 +25,12 @@
             </el-input>
             </el-form-item>
             <!-- 登录密码 -->
-            <el-form-item prop="password" v-if="opType == 1">
+            <el-form-item v-if="opType == 1" prop="password">
                 <el-input
+                    v-model.trim="formData.password"
                     type="password"
                     size="large"
                     placeholder="请输入密码"
-                    v-model.trim="formData.password"
                     show-password
                     >
                     <template #prefix>
@@ -43,9 +43,9 @@
                 <el-form-item prop="emailCode">
                     <div class="send-email-panel">
                         <el-input
+                        v-model.trim="formData.emailCode"
                         size="large"
                         placeholder="请输入邮箱验证码"
-                        v-model.trim="formData.emailCode"
                     >
                         <template #prefix>
                             <span class="iconfont icon-checkcode"></span>
@@ -68,12 +68,12 @@
                     </el-popover>
                 </el-form-item>
                 <!-- 昵称 -->
-                <el-form-item prop="nickName" v-if="opType == 0">
+                <el-form-item v-if="opType == 0" prop="nickName">
                     <el-input
+                        v-model.trim="formData.nickName"
                         size="large"
                         placeholder="请输入昵称"
-                        v-model.trim="formData.nickName"
-                        maxLength="20"
+                        max-length="20"
                     >
                         <template #prefix>
                             <span class="iconfont icon-account"></span>
@@ -83,10 +83,10 @@
                 <!-- 注册密码, 找回密码 -->
             <el-form-item prop="registerPassword">
                 <el-input
+                    v-model.trim="formData.registerPassword"
                     type="password"
                     size="large"
                     placeholder="请输入密码"
-                    v-model.trim="formData.registerPassword"
                     show-password
                 >
                     <template #prefix>
@@ -97,10 +97,10 @@
             <!-- 重复密码 -->
             <el-form-item prop="reRegisterPassword">
                 <el-input
+                    v-model.trim="formData.reRegisterPassword"
                     type="password"
                     size="large"
                     placeholder="请再次输入密码"
-                    v-model.trim="formData.reRegisterPassword"
                     show-password
                 >
                     <template #prefix>
@@ -113,9 +113,9 @@
             <el-form-item prop="checkCode">
                 <div class="check-code-panel">
                 <el-input
+                v-model.trim="formData.checkCode"
                 size="large"
                 placeholder="请输入验证码"
-                v-model.trim="formData.checkCode"
                 @keyup.enter="doSubmit"
                 >
                 <template #prefix>
@@ -159,7 +159,7 @@
                     <span v-if="opType == 2">重置密码</span>
                 </el-button>
             </el-form-item>
-            <div class="login-btn-qq" v-if="opType == 1">
+            <div v-if="opType == 1" class="login-btn-qq">
                 快捷登录<img src="@/assets/qq.png" @click="qqLogin" />
             </div>
           </el-form>
@@ -169,13 +169,13 @@
             :title="dialogConfig4SendMailCode.title"
             :buttons="dialogConfig4SendMailCode.buttons"
             width="500px"
-            :showCancel="false"
+            :show-cancel="false"
             @close="dialogConfig4SendMailCode.show = false"
         >
         <el-form
+            ref="formData4SendMailCodeRef"
             :model="formData4SendMailCode"
             :rules="rules"
-            ref="formData4SendMailCodeRef"
             label-width="80px"
             @submit.prevent
         >
@@ -187,9 +187,9 @@
             <el-form-item label="验证码" prop="checkCode">
                 <div class="check-code-panel">
                 <el-input
+                v-model.trim="formData4SendMailCode.checkCode"
                 size="large"
                 placeholder="请输入验证码"
-                v-model.trim="formData4SendMailCode.checkCode"
                 >
                 <template #prefix>
                     <span class="iconfont icon-checkcode"></span>
@@ -257,7 +257,6 @@ const rules = {
             { required: true, message: "请输入密码" },
             { 
                 validator: proxy.Verify.password,
-                message: "密码只能是数字, 字母， 特殊字符8-18位",
             },
         ],
         reRegisterPassword: [
@@ -322,7 +321,7 @@ const sendEmailCode = ()=> {
         }
         const params = Object.assign({}, formData4SendMailCode.value);
         params.type = opType.value == 0 ? 0 : 1;
-        let result = await proxy.Request ({
+        const result = await proxy.Request ({
             url: api.sendEmailCode,
             params: params,
             errorCallback: () => {
@@ -356,7 +355,7 @@ const doSubmit = ()=> {
         if (!valid) {
             return;
         }
-        let params = {};
+        const params = {};
         Object.assign(params, formData.value);
         // 注册
         if (opType.value == 0 || opType.value == 2) {
@@ -366,8 +365,8 @@ const doSubmit = ()=> {
         }
         // 登录
         if (opType.value == 1) {
-            let cookieLoginInfo = proxy.VueCookies.get("loginInfo");
-            let cookiePassword = cookieLoginInfo == null ? null : cookieLoginInfo.password;
+            const cookieLoginInfo = proxy.VueCookies.get("loginInfo");
+            const cookiePassword = cookieLoginInfo == null ? null : cookieLoginInfo.password;
             if (params.password !== cookiePassword) {
                 params.password = md5(params.password);
             }
@@ -380,7 +379,7 @@ const doSubmit = ()=> {
         } else if (opType.value == 2) {
             URL = api.resetPwd;
         }
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: url,
             params: params,
             errorCallback: () => {
@@ -421,7 +420,7 @@ const doSubmit = ()=> {
 
 // qq登录
 const qqLogin = async () => {
-    let result = await proxy.Request ({
+    const result = await proxy.Request ({
         url: api.qqlogin,
         params: {
             callbackUrl: route.query.redirectUrl || "",

@@ -5,7 +5,6 @@ set "DOCKER_DIR=%~dp0"
 for %%i in ("%DOCKER_DIR%..\..") do set "REPO_ROOT=%%~fi"
 cd /d "%DOCKER_DIR%"
 
-set "COMMON_SCRIPT=%REPO_ROOT%\ops\lib\common.bat"
 set "BUILD_IMAGES=1"
 set "REQUEST_HELP=0"
 
@@ -16,18 +15,20 @@ if "%REQUEST_HELP%"=="1" (
     exit /b 0
 )
 
-if not exist "%COMMON_SCRIPT%" (
-    echo [ERROR] Missing common script: %COMMON_SCRIPT%
+echo ===========================================================================
+echo EasyCloudPan One-Click Docker Deployment
+echo ===========================================================================
+
+where docker >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] Missing dependency: Docker Desktop
     exit /b 1
 )
-
-call "%COMMON_SCRIPT%" print_header "EasyCloudPan One-Click Docker Deployment"
-if errorlevel 1 exit /b 1
-
-call "%COMMON_SCRIPT%" require_cmd docker "Docker Desktop"
-if errorlevel 1 exit /b 1
-call "%COMMON_SCRIPT%" require_docker_compose
-if errorlevel 1 exit /b 1
+docker compose version >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] docker compose is unavailable. Please enable Docker Compose V2.
+    exit /b 1
+)
 
 if "%BUILD_IMAGES%"=="1" (
     echo [1/2] Building and starting containers...

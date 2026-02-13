@@ -3,7 +3,7 @@
       <div class="body-content">
         <div>
           <Icon
-            :iconName="fileInfo.fileType == 9 ? 'zip' : 'others'"
+            :icon-name="fileInfo.fileType == 9 ? 'zip' : 'others'"
             :width="80"
           ></Icon>
         </div>
@@ -35,7 +35,7 @@ const props = defineProps({
 });
 
 const download = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: props.createDownloadUrl,
     });
     if (!result) {

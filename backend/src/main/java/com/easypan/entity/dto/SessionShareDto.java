@@ -8,6 +8,9 @@ import java.util.Date;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * Session 分享信息数据传输对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

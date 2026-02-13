@@ -15,7 +15,7 @@ const api = {
 };
 
 const login = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.logincallback,
         params: router.currentRoute.value.query,
         errorCallback: () => {

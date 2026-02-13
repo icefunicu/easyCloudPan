@@ -2,9 +2,9 @@
     <div>
         <div class="top-panel">
             <el-form
+              ref="formDataRef"
               :model="searchFormData"
               :rules="rules"
-              ref="formDataRef"
               label-width="80px"
               @submit.prevent
             >
@@ -13,9 +13,9 @@
                   <!-- 模糊搜索 -->
                   <el-form-item label="用户昵称">
                     <el-input
+                      v-model.trim="searchFormData.nickNameFuzzy"
                       clearable
                       placeholder="支持模糊搜索"
-                      v-model.trim="searchFormData.nickNameFuzzy"
                       @keyup.enter="loadDataList"
                     ></el-input>
                   </el-form-item>
@@ -24,9 +24,9 @@
                     <!-- 下拉框 -->
                     <el-form-item label="状态">
                         <el-select
+                          v-model="searchFormData.status"
                           clearable
                           placeholder="请选择状态"
-                          v-model="searchFormData.status"
                         >
                           <el-option :value="1" label="启用"></el-option>
                           <el-option :value="0" label="禁用"></el-option>
@@ -43,15 +43,15 @@
           <Table
             ref="dataTableRef"
             :columns="columns"
-            :dataSource="tableData"
+            :data-source="tableData"
             :fetch="loadDataList"
-            :initFetch="true"
+            :init-fetch="true"
             :options="tableOptions"
-            @rowSelected="rowSelected"
+            @row-selected="rowSelected"
           >
             <template #avatar="{ index, row }">
               <div class="avatar">
-                <Avatar :userId="row.userId" :avatar="row.qqAvatar"></Avatar>
+                <Avatar :user-id="row.userId" :avatar="row.qqAvatar"></Avatar>
               </div>
             </template>
             <template #space="{ index, row }">
@@ -77,13 +77,13 @@
           :title="dialogConfig.title"
           :buttons="dialogConfig.buttons"
           width="400px"
-          :showCancel="false"
+          :show-cancel="false"
           @close="dialogConfig.show = false"
         >
           <el-form
+            ref="formDataRef"
             :model="formData"
             :rules="rules"
-            ref="formDataRef"
             label-width="80px"
             @submit.prevent
           >
@@ -93,9 +93,9 @@
             <!-- 空间分配 -->
             <el-form-item label="空间大小" prop="changeSpace">
               <el-input
+                v-model.trim="formData.changeSpace"
                 clearable
                 placeholder="请输入空间大小"
-                v-model.trim="formData.changeSpace"
               >
                 <template #suffix>MB</template>
               </el-input>
@@ -164,12 +164,12 @@ const tableOptions = {
     extHeight: 20,
 };
 const loadDataList = async () => {
-    let params = {
+    const params = {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
     };
     Object.assign(params, searchFormData.value);
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.loadDataList,
         params,
     });
@@ -183,7 +183,7 @@ const updateUserStatus = (row) => {
     proxy.Confirm(
         `你确定要【${row.status == 0 ? "启用" : "禁用"}】吗?`,
         async () => {
-            let result = await proxy.Request({
+            const result = await proxy.Request({
                 url: api.updateUserStatus,
                 params: {
                     userId: row.userId,
@@ -231,9 +231,9 @@ const submitForm = () => {
         if (!valid) {
             return;
         }
-        let params = {};
+        const params = {};
         Object.assign(params, formData.value);
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.updateUserSpace,
             params,
         });

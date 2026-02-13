@@ -11,14 +11,14 @@
   </div>
   <div class="share-body">
     <template v-if="Object.keys(shareInfo).length == 0">
-      <div class="loading" v-loading="Object.keys(shareInfo).length == 0"></div>
+      <div v-loading="Object.keys(shareInfo).length == 0" class="loading"></div>
     </template>
     <template v-else>
       <div class="share-panel">
         <div class="share-user-info">
           <div class="avatar">
             <Avatar
-              :userId="shareInfo.userId"
+              :user-id="shareInfo.userId"
               :avatar="shareInfo.avatar"
               :width="50"
             ></Avatar>
@@ -33,9 +33,9 @@
         </div>
         <div class="share-op-btn">
             <el-button
+              v-if="shareInfo.currentUser"
               type="primary"
               @click="cancelShare"
-              v-if="shareInfo.currentUser"
             >
               <span class="iconfont icon-cancel"></span>
               取消分享</el-button
@@ -43,8 +43,8 @@
             <el-button
               v-else
               type="primary"
-              @click="save2MyPan"
               :disabled="selectIdList.length == 0"
+              @click="save2MyPan"
             >
               <span class="iconfont icon-import"></span>
               保存到我的网盘</el-button
@@ -53,18 +53,18 @@
       </div>
       <Navigation
         ref="navigationRef"
-        @navChange="navChange"
-        :shareId="shareId"
+        :share-id="shareId"
+        @nav-change="navChange"
       ></Navigation>
       <div class="file-list">
         <Table
           ref="dataTableRef"
           :columns="columns"
-          :dataSource="tableData"
+          :data-source="tableData"
           :fetch="loadDataList"
-          :initFetch="false"
+          :init-fetch="false"
           :options="tableOptions"
-          @rowSelected="rowSelected"
+          @row-selected="rowSelected"
         >
           <template #fileName="{ index, row }">
             <div
@@ -77,29 +77,29 @@
                 (row.fileType == 3 || row.fileType == 1) && row.status == 2
               "
             >
-              <Icon :cover="row.fileCover" :width="32" :shareId="shareId"></Icon>
+              <Icon :cover="row.fileCover" :width="32" :share-id="shareId"></Icon>
             </template>
               <template v-else>
                 <Icon
                   v-if="row.folderType == 0"
-                  :fileType="row.fileType"
+                  :file-type="row.fileType"
                 ></Icon>
-                <Icon v-if="row.folderType == 1" :fileType="0"></Icon>
+                <Icon v-if="row.folderType == 1" :file-type="0"></Icon>
               </template>
               <span class="file-name" :title="row.fileName">
                 <span @click="preview(row)">{{ row.fileName }}</span>
               </span>
               <span class="op">
                 <span
-                  class="iconfont icon-download"
                   v-if="row.folderType == 0"
+                  class="iconfont icon-download"
                   @click="download(row)"
                   >下载</span
                 >
                 <span
+                  v-if="row.showOp && !shareInfo.currentUser"
                   class="iconfont icon-import"
                   @click="save2MyPanSingle(row)"
-                  v-if="row.showOp && !shareInfo.currentUser"
                   >保存到我的网盘</span
                 >
                 </span>
@@ -116,7 +116,7 @@
     <!-- 目录选择 -->
     <FolderSelect
       ref="folderSelectRef"
-      @folderSelect="save2MyPanDone"
+      @folder-select="save2MyPanDone"
     ></FolderSelect>
     <Preview ref="previewRef"></Preview>
   </div>
@@ -143,7 +143,7 @@ const api = {
 const shareId = route.params.shareId;
 const shareInfo = ref({});
 const getShareInfo = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.getShareLoginInfo,
         showLoading: false,
         params: {
@@ -186,13 +186,13 @@ const tableOptions = {
 };
 
 const loadDataList = async () => {
-    let params = {
+    const params = {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
         shareId: shareId,
         filePid: currentFolder.value.fileId,
     };
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.loadFileList,
         params,
     });
@@ -244,7 +244,7 @@ const preview = (data) => {
 
 // 下载文件
 const download = async (row) => {
-  let result = await proxy.Request({
+  const result = await proxy.Request({
       url: api.createDownloadUrl + "/" + shareId + "/" + row.fileId,
   });
   if (!result) {
@@ -278,7 +278,7 @@ const save2MyPanSingle = (row) => {
 };
 
 const save2MyPanDone = async (folderId) => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.saveShare,
         params: {
             shareId: shareId,
@@ -297,7 +297,7 @@ const save2MyPanDone = async (folderId) => {
 // 取消分享
 const cancelShare = () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.cancelShare,
             params: {
                 shareIds: shareId,

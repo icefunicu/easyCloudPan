@@ -8,38 +8,41 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.util.Date;
 
+/**
+ * 文件信息视图对象.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class FileInfoVO {
 
     /**
-     * 文件ID
+     * 文件ID.
      */
     private String fileId;
 
     /**
-     * 父级ID
+     * 父级ID.
      */
     private String filePid;
 
     /**
-     * 文件大小
+     * 文件大小.
      */
     private Long fileSize;
 
     /**
-     * 文件名称
+     * 文件名称.
      */
     private String fileName;
 
     /**
-     * 封面
+     * 封面.
      */
     private String fileCover;
 
     /**
-     * 最后更新时间
+     * 最后更新时间.
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -50,22 +53,22 @@ public class FileInfoVO {
     private Date lastUpdateTime;
 
     /**
-     * 0:文件 1:目录
+     * 0:文件 1:目录.
      */
     private Integer folderType;
 
     /**
-     * 1:视频 2:音频 3:图片 4:文档 5:其他
+     * 1:视频 2:音频 3:图片 4:文档 5:其他.
      */
     private Integer fileCategory;
 
     /**
-     * 1:视频 2:音频 3:图片 4:pdf 5:doc 6:excel 7:txt 8:code 9:zip 10:其他
+     * 1:视频 2:音频 3:图片 4:pdf 5:doc 6:excel 7:txt 8:code 9:zip 10:其他.
      */
     private Integer fileType;
 
     /**
-     * 0:转码中 1转码失败 2:转码成功
+     * 0:转码中 1转码失败 2:转码成功.
      */
     private Integer status;
 }

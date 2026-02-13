@@ -4,9 +4,9 @@
             <div class="encode-select">
                 <!-- 下拉框 -->
                 <el-select
+                  v-model="encode"
                   clearable
                   placeholder="选择编码"
-                  v-model="encode"
                   @change="changeEncode"
                 >
                   <el-option value="utf8" label="utf8编码"></el-option>
@@ -40,7 +40,7 @@ const txtContent = ref("");
 const blobResult = ref();
 const encode = ref("utf8");
 const readTxt = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: props.url,
         responseType: "blob"
     });
@@ -59,7 +59,7 @@ const changeEncode = (e) => {
 const showTxt = () => {
     const reader = new FileReader();
     reader.onload = () => {
-        let txt = reader.result;
+        const txt = reader.result;
         txtContent.value = txt;
     };
     reader.readAsText(blobResult.value, encode.value);

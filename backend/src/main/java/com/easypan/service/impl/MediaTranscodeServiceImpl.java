@@ -17,6 +17,9 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 媒体转码服务实现类.
+ */
 @Service("mediaTranscodeService")
 public class MediaTranscodeServiceImpl implements MediaTranscodeService {
 
@@ -27,16 +30,13 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
         try {
             BufferedImage src = ImageIO.read(sourceFile);
             if (src == null) {
-                // Not an image or unsupported format
                 return false;
             }
             int sourceW = src.getWidth();
-            // 小于指定宽度不压缩
             if (sourceW <= width) {
                 return false;
             }
-            
-            // ffmpeg -i %s -vf scale=%d:-1 %s -y
+
             List<String> cmd = new ArrayList<>();
             cmd.add("ffmpeg");
             cmd.add("-i");
@@ -61,7 +61,6 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     @Override
     public void createVideoCover(File sourceFile, int width, File targetFile) {
         try {
-            // ffmpeg -i %s -y -vframes 1 -vf scale=%d:%d/a %s
             List<String> cmd = new ArrayList<>();
             cmd.add("ffmpeg");
             cmd.add("-i");
@@ -81,7 +80,6 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
 
     @Override
     public void transcodeToTs(String sourceFilePath, String targetTsPath) {
-        // ffmpeg -y -i %s  -vcodec copy -acodec copy -vbsf h264_mp4toannexb %s
         List<String> cmd = new ArrayList<>();
         cmd.add("ffmpeg");
         cmd.add("-y");
@@ -105,7 +103,6 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
 
     @Override
     public void cutToM3u8(String sourceTsPath, String targetFolder, String fileId) {
-        // ffmpeg -i %s -c copy -map 0 -f segment -segment_list %s -segment_time 30 %s/%s_%%4d.ts
         List<String> cmd = new ArrayList<>();
         cmd.add("ffmpeg");
         cmd.add("-i");
@@ -117,7 +114,7 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
         cmd.add("-f");
         cmd.add("segment");
         cmd.add("-segment_list");
-        cmd.add(targetFolder + "/index.m3u8"); 
+        cmd.add(targetFolder + "/index.m3u8");
         cmd.add("-segment_time");
         cmd.add("30");
         cmd.add(targetFolder + "/" + fileId + "_%4d.ts");
@@ -134,19 +131,17 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
         if (cmd == null || cmd.isEmpty()) {
             return;
         }
-        
+
         ProcessBuilder processBuilder = new ProcessBuilder(cmd);
-        processBuilder.redirectErrorStream(true); // Merge stdout and stderr
+        processBuilder.redirectErrorStream(true);
 
         Process process = null;
         try {
             process = processBuilder.start();
-            
-            // Consume output to prevent blocking
+
             try (InputStream inputStream = process.getInputStream();
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 while (reader.readLine() != null) {
-                    // Consume output to prevent process blocking
                 }
             }
 

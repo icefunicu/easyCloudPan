@@ -1,12 +1,12 @@
 <template>
     <span class="avatar" :style="{ width: width + 'px', height: width + 'px' }">
         <img
+        v-if="userId"
         :src="
           avatar && avatar != ''
           ? avatar
           : `${proxy.globalInfo.avatarUrl}${userId}?${timestamp}`
         "
-        v-if="userId"
       />
     </span>
 </template>

@@ -8,8 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * 租户拦截器
- * 负责从请求中提取租户标识，并设置到上下文
+ * 租户拦截器.
+ * 负责从请求中提取租户标识，并设置到上下文.
  */
 @Component
 public class TenantInterceptor implements HandlerInterceptor {

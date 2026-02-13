@@ -9,7 +9,7 @@
                 <div class="file-info">
                     <div class="avatar">
                         <Avatar
-                          :userId="shareInfo.userId"
+                          :user-id="shareInfo.userId"
                           :avatar="shareInfo.avatar"
                           :width="50"
                         ></Avatar>
@@ -26,17 +26,17 @@
                     <div class="tips">请输入提取码: </div>
                     <div class="input-area">
                         <el-form
+                          ref="formDataRef"
                           :model="formData"
                           :rules="rules"
-                          ref="formDataRef"
                           @submit.prevent
                         >
                           <!-- 输入框 -->
                           <el-form-item prop="code">
                             <el-input
+                              v-model.trim="formData.code"
                               class="input"
                               clearable
-                              v-model.trim="formData.code"
                               @keyup.enter="checkShare"
                             ></el-input>
                             <el-button class="get-btn" type="primary" @click="checkShare"
@@ -66,7 +66,7 @@ const api = {
 const shareId = route.params.shareId;
 const shareInfo = ref({});
 const getShareInfo = async () => {
-    let result = await proxy.Request({
+    const result = await proxy.Request({
         url: api.getShareInfo,
         params: {
             shareId,
@@ -94,9 +94,9 @@ const checkShare = async () => {
         if (!valid) {
             return;
         }
-        let params = {};
+        const params = {};
         Object.assign(params, formData.value);
-        let result = await proxy.Request({
+        const result = await proxy.Request({
             url: api.checkShareCode,
             params: {
                 shareId: shareId,

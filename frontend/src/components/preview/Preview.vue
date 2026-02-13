@@ -1,37 +1,37 @@
 <template>
     <PreviewImage
-      ref="imageViewRef"
-      :imageList="[imageUrl]"
       v-if="fileInfo.fileCategory == 3"
+      ref="imageViewRef"
+      :image-list="[imageUrl]"
     >
     </PreviewImage>
     <Window
+      v-else
       :show="windowShow"
-      @close="closeWindow"
       :width="fileInfo.fileCategory == 1 ? 1500 : 900"
       :title="fileInfo.fileName"
       :align="fileInfo.fileCategory == 1 ? 'center' : 'top'"
-      v-else
+      @close="closeWindow"
     >
-    <PreviewVideo :url="url" v-if="fileInfo.fileCategory == 1"></PreviewVideo>
-    <PreviewDoc :url="url" v-if="fileInfo.fileType == 5"></PreviewDoc>
-    <PreviewExcel :url="url" v-if="fileInfo.fileType == 6"></PreviewExcel>
-    <PreviewPdf :url="url" v-if="fileInfo.fileType == 4"></PreviewPdf>
+    <PreviewVideo v-if="fileInfo.fileCategory == 1" :url="url"></PreviewVideo>
+    <PreviewDoc v-if="fileInfo.fileType == 5" :url="url"></PreviewDoc>
+    <PreviewExcel v-if="fileInfo.fileType == 6" :url="url"></PreviewExcel>
+    <PreviewPdf v-if="fileInfo.fileType == 4" :url="url"></PreviewPdf>
     <PreviewTxt
-      :url="url"
       v-if="fileInfo.fileType == 7 || fileInfo.fileType == 8"
+      :url="url"
     ></PreviewTxt>
     <PreviewMusic
-      :url="url"
-      :fileName="fileInfo.fileName"
       v-if="fileInfo.fileCategory == 2"
+      :url="url"
+      :file-name="fileInfo.fileName"
     ></PreviewMusic>
 
     <PreviewDownload
-      :createDownloadUrl="createDownloadUrl"
-      :downloadUrl="downloadUrl"
-      :fileInfo="fileInfo"
       v-if="fileInfo.fileCategory == 5 && fileInfo.fileType != 8"
+      :create-download-url="createDownloadUrl"
+      :download-url="downloadUrl"
+      :file-info="fileInfo"
     ></PreviewDownload>
     </Window>
 </template>
@@ -98,7 +98,7 @@ const showPreview = (data, showPart) => {
         windowShow.value = true;
         let _url = FILE_URL_MAP[showPart].fileUrl;
         let _createDownloadUrl = FILE_URL_MAP[showPart].createDownloadUrl;
-        let _downloadUrl = FILE_URL_MAP[showPart].downloadUrl;
+        const _downloadUrl = FILE_URL_MAP[showPart].downloadUrl;
 
         if (data.fileCategory == 1) {
             _url = FILE_URL_MAP[showPart].videoUrl;

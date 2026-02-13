@@ -6,6 +6,9 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
 
+/**
+ * JWT 黑名单服务实现类.
+ */
 @Service("jwtBlacklistService")
 public class JwtBlacklistServiceImpl implements JwtBlacklistService {
 
@@ -14,7 +17,6 @@ public class JwtBlacklistServiceImpl implements JwtBlacklistService {
 
     @Override
     public void addToBlacklist(String token, long expirationTimeInMs) {
-        // Convert ms to seconds
         long seconds = expirationTimeInMs / 1000;
         if (seconds > 0) {
             redisComponent.addBlacklistToken(token, seconds);

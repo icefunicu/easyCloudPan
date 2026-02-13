@@ -1,5 +1,8 @@
 package com.easypan.entity.constants;
 
+/**
+ * 系统常量类，定义系统使用的各种常量.
+ */
 public class Constants {
     public static final String ZERO_STR = "0";
 
@@ -48,29 +51,26 @@ public class Constants {
     public static final String VIEW_OBJ_RESULT_KEY = "result";
 
     /**
-     * redis key 相关
-     */
-
-    /**
-     * 过期时间 1分钟
+     * 过期时间 1 分钟.
      */
     public static final Integer REDIS_KEY_EXPIRES_ONE_MIN = 60;
 
     /**
-     * 过期时间 1天
+     * 过期时间 1 天.
      */
     public static final Integer REDIS_KEY_EXPIRES_DAY = REDIS_KEY_EXPIRES_ONE_MIN * 60 * 24;
 
+    /**
+     * 过期时间 1 小时.
+     */
     public static final Integer REDIS_KEY_EXPIRES_ONE_HOUR = REDIS_KEY_EXPIRES_ONE_MIN * 60;
 
     public static final Long MB = 1024 * 1024L;
 
-
     /**
-     * 过期时间5分钟
+     * 过期时间 5 分钟.
      */
     public static final Integer REDIS_KEY_EXPIRES_FIVE_MIN = REDIS_KEY_EXPIRES_ONE_MIN * 5;
-
 
     public static final String REDIS_KEY_DOWNLOAD = "easypan:download:";
 

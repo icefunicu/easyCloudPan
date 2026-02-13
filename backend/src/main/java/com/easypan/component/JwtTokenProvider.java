@@ -1,6 +1,11 @@
 package com.easypan.component;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtBuilder;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,8 +18,7 @@ import java.util.Date;
 import java.util.Map;
 
 /**
- * JWT Token 提供者
- * 用于生成、解析和验证 JWT Token
+ * JWT Token 提供者，用于生成、解析和验证 JWT Token.
  */
 @Component
 public class JwtTokenProvider {
@@ -24,10 +28,10 @@ public class JwtTokenProvider {
     @Value("${jwt.secret:defaultSecretKeyRequires256BitsMinimumLengthForHS256AlgorithmIsHere}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:604800000}") // 7 days
+    @Value("${jwt.expiration:604800000}")
     private long jwtExpirationInMs;
 
-    @Value("${jwt.refresh-expiration:2592000000}") // 30 days
+    @Value("${jwt.refresh-expiration:2592000000}")
     private long jwtRefreshExpirationInMs;
 
     @org.springframework.beans.factory.annotation.Autowired
@@ -39,19 +43,24 @@ public class JwtTokenProvider {
     }
 
     /**
-     * 生成 Token
+     * 生成 Token.
+     *
+     * @param userId 用户ID
+     * @param claims 自定义声明
+     * @return JWT Token
      */
     public String generateToken(String userId, Map<String, Object> claims) {
         return generateToken(userId, claims, jwtExpirationInMs);
     }
 
     /**
-     * 生成 Refresh Token
+     * 生成指定过期时间的 Token.
+     *
+     * @param userId 用户ID
+     * @param claims 自定义声明
+     * @param expiration 过期时间（毫秒）
+     * @return JWT Token
      */
-    public String generateRefreshToken(String userId, Map<String, Object> claims) {
-        return generateToken(userId, claims, jwtRefreshExpirationInMs);
-    }
-
     private String generateToken(String userId, Map<String, Object> claims, long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
@@ -61,7 +70,7 @@ public class JwtTokenProvider {
                 .issuedAt(new Date())
                 .expiration(expiryDate)
                 .signWith(getSigningKey());
-        
+
         if (claims != null) {
             builder.claims(claims);
         }
@@ -72,7 +81,21 @@ public class JwtTokenProvider {
     }
 
     /**
-     * 从 Token 中获取 User ID
+     * 生成 Refresh Token.
+     *
+     * @param userId 用户ID
+     * @param claims 自定义声明
+     * @return Refresh Token
+     */
+    public String generateRefreshToken(String userId, Map<String, Object> claims) {
+        return generateToken(userId, claims, jwtRefreshExpirationInMs);
+    }
+
+    /**
+     * 从 Token 中获取 User ID.
+     *
+     * @param token JWT Token
+     * @return 用户ID
      */
     public String getUserIdFromJWT(String token) {
         Claims claims = Jwts.parser()
@@ -85,7 +108,10 @@ public class JwtTokenProvider {
     }
 
     /**
-     * 获取 Token 剩余有效期（毫秒）
+     * 获取 Token 剩余有效期（毫秒）.
+     *
+     * @param token JWT Token
+     * @return 剩余有效期（毫秒）
      */
     public long getRemainingTime(String token) {
         try {
@@ -94,7 +120,7 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
+
             Date expiration = claims.getExpiration();
             return expiration.getTime() - System.currentTimeMillis();
         } catch (Exception ex) {
@@ -103,7 +129,10 @@ public class JwtTokenProvider {
     }
 
     /**
-     * 验证 Token 是否有效
+     * 验证 Token 是否有效.
+     *
+     * @param authToken JWT Token
+     * @return 是否有效
      */
     public boolean validateToken(String authToken) {
         try {
@@ -113,9 +142,9 @@ public class JwtTokenProvider {
             }
 
             Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(authToken);
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(authToken);
             return true;
         } catch (MalformedJwtException ex) {
             logger.warn("Invalid JWT token", ex);

@@ -15,12 +15,14 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import jakarta.servlet.MultipartConfigElement;
 
-
-@EnableAsync  //异步调用
+/**
+ * EasyPan 应用程序主入口类.
+ */
+@EnableAsync
 @SpringBootApplication(scanBasePackages = {"com.easypan"})
 @MapperScan(basePackages = {"com.easypan.mappers"})
-@EnableTransactionManagement //事务
-@EnableScheduling //定时任务
+@EnableTransactionManagement
+@EnableScheduling
 public class EasyPanApplication {
 
     public static void main(String[] args) {

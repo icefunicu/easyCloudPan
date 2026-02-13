@@ -14,6 +14,7 @@ import com.easypan.entity.vo.UserInfoVO;
 import com.easypan.entity.vo.FolderVO;
 import com.easypan.service.FileInfoService;
 import com.easypan.service.UserInfoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,8 +24,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
+/**
+ * 管理员控制器类.
+ */
 @RestController("adminController")
 @RequestMapping("/admin")
+@Tag(name = "Admin Management", description = "Administrator operations")
 public class AdminController extends CommonFileController {
 
     @Resource
@@ -36,12 +41,25 @@ public class AdminController extends CommonFileController {
     @Resource
     private FileInfoService fileInfoService;
 
+    /**
+     * 获取系统设置.
+     *
+     * @return 系统设置
+     */
     @RequestMapping("/getSysSettings")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<SysSettingsDto> getSysSettings() {
         return getSuccessResponseVO(redisComponent.getSysSettingsDto());
     }
 
+    /**
+     * 保存系统设置.
+     *
+     * @param registerEmailTitle 注册邮件标题
+     * @param registerEmailContent 注册邮件内容
+     * @param userInitUseSpace 用户初始空间
+     * @return 响应对象
+     */
     @RequestMapping("/saveSysSettings")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<Void> saveSysSettings(
@@ -56,6 +74,12 @@ public class AdminController extends CommonFileController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 加载用户列表.
+     *
+     * @param userInfoQuery 用户查询参数
+     * @return 用户分页列表
+     */
     @RequestMapping("/loadUserList")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<PaginationResultVO<UserInfoVO>> loadUser(UserInfoQuery userInfoQuery) {
@@ -64,6 +88,13 @@ public class AdminController extends CommonFileController {
         return getSuccessResponseVO(convert2PaginationVO(resultVO, UserInfoVO.class));
     }
 
+    /**
+     * 更新用户状态.
+     *
+     * @param userId 用户ID
+     * @param status 状态
+     * @return 响应对象
+     */
     @RequestMapping("/updateUserStatus")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<Void> updateUserStatus(@VerifyParam(required = true) String userId,
@@ -72,6 +103,13 @@ public class AdminController extends CommonFileController {
         return getSuccessResponseVO(null);
     }
 
+    /**
+     * 更新用户空间.
+     *
+     * @param userId 用户ID
+     * @param changeSpace 变更空间
+     * @return 响应对象
+     */
     @RequestMapping("/updateUserSpace")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<Void> updateUserSpace(@VerifyParam(required = true) String userId,
@@ -81,10 +119,10 @@ public class AdminController extends CommonFileController {
     }
 
     /**
-     * 查询所有文件
+     * 查询所有文件.
      *
-     * @param query
-     * @return
+     * @param query 文件查询参数
+     * @return 文件分页列表
      */
     @RequestMapping("/loadFileList")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
@@ -95,12 +133,25 @@ public class AdminController extends CommonFileController {
         return getSuccessResponseVO(resultVO);
     }
 
+    /**
+     * 获取文件夹信息.
+     *
+     * @param path 路径
+     * @return 文件夹列表
+     */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkLogin = false, checkAdmin = true, checkParams = true)
     public ResponseVO<List<FolderVO>> getFolderInfo(@VerifyParam(required = true) String path) {
         return super.getFolderInfo(path, null);
     }
 
+    /**
+     * 获取文件.
+     *
+     * @param response HTTP 响应
+     * @param userId 用户ID
+     * @param fileId 文件ID
+     */
     @RequestMapping("/getFile/{userId}/{fileId}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public void getFile(HttpServletResponse response,
@@ -109,6 +160,14 @@ public class AdminController extends CommonFileController {
         super.getFile(response, fileId, userId);
     }
 
+    /**
+     * 获取图片.
+     *
+     * @param response HTTP 响应
+     * @param userId 用户ID
+     * @param imageFolder 图片文件夹
+     * @param imageName 图片名称
+     */
     @RequestMapping("/getImage/{userId}/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public void getImage(HttpServletResponse response,
@@ -118,6 +177,13 @@ public class AdminController extends CommonFileController {
         super.getImage(response, imageFolder, imageName, userId);
     }
 
+    /**
+     * 获取视频信息.
+     *
+     * @param response HTTP 响应
+     * @param userId 用户ID
+     * @param fileId 文件ID
+     */
     @RequestMapping("/ts/getVideoInfo/{userId}/{fileId}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public void getVideoInfo(HttpServletResponse response,
@@ -126,6 +192,13 @@ public class AdminController extends CommonFileController {
         super.getFile(response, fileId, userId);
     }
 
+    /**
+     * 创建下载链接.
+     *
+     * @param userId 用户ID
+     * @param fileId 文件ID
+     * @return 下载码
+     */
     @RequestMapping("/createDownloadUrl/{userId}/{fileId}")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<String> createDownloadUrl(@PathVariable("userId") @VerifyParam(required = true) String userId,
@@ -134,11 +207,12 @@ public class AdminController extends CommonFileController {
     }
 
     /**
-     * 下载
+     * 下载文件.
      *
-     * @param request
-     * @param response
-     * @throws Exception
+     * @param request HTTP 请求
+     * @param response HTTP 响应
+     * @param code 下载码
+     * @throws Exception 异常
      */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -147,6 +221,12 @@ public class AdminController extends CommonFileController {
         super.download(request, response, code);
     }
 
+    /**
+     * 删除文件.
+     *
+     * @param fileIdAndUserIds 文件ID和用户ID组合
+     * @return 响应对象
+     */
     @RequestMapping("/delFile")
     @GlobalInterceptor(checkParams = true, checkAdmin = true)
     public ResponseVO<Void> delFile(@VerifyParam(required = true) String fileIdAndUserIds) {

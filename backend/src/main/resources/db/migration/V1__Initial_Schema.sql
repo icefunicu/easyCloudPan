@@ -48,10 +48,10 @@ CREATE TABLE IF NOT EXISTS email_code (
 );
 
 -- 2. Indices
-CREATE INDEX idx_file_user ON file_info(user_id);
-CREATE INDEX idx_file_pid ON file_info(file_pid);
-CREATE INDEX idx_file_md5 ON file_info(file_md5);
-CREATE INDEX idx_user_pid ON file_info(user_id, file_pid);
+CREATE INDEX IF NOT EXISTS idx_file_user ON file_info(user_id);
+CREATE INDEX IF NOT EXISTS idx_file_pid ON file_info(file_pid);
+CREATE INDEX IF NOT EXISTS idx_file_md5 ON file_info(file_md5);
+CREATE INDEX IF NOT EXISTS idx_user_pid ON file_info(user_id, file_pid);
 
 -- 3. Initial Data (Optional - Admin User)
 -- Password '123456' hashed with BCrypt (example placeholder, actual migration handled by service)

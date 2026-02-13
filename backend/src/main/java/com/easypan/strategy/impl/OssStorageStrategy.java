@@ -14,6 +14,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * OSS 存储策略实现类.
+ */
 @Service
 public class OssStorageStrategy implements StorageStrategy {
 
@@ -33,7 +36,7 @@ public class OssStorageStrategy implements StorageStrategy {
             s3Component.uploadBytes(path, file.getBytes());
         } catch (IOException e) {
             logger.error("Upload file to OSS failed", e);
-            throw new BusinessException("Upload failed");
+            throw new BusinessException("文件上传失败，请重试");
         }
     }
 
