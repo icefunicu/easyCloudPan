@@ -45,7 +45,7 @@ public class MicrosoftOAuthStrategy implements OAuthProviderStrategy {
             throw new BusinessException("Failed to get Microsoft access token");
         }
 
-        Map<String, Object> map = JsonUtils.convertJson2Obj(response, Map.class);
+        Map<String, Object> map = JsonUtils.convertJson2Map(response);
         if (map == null || !map.containsKey("access_token")) {
             throw new BusinessException("Failed to get Microsoft access token: " + response);
         }
@@ -63,7 +63,7 @@ public class MicrosoftOAuthStrategy implements OAuthProviderStrategy {
             throw new BusinessException("Failed to get Microsoft user info");
         }
 
-        Map<String, Object> userInfoMap = JsonUtils.convertJson2Obj(response, Map.class);
+        Map<String, Object> userInfoMap = JsonUtils.convertJson2Map(response);
         if (userInfoMap == null || userInfoMap.containsKey("error")) {
             throw new BusinessException("Failed to get Microsoft user info: " + response);
         }

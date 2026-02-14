@@ -1,7 +1,6 @@
 package com.easypan.service.oauth;
 
 import com.easypan.entity.config.AppConfig;
-import com.easypan.entity.constants.Constants;
 import com.easypan.exception.BusinessException;
 import com.easypan.utils.JsonUtils;
 import com.easypan.utils.OKHttpUtils;
@@ -63,7 +62,7 @@ public class GitHubOAuthStrategy implements OAuthProviderStrategy {
             throw new BusinessException("Failed to get GitHub user info");
         }
 
-        Map<String, Object> userInfoMap = JsonUtils.convertJson2Obj(response, Map.class);
+        Map<String, Object> userInfoMap = JsonUtils.convertJson2Map(response);
         if (userInfoMap == null || userInfoMap.containsKey("message")) {
             throw new BusinessException("Failed to get GitHub user info: " + response);
         }

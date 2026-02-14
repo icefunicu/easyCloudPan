@@ -43,7 +43,7 @@ public class GiteeOAuthStrategy implements OAuthProviderStrategy {
             throw new BusinessException("Failed to get Gitee access token");
         }
 
-        Map<String, Object> map = JsonUtils.convertJson2Obj(response, Map.class);
+        Map<String, Object> map = JsonUtils.convertJson2Map(response);
         if (map == null || !map.containsKey("access_token")) {
             throw new BusinessException("Failed to get Gitee access token: " + response);
         }
@@ -58,7 +58,7 @@ public class GiteeOAuthStrategy implements OAuthProviderStrategy {
             throw new BusinessException("Failed to get Gitee user info");
         }
 
-        Map<String, Object> userInfoMap = JsonUtils.convertJson2Obj(response, Map.class);
+        Map<String, Object> userInfoMap = JsonUtils.convertJson2Map(response);
         if (userInfoMap == null || userInfoMap.containsKey("message")) {
             throw new BusinessException("Failed to get Gitee user info: " + response);
         }

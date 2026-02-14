@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * JSON 工具类，提供对象与 JSON 之间的转换功能.
@@ -61,6 +62,16 @@ public class JsonUtils {
                     OBJECT_MAPPER.getTypeFactory().constructCollectionType(List.class, classz));
         } catch (JsonProcessingException e) {
             logger.error("convertJsonArray2List error", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Map<String, Object> convertJson2Map(String json) {
+        try {
+            return OBJECT_MAPPER.readValue(json,
+                    OBJECT_MAPPER.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+        } catch (JsonProcessingException e) {
+            logger.error("convertJson2Map error", e);
             throw new RuntimeException(e);
         }
     }
