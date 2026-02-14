@@ -53,29 +53,21 @@
 
 <script setup>
 import { ref, getCurrentInstance } from "vue";
-const { proxy } = getCurrentInstance();
 import { useRouter, useRoute } from "vue-router";
+import * as shareService from "@/services/shareService";
+const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
 
-const api = {
-    getShareInfo: "/showShare/getShareInfo",
-    checkShareCode: "/showShare/checkShareCode",
-};
 
 const shareId = route.params.shareId;
 const shareInfo = ref({});
 const getShareInfo = async () => {
-    const result = await proxy.Request({
-        url: api.getShareInfo,
-        params: {
-            shareId,
-        },
-    });
+    const result = await shareService.getShareInfo(shareId);
     if (!result) {
         return;
     }
-    shareInfo.value = result.data;
+    shareInfo.value = result;
 };
 getShareInfo();
 
@@ -96,12 +88,9 @@ const checkShare = async () => {
         }
         const params = {};
         Object.assign(params, formData.value);
-        const result = await proxy.Request({
-            url: api.checkShareCode,
-            params: {
-                shareId: shareId,
-                code: formData.value.code,
-            },
+        const result = await shareService.checkShareCode({
+            shareId: shareId,
+            code: formData.value.code,
         });
         if (!result) {
             return;
@@ -113,53 +102,45 @@ const checkShare = async () => {
 
 <style lang="scss" scoped>
 .share {
-    height: calc(100vh);
-    background: url("../../assets/share_bg.png");
-    background-repeat: repeat-x;
-    background-position: 0 bottom;
-    background-color: #eef2f6;
+    min-height: 100vh;
+    background-color: var(--bg-body);
+    background-image:
+      radial-gradient(1200px 300px at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%),
+      url("../../assets/share_bg.png");
+    background-repeat: no-repeat, repeat-x;
+    background-position: 0 0, 0 bottom;
     display: flex;
     justify-content: center;
     .body-content {
-        margin-top: calc(100vh / 5);
-        width: 500px;
+        margin-top: 12vh;
+        width: min(520px, calc(100% - 32px));
         .logo {
             display: flex;
             align-items: center;
             justify-content: center;
+            user-select: none;
             .icon-pan {
                 font-size: 60px;
-                color: #01f7ff;
+                color: var(--primary);
             }
             .name {
                 font-weight: bold;
                 margin-left: 5px;
                 font-size: 25px;
-                color: #01f7ff;
-                animation-name: glitched;
-                animation-duration: calc(.9s * 3.5);
-                animation-iteration-count: infinite;
-                animation-timing-function: linear;
-                }
-                @keyframes glitched {
-                0% { left: -4px; transform: skew(-20deg); }
-                11% { left: 2px; transform: skew(0deg); }
-                50% { transform: skew(0deg); }
-                51% { transform: skew(10deg); }
-                60% { transform: skew(0deg); }
-                100% { transform: skew(0deg); }
+                color: var(--text-main);
             }
         }
         .code-panel {
             margin-top: 20px;
-            background: #fff;
-            border-radius: 5px;
+            background: var(--bg-card);
+            border-radius: var(--border-radius-lg);
             overflow: hidden;
-            box-shadow: 0 0 7px 1px #5757574f;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
             .file-info {
                 padding: 10px 20px;
-                background: #01f7ff;
-                color: #fff;
+                background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.06));
+                color: var(--text-main);
                 display: flex;
                 align-items: center;
                 .avatar {
@@ -169,18 +150,20 @@ const checkShare = async () => {
                     .user-info {
                         display: flex;
                         align-items: center;
+                        flex-wrap: wrap;
                         .nick-name {
                             font-size: 15px;
-                            color: #af01ff;
+                            color: var(--text-main);
+                            font-weight: 600;
                         }
                         .share-time {
                             margin-left: 20px;
                             font-size: 12px;
-                            color: #af01ff;
+                            color: var(--text-light);
                         }
                     }
                     .file-name {
-                        color: #af01ff;
+                        color: var(--text-secondary);
                         margin-top: 10px;
                         font-size: 12px;
                     }
@@ -190,6 +173,7 @@ const checkShare = async () => {
                 padding: 30px 20px 60px 20px;
                 .tips {
                     font-weight: bold;
+                    color: var(--text-main);
                 }
                 .input-area {
                     margin-top: 15px;
@@ -197,53 +181,20 @@ const checkShare = async () => {
                         flex: 1;
                         margin-right: 10px;
                     }
-                    .get-btn {
-                        background: linear-gradient(45deg, transparent 5%, #ea01ff 5%);
-                        border: 0;
-                        color: #fff;
-                        line-height: 33px;
-                        box-shadow: 6px 0px 0px #04ebfc;
-                        outline: transparent;
-                        position: relative;
-                        }
-                        button::after {
-                        --slice-0: inset(50% 50% 50% 50%);
-                        --slice-1: inset(80% -6px 0 0);
-                        --slice-2: inset(50% -6px 30% 0);
-                        --slice-3: inset(10% -6px 85% 0);
-                        --slice-4: inset(40% -6px 43% 0);
-                        --slice-5: inset(80% -6px 5% 0);
-                        content: 'LanVinci';
-                        display: block;
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: linear-gradient(45deg, transparent 3%, #00E6F6 3%, #00E6F6 5%, #ff0101 5%);
-                        text-shadow: -3px -3px 0px #f8f405, 3px 3px 0px #00E6F6;
-                        clip-path: var(--slice-0);
-                        }
-                        button:hover::after {
-                        animation: 1s glitch;
-                        animation-timing-function: steps(2, end);
-                        }
-                        @keyframes glitch {
-                        0% { clip-path: var(--slice-1); transform: translate(-20px, -10px); }
-                        10% { clip-path: var(--slice-3); transform: translate(10px, 10px); }
-                        20% { clip-path: var(--slice-1); transform: translate(-10px, 10px); }
-                        30% { clip-path: var(--slice-3); transform: translate(0px, 5px); }
-                        40% { clip-path: var(--slice-2); transform: translate(-5px, 0px); }
-                        50% { clip-path: var(--slice-3); transform: translate(5px, 0px); }
-                        60% { clip-path: var(--slice-4); transform: translate(5px, 10px); }
-                        70% { clip-path: var(--slice-2); transform: translate(-10px, 10px); }
-                        80% { clip-path: var(--slice-5); transform: translate(20px, -10px); }
-                        90% { clip-path: var(--slice-1); transform: translate(-10px, 0px); }
-                        100% { clip-path: var(--slice-1); transform: translate(0); }
-                    }
                 }
             }
         }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .share .body-content {
+        margin-top: 10vh;
+    }
+    .share .body-content .code-panel .file-info .share-info .user-info .share-time {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 4px;
     }
 }
 </style>

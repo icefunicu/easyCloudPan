@@ -30,7 +30,12 @@
       >
         <template #fileName="{ row }">
           <div
-            class="file-item"
+            v-touch="{
+              onLongPress: () => showOp(row),
+              onSwipeLeft: () => delFile(row),
+              onSwipeRight: () => revert(row),
+            }"
+            :class="['file-item', row.showOp ? 'show-op' : '']"
             @mouseenter="showOp(row)"
             @mouseleave="cancelShowOp(row)"
           >
@@ -72,12 +77,9 @@
 
 <script setup>
 import { ref, getCurrentInstance } from "vue";
+import * as recycleService from "@/services/recycleService";
 const { proxy } = getCurrentInstance();
-const api = {
-    loadDataList: "/recycle/loadRecycleList",
-    delFile: "/recycle/delFile",
-    recoverFile: "/recycle/recoverFile",
-};
+
 
 const columns = [
     {
@@ -108,14 +110,11 @@ const loadDataList = async () => {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
     };
-    const result = await proxy.Request({
-        url: api.loadDataList,
-        params,
-    });
+    const result = await recycleService.loadRecycleList(params);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 
 // 多选 批量选择
@@ -128,10 +127,11 @@ const rowSelected = (rows) => {
 };
 
 const showOp = (row) => {
+    const nextShow = !row.showOp;
     tableData.value.list.forEach((item) => {
         item.showOp = false;
     });
-    row.showOp = true;
+    row.showOp = nextShow;
 };
 
 const cancelShowOp = (row) => {
@@ -141,12 +141,7 @@ const cancelShowOp = (row) => {
 // 恢复
 const revert = (row) => {
     proxy.Confirm(`你确定要还原【${row.fileName}】吗?`, async () => {
-        const result = await proxy.Request({
-            url: api.recoverFile,
-            params: {
-                fileIds: row.fileId,
-            },
-        });
+        const result = await recycleService.recoverFile(row.fileId);
         if (!result) {
             return;
         }
@@ -156,12 +151,7 @@ const revert = (row) => {
 
 const revertBatch = () => {
     proxy.Confirm(`你确定要还原这些文件吗?`, async () => {
-        const result = await proxy.Request({
-            url: api.recoverFile,
-            params: {
-                fileIds: selectIdList.value.join(","),
-            },
-        });
+        const result = await recycleService.recoverFile(selectIdList.value.join(","));
         if (!result) {
             return;
         }
@@ -173,12 +163,7 @@ const revertBatch = () => {
 const emit = defineEmits(["reload"]);
 const delFile = (row) => {
     proxy.Confirm(`你确定要删除【${row.fileName}】吗? 删除后无法恢复`, async () => {
-        const result = await proxy.Request({
-            url: api.delFile,
-            params: {
-                fileIds: row.fileId,
-            },
-        });
+        const result = await recycleService.delFile(row.fileId);
         if (!result) {
             return;
         }
@@ -189,12 +174,7 @@ const delFile = (row) => {
 
 const delBatch = () => {
     proxy.Confirm(`你确定要删除这些文件吗? 删除后无法恢复`, async () => {
-        const result = await proxy.Request({
-            url: api.delFile,
-            params: {
-                fileIds: selectIdList.value.join(","),
-            },
-        });
+        const result = await recycleService.delFile(selectIdList.value.join(","));
         if (!result) {
             return;
         }

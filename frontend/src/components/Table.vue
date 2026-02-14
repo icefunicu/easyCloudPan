@@ -10,6 +10,7 @@
           highlight-current-row
           @row-click="handleRowClick"
           @selection-change="handleSelectionChange"
+          v-bind="rowKeyBind"
         >
           <!-- selection选择框 -->
           <el-table-column
@@ -34,6 +35,7 @@
                 :label="column.label"
                 :align="column.align || 'left'"
                 :width="column.width"
+                :class-name="column.className"
               >
                 <template #default="scope">
                   <slot
@@ -45,12 +47,13 @@
                 </template>
             </el-table-column>
           </template>
-          <template v-else>
+            <template v-else>
             <el-table-column
               :prop="column.prop"
               :label="column.label"
               :align="column.align || 'left'"
               :width="column.width"
+              :class-name="column.className"
               :fixed="column.fixed"
             >
             </el-table-column>
@@ -75,7 +78,7 @@
     </div>
 </template>
 <script setup lang="ts">
-import { ref, computed, type PropType } from "vue";
+import { ref, computed, type PropType, onMounted, onBeforeUnmount, watch } from "vue";
 
 interface TableColumn {
     prop?: string;
@@ -83,6 +86,7 @@ interface TableColumn {
     align?: string;
     width?: number | string;
     fixed?: string | boolean;
+    className?: string;
     scopedSlots?: string;
 }
 
@@ -100,6 +104,7 @@ interface TableOptions {
     border?: boolean;
     selectType?: string;
     tableHeight?: number;
+    rowKey?: string;
 }
 
 const emit = defineEmits<{
@@ -150,10 +155,37 @@ const layout = computed(() => {
 // 顶部 60 , 内容区域距离顶部 20, 内容上下内间距 15*2 分页区域高度 46
 const topHeight = 60 + 20 + 30 + 46;
 
+const rowKeyBind = computed(() => {
+    return props.options.rowKey ? { "row-key": props.options.rowKey } : {};
+});
+
 const tableHeight = ref(
     props.options.tableHeight
     ? props.options.tableHeight
     : window.innerHeight - topHeight - (props.options.extHeight || 0)
+);
+
+const updateTableHeight = () => {
+    if (props.options.tableHeight) {
+        tableHeight.value = props.options.tableHeight;
+        return;
+    }
+    tableHeight.value = window.innerHeight - topHeight - (props.options.extHeight || 0);
+};
+
+onMounted(() => {
+    window.addEventListener("resize", updateTableHeight, { passive: true });
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener("resize", updateTableHeight);
+});
+
+watch(
+    () => [props.options.extHeight, props.options.tableHeight],
+    () => {
+        updateTableHeight();
+    }
 );
 
 // 初始化
@@ -210,7 +242,7 @@ const handlePageNoChange = (pageNo: number) => {
 </script>
 <style lang="scss" scoped>
 .pagination {
-    padding-top: 10px;
+    padding-top: 15px;
     padding-right: 10px;
 }
 .el-pagination {
@@ -218,6 +250,12 @@ const handlePageNoChange = (pageNo: number) => {
 }
 
 :deep(.el-table__cell) {
-    padding: 4px 0px;
+    padding: 8px 0px; 
+}
+
+:deep(.table-header-row) {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+    font-weight: 600;
 }
 </style>

@@ -32,14 +32,14 @@ public class TenantConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/login",
                         "/qqlogin/**",
+                        "/oauth/**",
                         "/api/getAvatar/**",
                         "/api/file/getImage/**",
                         "/static/**",
                         "/assets/**",
                         "/doc.html",
                         "/swagger-ui/**",
-                        "/v3/api-docs/**"
-                );
+                        "/v3/api-docs/**");
     }
 
     /**
@@ -55,9 +55,9 @@ public class TenantConfig implements WebMvcConfigurer {
             public Object[] getTenantIds() {
                 String tenantId = TenantContextHolder.getTenantId();
                 if (tenantId == null || "default".equals(tenantId)) {
-                    return new Object[]{tenantId};
+                    return new Object[] { tenantId };
                 }
-                return new Object[]{tenantId};
+                return new Object[] { tenantId };
             }
         };
     }

@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -69,11 +70,19 @@ public class AccountController extends ABaseController {
     private com.easypan.service.JwtBlacklistService jwtBlacklistService;
 
     /**
+     * Local-only convenience for automation: when enabled, /checkCode responds with
+     * the captcha code in a header.
+     * Default is disabled for security.
+     */
+    @Value("${captcha.debug.header:false}")
+    private boolean captchaDebugHeader;
+
+    /**
      * 获取验证码.
      *
      * @param response HTTP 响应
-     * @param session HTTP 会话
-     * @param type 验证码类型
+     * @param session  HTTP 会话
+     * @param type     验证码类型
      * @throws IOException IO 异常
      */
     @RequestMapping(value = "/checkCode")
@@ -83,12 +92,16 @@ public class AccountController extends ABaseController {
         response.setHeader("Pragma", "no-cache");
         response.setHeader("Cache-Control", "no-cache");
         response.setDateHeader("Expires", 0);
-        response.setContentType("image/jpeg");
+        // CreateImageCode.write() outputs PNG bytes.
+        response.setContentType("image/png");
         String code = verifyCode.getCode();
         if (type == null || type == 0) {
             session.setAttribute(Constants.CHECK_CODE_KEY, code);
         } else {
             session.setAttribute(Constants.CHECK_CODE_KEY_EMAIL, code);
+        }
+        if (captchaDebugHeader) {
+            response.setHeader("X-EasyPan-CheckCode", code);
         }
         verifyCode.write(response.getOutputStream());
     }
@@ -96,10 +109,10 @@ public class AccountController extends ABaseController {
     /**
      * 发送邮箱验证码.
      *
-     * @param session HTTP 会话
-     * @param email 邮箱地址
+     * @param session   HTTP 会话
+     * @param email     邮箱地址
      * @param checkCode 验证码
-     * @param type 类型
+     * @param type      类型
      * @return 响应对象
      */
     @RequestMapping("/sendEmailCode")
@@ -123,10 +136,10 @@ public class AccountController extends ABaseController {
     /**
      * 用户注册.
      *
-     * @param session HTTP 会话
-     * @param email 邮箱地址
-     * @param nickName 昵称
-     * @param password 密码
+     * @param session   HTTP 会话
+     * @param email     邮箱地址
+     * @param nickName  昵称
+     * @param password  密码
      * @param checkCode 验证码
      * @param emailCode 邮箱验证码
      * @return 响应对象
@@ -154,10 +167,10 @@ public class AccountController extends ABaseController {
     /**
      * 用户登录.
      *
-     * @param session HTTP 会话
-     * @param request HTTP 请求
-     * @param email 邮箱地址
-     * @param password 密码
+     * @param session   HTTP 会话
+     * @param request   HTTP 请求
+     * @param email     邮箱地址
+     * @param password  密码
      * @param checkCode 验证码
      * @return 响应对象
      */
@@ -195,9 +208,9 @@ public class AccountController extends ABaseController {
     /**
      * 重置密码.
      *
-     * @param session HTTP 会话
-     * @param email 邮箱地址
-     * @param password 新密码
+     * @param session   HTTP 会话
+     * @param email     邮箱地址
+     * @param password  新密码
      * @param checkCode 验证码
      * @param emailCode 邮箱验证码
      * @return 响应对象
@@ -225,27 +238,28 @@ public class AccountController extends ABaseController {
      * 获取用户头像.
      *
      * @param response HTTP 响应
-     * @param userId 用户ID
+     * @param userId   用户ID
      */
     @RequestMapping("/getAvatar/{userId}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
     @Operation(summary = "Get Avatar", description = "Get user avatar image")
     public void getAvatar(HttpServletResponse response,
             @VerifyParam(required = true) @PathVariable("userId") String userId) {
-        String avatarFolderName = Constants.FILE_FOLDER_FILE + Constants.FILE_FOLDER_AVATAR_NAME;
-        File folder = new File(appConfig.getProjectFolder() + avatarFolderName);
+        String avatarFolderName = Constants.FILE_FOLDER_AVATAR_NAME;
+        String avatarRootPath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + avatarFolderName;
+        File folder = new File(avatarRootPath);
         if (!folder.exists() && !folder.mkdirs()) {
             logger.error("Failed to create avatar folder: {}", folder.getAbsolutePath());
         }
 
-        String avatarPath = appConfig.getProjectFolder() + avatarFolderName + userId + Constants.AVATAR_SUFFIX;
-        File file = new File(avatarPath);
+        String avatarPath = avatarFolderName + userId + Constants.AVATAR_SUFFIX;
+        File file = new File(avatarRootPath + userId + Constants.AVATAR_SUFFIX);
         if (!file.exists()) {
-            if (!new File(appConfig.getProjectFolder() + avatarFolderName + Constants.AVATAR_DEFUALT).exists()) {
+            if (!new File(avatarRootPath + Constants.AVATAR_DEFUALT).exists()) {
                 printNoDefaultImage(response);
                 return;
             }
-            avatarPath = appConfig.getProjectFolder() + avatarFolderName + Constants.AVATAR_DEFUALT;
+            avatarPath = avatarFolderName + Constants.AVATAR_DEFUALT;
         }
         response.setContentType("image/jpg");
         readFile(response, avatarPath);
@@ -360,7 +374,7 @@ public class AccountController extends ABaseController {
      * 更新用户头像.
      *
      * @param session HTTP 会话
-     * @param avatar 头像文件
+     * @param avatar  头像文件
      * @return 响应对象
      */
     @RequestMapping("/updateUserAvatar")
@@ -371,12 +385,25 @@ public class AccountController extends ABaseController {
             throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请选择头像文件");
         }
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
-        String baseFolder = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
+        String baseFolder = appConfig.getProjectFolder();
         File targetFileFolder = new File(baseFolder + Constants.FILE_FOLDER_AVATAR_NAME);
         if (!targetFileFolder.exists() && !targetFileFolder.mkdirs()) {
             logger.error("Failed to create avatar folder: {}", targetFileFolder.getAbsolutePath());
         }
         File targetFile = new File(targetFileFolder.getPath() + "/" + webUserDto.getUserId() + Constants.AVATAR_SUFFIX);
+        // basic validation for avatar upload
+        if (avatar == null || avatar.isEmpty()) {
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请选择头像文件");
+        }
+        String contentType = avatar.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "仅支持 jpg、jpeg、png、gif、bmp 等图片格式");
+        }
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (avatar.getSize() > maxSize) {
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "头像文件不能超过 5MB");
+        }
+        logger.info("Saving avatar for userId: {}", webUserDto.getUserId());
         try {
             avatar.transferTo(targetFile);
         } catch (Exception e) {
@@ -387,7 +414,9 @@ public class AccountController extends ABaseController {
         UserInfo userInfo = new UserInfo();
         userInfo.setQqAvatar("");
         userInfoService.updateUserInfoByUserId(userInfo, webUserDto.getUserId());
-        webUserDto.setAvatar(null);
+        // 更新前端可用的头像链接，使用带时间戳的 URL 以防缓存，确保头像更新能即时显示
+        String avatarUrl = "/api/getAvatar/" + webUserDto.getUserId() + "?v=" + System.currentTimeMillis();
+        webUserDto.setAvatar(avatarUrl);
         session.setAttribute(Constants.SESSION_KEY, webUserDto);
         return getSuccessResponseVO(null);
     }
@@ -395,7 +424,7 @@ public class AccountController extends ABaseController {
     /**
      * 更新密码.
      *
-     * @param session HTTP 会话
+     * @param session  HTTP 会话
      * @param password 新密码
      * @return 响应对象
      */
@@ -414,7 +443,7 @@ public class AccountController extends ABaseController {
     /**
      * QQ登录.
      *
-     * @param session HTTP 会话
+     * @param session     HTTP 会话
      * @param callbackUrl 回调URL
      * @return 响应对象
      * @throws UnsupportedEncodingException 编码异常
@@ -436,8 +465,8 @@ public class AccountController extends ABaseController {
      * QQ登录回调.
      *
      * @param session HTTP 会话
-     * @param code 授权码
-     * @param state 状态参数
+     * @param code    授权码
+     * @param state   状态参数
      * @return 响应对象
      */
     @RequestMapping("qqlogin/callback")

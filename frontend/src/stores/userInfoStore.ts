@@ -3,7 +3,8 @@ import VueCookies from 'vue-cookies'
 
 export const useUserInfoStore = defineStore('userInfo', {
     state: () => ({
-        userInfo: (VueCookies as any).get('userInfo') || null as any,
+        // Provide a safe default shape to align with plan expectations
+        userInfo: (VueCookies as any).get('userInfo') || ({ admin: false } as any),
     }),
     actions: {
         setUserInfo(info: any) {
@@ -18,5 +19,4 @@ export const useUserInfoStore = defineStore('userInfo', {
             return this.userInfo ? this.userInfo.token : null;
         }
     },
-    persist: true,
 })

@@ -13,6 +13,16 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/QqLoginCallback.vue")
   },
   {
+    path: '/oauth/callback/:provider',
+    name: 'OAuth登录回调',
+    component: () => import("@/views/OAuthCallback.vue")
+  },
+  {
+    path: '/oauth/register',
+    name: 'OAuth注册',
+    component: () => import("@/views/OAuthRegister.vue")
+  },
+  {
     path: '/',
     name: 'Framework',
     component: () => import("@/views/Framework.vue"),
@@ -86,6 +96,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/share/:shareId',
     name: '分享',
     component: () => import("@/views/webshare/Share.vue")
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import("@/views/NotFound.vue")
   }
 ]
 
@@ -98,10 +113,15 @@ router.beforeEach((to, from, next) => {
   const userInfoStore = useUserInfoStore();
   const userInfo = userInfoStore.userInfo;
   if (to.meta.needLogin != null && to.meta.needLogin && userInfo == null) {
-    router.push("/login");
-  } else {
-    next();
+    next({
+      path: "/login",
+      query: {
+        redirectUrl: to.fullPath,
+      },
+    });
+    return;
   }
+  next();
 })
 
 export default router

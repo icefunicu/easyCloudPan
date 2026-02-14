@@ -43,7 +43,7 @@ public class CommonFileController extends ABaseController {
     /**
      * 获取文件夹信息.
      *
-     * @param path 路径
+     * @param path   路径
      * @param userId 用户ID
      * @return 文件夹列表
      */
@@ -62,10 +62,10 @@ public class CommonFileController extends ABaseController {
     /**
      * 获取图片.
      *
-     * @param response HTTP 响应
+     * @param response    HTTP 响应
      * @param imageFolder 图片文件夹
-     * @param imageName 图片名称
-     * @param userId 用户ID
+     * @param imageName   图片名称
+     * @param userId      用户ID
      */
     public void getImage(HttpServletResponse response, String imageFolder, String imageName, String userId) {
         if (StringTools.isEmpty(imageFolder) || StringUtils.isBlank(imageName)) {
@@ -94,8 +94,13 @@ public class CommonFileController extends ABaseController {
         }
 
         String imageNameWithoutSuffix = StringTools.getFileNameNoSuffix(imageName);
-        if (imageNameWithoutSuffix == null || imageNameWithoutSuffix.length() < 32) {
+        if (imageNameWithoutSuffix == null) {
             return false;
+        }
+
+        // Check if the file belongs to the current user (fast check)
+        if (imageNameWithoutSuffix.startsWith(userId)) {
+            return true;
         }
 
         String ownerId = extractOwnerIdFromImageName(imageNameWithoutSuffix);
@@ -120,10 +125,17 @@ public class CommonFileController extends ABaseController {
     }
 
     private String extractOwnerIdFromImageName(String imageName) {
-        if (imageName == null || imageName.length() < 32) {
+        if (StringUtils.isEmpty(imageName)) {
             return null;
         }
-        return imageName.substring(0, 32);
+        // Support 32-char UUID or 10-char ID
+        if (imageName.length() >= Constants.LENGTH_30) {
+            return imageName.substring(0, Constants.LENGTH_30);
+        }
+        if (imageName.length() >= Constants.LENGTH_10) {
+            return imageName.substring(0, Constants.LENGTH_10);
+        }
+        return null;
     }
 
     private String extractFileIdFromImageName(String imageName, String ownerId) {
@@ -140,8 +152,8 @@ public class CommonFileController extends ABaseController {
      * 获取文件.
      *
      * @param response HTTP 响应
-     * @param fileId 文件ID
-     * @param userId 用户ID
+     * @param fileId   文件ID
+     * @param userId   用户ID
      */
     @FileAccessCheck
     protected void getFile(HttpServletResponse response, String fileId, String userId) {
@@ -221,9 +233,9 @@ public class CommonFileController extends ABaseController {
     /**
      * 下载文件.
      *
-     * @param request HTTP 请求
+     * @param request  HTTP 请求
      * @param response HTTP 响应
-     * @param code 下载码
+     * @param code     下载码
      * @throws Exception 异常
      */
     protected void download(HttpServletRequest request, HttpServletResponse response, String code) throws Exception {

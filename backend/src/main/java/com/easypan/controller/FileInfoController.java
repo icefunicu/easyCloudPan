@@ -53,8 +53,8 @@ public class FileInfoController extends CommonFileController {
     /**
      * 根据条件分页查询.
      *
-     * @param session HTTP 会话
-     * @param query 查询参数
+     * @param session  HTTP 会话
+     * @param query    查询参数
      * @param category 分类
      * @return 分页结果
      */
@@ -78,8 +78,8 @@ public class FileInfoController extends CommonFileController {
      * 游标分页查询（性能优于 OFFSET 分页）.
      * 适用于大数据量场景，避免深分页性能问题.
      *
-     * @param session HTTP 会话
-     * @param cursor 游标
+     * @param session  HTTP 会话
+     * @param cursor   游标
      * @param pageSize 每页大小
      * @return 分页结果
      */
@@ -91,12 +91,10 @@ public class FileInfoController extends CommonFileController {
             String cursor,
             Integer pageSize) {
         SessionWebUserDto userDto = getUserInfoFromSession(session);
-        CursorPage<FileInfo> result =
-                fileInfoService.findListByCursor(userDto.getUserId(), cursor, pageSize);
+        CursorPage<FileInfo> result = fileInfoService.findListByCursor(userDto.getUserId(), cursor, pageSize);
 
         List<FileInfoVO> voList = CopyTools.copyList(result.getList(), FileInfoVO.class);
-        CursorPage<FileInfoVO> voResult =
-                CursorPage.of(voList, result.getNextCursor(), result.getPageSize());
+        CursorPage<FileInfoVO> voResult = CursorPage.of(voList, result.getNextCursor(), result.getPageSize());
 
         return getSuccessResponseVO(voResult);
     }
@@ -104,14 +102,14 @@ public class FileInfoController extends CommonFileController {
     /**
      * 上传文件.
      *
-     * @param session HTTP 会话
-     * @param fileId 文件ID
-     * @param file 文件
-     * @param fileName 文件名
-     * @param filePid 父目录ID
-     * @param fileMd5 文件MD5
+     * @param session    HTTP 会话
+     * @param fileId     文件ID
+     * @param file       文件
+     * @param fileName   文件名
+     * @param filePid    父目录ID
+     * @param fileMd5    文件MD5
      * @param chunkIndex 分片索引
-     * @param chunks 总分片数
+     * @param chunks     总分片数
      * @return 上传结果
      */
     @RequestMapping("/uploadFile")
@@ -119,7 +117,7 @@ public class FileInfoController extends CommonFileController {
     @Operation(summary = "Upload File", description = "Upload file with chunk support")
     public ResponseVO<UploadResultDto> uploadFile(HttpSession session,
             String fileId,
-            MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestParam("file") MultipartFile file,
             @VerifyParam(required = true) String fileName,
             @VerifyParam(required = true) String filePid,
             @VerifyParam(required = true) String fileMd5,
@@ -136,7 +134,7 @@ public class FileInfoController extends CommonFileController {
      * 获取已上传分片信息（用于断点续传）.
      *
      * @param session HTTP 会话
-     * @param fileId 文件ID
+     * @param fileId  文件ID
      * @param filePid 父目录ID
      * @return 已上传分片列表
      */
@@ -176,12 +174,35 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取图片.
+     * 查询文件转码状态.
      *
      * @param session HTTP 会话
-     * @param response HTTP 响应
+     * @param fileId  文件ID
+     * @return 包含 status 字段的响应
+     */
+    @RequestMapping("/transferStatus")
+    @GlobalInterceptor(checkParams = true)
+    public ResponseVO<com.easypan.entity.dto.FileTransferStatusDto> getTransferStatus(
+            HttpSession session,
+            @VerifyParam(required = true) String fileId) {
+        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, webUserDto.getUserId());
+        if (fileInfo == null) {
+            throw new BusinessException("文件不存在");
+        }
+        com.easypan.entity.dto.FileTransferStatusDto dto = new com.easypan.entity.dto.FileTransferStatusDto();
+        dto.setFileId(fileId);
+        dto.setStatus(fileInfo.getStatus());
+        return getSuccessResponseVO(dto);
+    }
+
+    /**
+     * 获取图片.
+     *
+     * @param session     HTTP 会话
+     * @param response    HTTP 响应
      * @param imageFolder 图片文件夹
-     * @param imageName 图片名称
+     * @param imageName   图片名称
      */
     @RequestMapping("/getImage/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkLogin = true)
@@ -197,8 +218,8 @@ public class FileInfoController extends CommonFileController {
      * 根据视频id获取视频分片.
      *
      * @param response HTTP 响应
-     * @param session HTTP 会话
-     * @param fileId 文件ID
+     * @param session  HTTP 会话
+     * @param fileId   文件ID
      */
     @RequestMapping("/ts/getVideoInfo/{fileId}")
     @Operation(summary = "Get Video Info", description = "Get video m3u8 or ts file")
@@ -212,8 +233,8 @@ public class FileInfoController extends CommonFileController {
      * 根据文件id获取文件.
      *
      * @param response HTTP 响应
-     * @param session HTTP 会话
-     * @param fileId 文件ID
+     * @param session  HTTP 会话
+     * @param fileId   文件ID
      */
     @RequestMapping("/getFile/{fileId}")
     @Operation(summary = "Get File", description = "Get file content")
@@ -226,8 +247,8 @@ public class FileInfoController extends CommonFileController {
     /**
      * 新建文件夹.
      *
-     * @param session HTTP 会话
-     * @param filePid 父目录ID
+     * @param session  HTTP 会话
+     * @param filePid  父目录ID
      * @param fileName 文件名
      * @return 文件信息
      */
@@ -246,7 +267,7 @@ public class FileInfoController extends CommonFileController {
      * 获取文件夹信息.
      *
      * @param session HTTP 会话
-     * @param path 路径
+     * @param path    路径
      * @return 文件夹列表
      */
     @RequestMapping("/getFolderInfo")
@@ -260,8 +281,8 @@ public class FileInfoController extends CommonFileController {
     /**
      * 重命名.
      *
-     * @param session HTTP 会话
-     * @param fileId 文件ID
+     * @param session  HTTP 会话
+     * @param fileId   文件ID
      * @param fileName 新文件名
      * @return 文件信息
      */
@@ -279,8 +300,8 @@ public class FileInfoController extends CommonFileController {
     /**
      * 加载所有文件.
      *
-     * @param session HTTP 会话
-     * @param filePid 父目录ID
+     * @param session        HTTP 会话
+     * @param filePid        父目录ID
      * @param currentFileIds 当前文件ID列表
      * @return 文件列表
      */
@@ -326,7 +347,7 @@ public class FileInfoController extends CommonFileController {
      * 创建下载链接.
      *
      * @param session HTTP 会话
-     * @param fileId 文件ID
+     * @param fileId  文件ID
      * @return 下载码
      */
     @RequestMapping("/createDownloadUrl/{fileId}")
@@ -340,9 +361,9 @@ public class FileInfoController extends CommonFileController {
     /**
      * 下载.
      *
-     * @param request HTTP 请求
+     * @param request  HTTP 请求
      * @param response HTTP 响应
-     * @param code 下载码
+     * @param code     下载码
      * @throws Exception 异常
      */
     @RequestMapping("/download/{code}")
@@ -373,8 +394,8 @@ public class FileInfoController extends CommonFileController {
      * 批量下载.
      *
      * @param response HTTP 响应
-     * @param session HTTP 会话
-     * @param fileIds 文件ID列表
+     * @param session  HTTP 会话
+     * @param fileIds  文件ID列表
      */
     @RequestMapping("/batchDownload/{fileIds}")
     @GlobalInterceptor(checkParams = true)

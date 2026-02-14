@@ -41,7 +41,7 @@
               v-model="formData.code"
               clearable
               placeholder="请输入5位提取码"
-              max-length="5"
+              maxlength="5"
               :style="{ width: '130px' }"
             ></el-input>
           </el-form-item>

@@ -37,6 +37,7 @@
               :style="{ color: STATUS[item.status].color }"
             ></span>
             <span class="status" :style="{ color: STATUS[item.status].color }">
+              <span v-if="item.status === 'transferring'" class="loading-spinner"></span>
               {{ item.status == 'fail' ? item.errorMsg : STATUS[item.status].desc }}
             </span>
             <span v-if="item.status == STATUS.uploading.value && item.isResume" class="resume-badge">
@@ -100,13 +101,14 @@
 </template>
 
 <script setup>
-import { ref, getCurrentInstance, onUnmounted, computed } from "vue";
+import { ref, getCurrentInstance, onUnmounted, computed, watch } from "vue";
 
 const { proxy } = getCurrentInstance();
 
 const api = {
   upload: "/file/uploadFile",
   uploadedChunks: "/file/uploadedChunks",
+  transferStatus: "/file/transferStatus",
 };
 
 const STATUS = {
@@ -170,6 +172,24 @@ const STATUS = {
     color: "#F75000",
     icon: "close",
   },
+  transferring: {
+    value: "transferring",
+    desc: "转码中",
+    color: "#e6a23c",
+    icon: "clock",
+  },
+  transfer_done: {
+    value: "transfer_done",
+    desc: "转码完成",
+    color: "#67c23a",
+    icon: "ok",
+  },
+  transfer_fail: {
+    value: "transfer_fail",
+    desc: "转码失败",
+    color: "#F75000",
+    icon: "close",
+  },
 };
 
 const chunkSize = 1024 * 1024 * 5;
@@ -191,8 +211,18 @@ const hasFailedTasks = computed(() => {
 const hasCompletedTasks = computed(() => {
   return fileList.value.some(item => 
     item.status === STATUS.upload_finish.value || 
-    item.status === STATUS.upload_seconds.value
+    item.status === STATUS.upload_seconds.value ||
+    item.status === STATUS.transfer_done.value
   );
+});
+
+// 计算属性：活跃任务数（上传中+转码中）
+const activeTaskCount = computed(() => {
+  return fileList.value.filter(item => 
+    item.status === STATUS.uploading.value || 
+    item.status === STATUS.init.value ||
+    item.status === STATUS.transferring.value
+  ).length;
 });
 
 // 重试所有失败的任务
@@ -273,7 +303,11 @@ const isTerminalUploadStatus = (statusCode) => {
   return statusCode === STATUS.upload_seconds.value || statusCode === STATUS.upload_finish.value;
 };
 
-const emit = defineEmits(["uploadCallback"]);
+const emit = defineEmits(["uploadCallback", "update:activeTaskCount"]);
+
+watch(activeTaskCount, (newVal) => {
+  emit("update:activeTaskCount", newVal);
+});
 
 const handleTerminalStatus = (uid, uploadResult) => {
   if (!uploadResult || !uploadResult.data) {
@@ -290,7 +324,14 @@ const handleTerminalStatus = (uid, uploadResult) => {
   currentFile.uploadSize = currentFile.totalSize;
   currentFile.uploadProgress = 100;
   currentFile.chunkIndex = Math.ceil(currentFile.totalSize / chunkSize);
-  emit("uploadCallback");
+  
+  if (statusCode === STATUS.upload_finish.value) {
+    // Start polling for transfer status
+    startTransferPolling(uid);
+  } else {
+    // UPLOAD_SECONDS or other done states
+    emit("uploadCallback");
+  }
   return true;
 };
 
@@ -344,7 +385,7 @@ const checkUploadedChunks = async (uid) => {
       showLoading: false,
       params: {
         fileId: currentFile.fileId,
-        fileMd5: currentFile.md5,
+        filePid: currentFile.filePid,
       },
     });
     
@@ -376,7 +417,68 @@ const checkUploadedChunks = async (uid) => {
   }
 };
 
-defineExpose({ addFile });
+// 轮询转码状态
+const startTransferPolling = (uid) => {
+  const currentFile = getFileByUid(uid);
+  if (!currentFile) return;
+
+  currentFile.status = STATUS.transferring.value;
+  let pollCount = 0;
+  const maxPolls = 60; // 3 minutes timeout
+
+  const poll = async () => {
+    if (pollCount >= maxPolls) {
+      // Timeout, but don't mark as fail, just stop polling
+      return; 
+    }
+    
+    // Check if component unmounted or file removed
+    const latestFile = getFileByUid(uid);
+    if (!latestFile || latestFile.status !== STATUS.transferring.value) {
+      return;
+    }
+
+    try {
+      const result = await proxy.Request({
+        url: api.transferStatus,
+        showLoading: false,
+        params: {
+          fileId: latestFile.fileId,
+        },
+      });
+
+      if (result && result.data) {
+        const status = result.data.status;
+        // FileStatusEnums: USING(2), TRANSFER_FAIL(1)
+        if (status === 2) {
+          latestFile.status = STATUS.transfer_done.value;
+          emit("uploadCallback");
+          return;
+        } else if (status === 1) {
+          latestFile.status = STATUS.transfer_fail.value;
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Poll transfer status failed", e);
+    }
+    
+    pollCount++;
+    latestFile.transferTimer = setTimeout(poll, 3000);
+  };
+
+  poll();
+};
+
+const stopTransferPolling = (uid) => {
+  const currentFile = getFileByUid(uid);
+  if (currentFile && currentFile.transferTimer) {
+    clearTimeout(currentFile.transferTimer);
+    currentFile.transferTimer = null;
+  }
+};
+
+defineExpose({ addFile, activeTaskCount });
 
 const startUpload = (uid) => {
   const currentFile = getFileByUid(uid);
@@ -405,7 +507,10 @@ const delUpload = (uid, index) => {
 };
 
 onUnmounted(() => {
-  fileList.value.forEach((item) => clearMd5Worker(item));
+  fileList.value.forEach((item) => {
+    clearMd5Worker(item);
+    stopTransferPolling(item.uid);
+  });
 });
 
 const computeMd5 = (fileItem) => {
@@ -711,17 +816,18 @@ const uploadFile = async (uid, chunkIndex) => {
 <style lang="scss" scoped>
 .uploader-panel {
   .uploader-title {
-    border-bottom: 1px solid #ddd;
-    line-height: 40px;
-    padding: 0px 10px;
+    border-bottom: 1px solid var(--border-color);
+    line-height: 44px;
+    padding: 0 12px;
     font-size: 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: #fff;
 
     .tips {
       font-size: 13px;
-      color: rgb(169, 169, 169);
+      color: var(--text-light);
     }
 
     .title-actions {
@@ -732,7 +838,7 @@ const uploadFile = async (uid, chunkIndex) => {
 
   .file-list {
     overflow: auto;
-    padding: 10px 0px;
+    padding: 10px 0;
     min-height: calc(100vh / 2);
     max-height: calc(100vh - 120px);
 
@@ -741,20 +847,20 @@ const uploadFile = async (uid, chunkIndex) => {
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 3px 10px;
-      background-color: #fff;
-      border-bottom: 1px solid #ddd;
+      padding: 6px 12px;
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
     }
 
     .file-item:nth-child(even) {
-      background-color: #fcf8f4;
+      background-color: var(--bg-hover);
     }
 
     .upload-panel {
       flex: 1;
 
       .file-name {
-        color: rgb(64, 62, 62);
+        color: var(--text-main);
       }
 
       .upload-status {
@@ -762,28 +868,39 @@ const uploadFile = async (uid, chunkIndex) => {
         align-items: center;
         margin-top: 5px;
 
+        .loading-spinner {
+          width: 12px;
+          height: 12px;
+          border: 2px solid rgba(0, 0, 0, 0.15);
+          border-top-color: var(--warning);
+          border-radius: 50%;
+          animation: spin 0.9s linear infinite;
+          margin-right: 6px;
+          flex: 0 0 auto;
+        }
+
         .iconfont {
           margin-right: 3px;
         }
 
         .status {
-          color: red;
+          color: var(--danger);
           font-size: 13px;
         }
 
         .upload-info {
           margin-left: 5px;
           font-size: 12px;
-          color: rgb(112, 111, 111);
+          color: var(--text-light);
         }
 
         .resume-badge {
           margin-left: 5px;
           padding: 1px 6px;
           font-size: 11px;
-          background: linear-gradient(45deg, #409eff, #67c23a);
+          background: linear-gradient(45deg, var(--primary), var(--success));
           color: #fff;
-          border-radius: 3px;
+          border-radius: var(--border-radius-sm);
         }
       }
 
@@ -809,6 +926,15 @@ const uploadFile = async (uid, chunkIndex) => {
         }
       }
     }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 </style>

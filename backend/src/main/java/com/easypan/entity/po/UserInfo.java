@@ -49,6 +49,16 @@ public class UserInfo implements Serializable {
     private String qqOpenId;
 
     /**
+     * OAuth Provider (github, gitee, google, microsoft, qq).
+     */
+    private String oauthProvider;
+
+    /**
+     * OAuth Provider Users ID.
+     */
+    private String oauthProviderId;
+
+    /**
      * 密码.
      */
     private String password;

@@ -7,8 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -28,25 +26,10 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     @Override
     public boolean createThumbnail(File sourceFile, int width, File targetFile, boolean delSource) {
         try {
-            BufferedImage src = ImageIO.read(sourceFile);
-            if (src == null) {
-                return false;
-            }
-            int sourceW = src.getWidth();
-            if (sourceW <= width) {
-                return false;
-            }
-
-            List<String> cmd = new ArrayList<>();
-            cmd.add("ffmpeg");
-            cmd.add("-i");
-            cmd.add(sourceFile.getAbsolutePath());
-            cmd.add("-vf");
-            cmd.add("scale=" + width + ":-1");
-            cmd.add(targetFile.getAbsolutePath());
-            cmd.add("-y");
-
-            executeCommand(cmd);
+            // 使用 Thumbnailator 生成缩略图，不需要 FFmpeg
+            net.coobird.thumbnailator.Thumbnails.of(sourceFile)
+                    .width(width)
+                    .toFile(targetFile);
 
             if (delSource) {
                 FileUtils.forceDelete(sourceFile);
@@ -62,7 +45,7 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     public void createVideoCover(File sourceFile, int width, File targetFile) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("ffmpeg");
+            cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
             cmd.add("-i");
             cmd.add(sourceFile.getAbsolutePath());
             cmd.add("-y");
@@ -81,7 +64,8 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     @Override
     public void transcodeToTs(String sourceFilePath, String targetTsPath) {
         List<String> cmd = new ArrayList<>();
-        cmd.add("ffmpeg");
+        // 使用 JAVE2 获取内嵌 FFmpeg 路径
+        cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
         cmd.add("-y");
         cmd.add("-i");
         cmd.add(sourceFilePath);
@@ -104,7 +88,8 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     @Override
     public void cutToM3u8(String sourceTsPath, String targetFolder, String fileId) {
         List<String> cmd = new ArrayList<>();
-        cmd.add("ffmpeg");
+        // 使用 JAVE2 获取内嵌 FFmpeg 路径
+        cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
         cmd.add("-i");
         cmd.add(sourceTsPath);
         cmd.add("-c");

@@ -224,12 +224,25 @@ public class UserInfoServiceImpl implements UserInfoService {
             updateInfo.setPassword(passwordEncoder.encode(password));
         }
 
+        if (userInfo.getTotalSpace() == null) {
+            SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
+            Integer initMb = sysSettingsDto.getUserInitUseSpace();
+            if (initMb == null) {
+                initMb = 1024;
+            }
+            Long totalSpace = initMb * Constants.MB;
+            updateInfo.setTotalSpace(totalSpace);
+            userInfo.setTotalSpace(totalSpace);
+        }
+
         this.userInfoMapper.updateByQuery(updateInfo, 
                 QueryWrapper.create().where(USER_INFO.USER_ID.eq(userInfo.getUserId())));
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
         sessionWebUserDto.setUserId(userInfo.getUserId());
-        if (ArrayUtils.contains(appConfig.getAdminEmails().split(","), email)) {
+        // 提供头像信息以便前端立即显示
+        sessionWebUserDto.setAvatar(userInfo.getAvatar());
+        if ((userInfo.getIsAdmin() != null && userInfo.getIsAdmin()) || ArrayUtils.contains(appConfig.getAdminEmails().split(","), email)) {
             sessionWebUserDto.setAdmin(true);
         } else {
             sessionWebUserDto.setAdmin(false);
@@ -342,7 +355,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         sessionWebUserDto.setUserId(user.getUserId());
         sessionWebUserDto.setNickName(user.getNickName());
         sessionWebUserDto.setAvatar(avatar);
-        if (ArrayUtils.contains(appConfig.getAdminEmails().split(","),
+        if ((user.getIsAdmin() != null && user.getIsAdmin()) || ArrayUtils.contains(appConfig.getAdminEmails().split(","),
                 user.getEmail() == null ? "" : user.getEmail())) {
             sessionWebUserDto.setAdmin(true);
         } else {
@@ -429,8 +442,25 @@ public class UserInfoServiceImpl implements UserInfoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void changeUserSpace(String userId, Integer changeSpace) {
-        Long space = changeSpace * Constants.MB;
-        this.userInfoMapper.updateUserSpaceAdmin(userId, null, space);
+        UserInfo userInfo = getUserInfoByUserId(userId);
+        Long currentTotalSpace = userInfo.getTotalSpace();
+        if (currentTotalSpace == null) {
+            SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
+            Integer initMb = sysSettingsDto.getUserInitUseSpace();
+            if (initMb == null) {
+                initMb = 1024;
+            }
+            currentTotalSpace = initMb * Constants.MB;
+        }
+        
+        Long deltaSpace = changeSpace * Constants.MB;
+        Long newTotalSpace = currentTotalSpace + deltaSpace;
+        
+        if (newTotalSpace < 0) {
+            newTotalSpace = 0L;
+        }
+        
+        this.userInfoMapper.updateTotalSpace(userId, newTotalSpace);
         redisComponent.resetUserSpaceUse(userId);
     }
 }

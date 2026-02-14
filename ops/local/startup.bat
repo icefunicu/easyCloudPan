@@ -56,7 +56,7 @@ if not "%COMPOSE_EXIT%"=="0" (
 )
 
 echo [2/4] Starting backend in a new window...
-start "EasyCloudPan Backend" cmd /k "chcp 65001 >nul && cd /d "%REPO_ROOT%\backend" && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 && mvn spring-boot:run -Dspring-boot.run.profiles=local"
+start "EasyCloudPan Backend" cmd /k "chcp 65001 >nul && cd /d "%REPO_ROOT%\backend" && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Dproject.folder="%PROJECT_FOLDER%" && mvn spring-boot:run -Dspring-boot.run.profiles=local"
 
 echo [3/5] Waiting for backend to be ready...
 powershell -Command "$attempt=0; while($attempt -lt 60){$attempt++; try{$r=Invoke-WebRequest -Uri 'http://localhost:7090/api/actuator/health' -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if($r.StatusCode -eq 200){Write-Host '[OK] Backend is ready!' -ForegroundColor Green; exit 0}}catch{} Write-Host \"  Waiting... ($attempt/60)\"; Start-Sleep 2}; Write-Host '[WARN] Backend did not become ready within timeout.' -ForegroundColor Yellow"

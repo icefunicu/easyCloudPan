@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-easypan}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-easypan}" ]
       interval: 10s
       timeout: 5s
       retries: 8
@@ -28,13 +28,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: easypan-redis
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-password123}", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    command: [ "redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-password123}", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru" ]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-password123} ping | grep PONG"]
+      test: [ "CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-password123} ping | grep PONG" ]
       interval: 10s
       timeout: 5s
       retries: 8
@@ -62,7 +62,7 @@ services:
       - minio_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -81,14 +81,9 @@ services:
     depends_on:
       - minio
     entrypoint: >
-      /bin/sh -c "
-      until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadminpassword}; do
+      /bin/sh -c " until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadminpassword}; do
         echo 'waiting for minio...'; sleep 2;
-      done;
-      mc mb --ignore-existing local/${MINIO_BUCKET:-easypan};
-      mc anonymous set none local/${MINIO_BUCKET:-easypan};
-      echo 'minio bucket is ready';
-      "
+      done; mc mb --ignore-existing local/${MINIO_BUCKET:-easypan}; mc anonymous set none local/${MINIO_BUCKET:-easypan}; echo 'minio bucket is ready'; "
     restart: "no"
 
   backend:
@@ -118,6 +113,18 @@ services:
       QQ_APP_ID: ${QQ_APP_ID:-dummy_app_id}
       QQ_APP_KEY: ${QQ_APP_KEY:-dummy_app_key}
       QQ_URL_REDIRECT: ${QQ_URL_REDIRECT:-http://localhost:8080/qqlogincallback}
+      OAUTH_GITHUB_CLIENT_ID: ${OAUTH_GITHUB_CLIENT_ID}
+      OAUTH_GITHUB_CLIENT_SECRET: ${OAUTH_GITHUB_CLIENT_SECRET}
+      OAUTH_GITHUB_REDIRECT_URI: ${OAUTH_GITHUB_REDIRECT_URI}
+      OAUTH_GITEE_CLIENT_ID: ${OAUTH_GITEE_CLIENT_ID}
+      OAUTH_GITEE_CLIENT_SECRET: ${OAUTH_GITEE_CLIENT_SECRET}
+      OAUTH_GITEE_REDIRECT_URI: ${OAUTH_GITEE_REDIRECT_URI}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET}
+      OAUTH_GOOGLE_REDIRECT_URI: ${OAUTH_GOOGLE_REDIRECT_URI}
+      OAUTH_MICROSOFT_CLIENT_ID: ${OAUTH_MICROSOFT_CLIENT_ID}
+      OAUTH_MICROSOFT_CLIENT_SECRET: ${OAUTH_MICROSOFT_CLIENT_SECRET}
+      OAUTH_MICROSOFT_REDIRECT_URI: ${OAUTH_MICROSOFT_REDIRECT_URI}
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.qq.com}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
       SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-2041487752@qq.com}
@@ -131,7 +138,7 @@ services:
     volumes:
       - easypan_data:/data/easypan
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7090/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:7090/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -156,7 +163,7 @@ services:
     ports:
       - "8080:80"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      test: [ "CMD", "curl", "-f", "http://localhost:80" ]
       interval: 30s
       timeout: 10s
       retries: 3

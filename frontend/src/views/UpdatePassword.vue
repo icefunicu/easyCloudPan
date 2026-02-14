@@ -49,13 +49,11 @@
 
 <script setup>
 import { ref, getCurrentInstance, nextTick } from "vue";
+import * as accountService from "@/services/accountService";
 const { proxy } = getCurrentInstance();
 
-const api = {
-    updatePassword: "updatePassword"
-}
 const checkRePassword = (rule, value, callback) => {
-    if ( value !== formData.value.rePassword ) {
+    if ( value !== formData.value.password ) {
         callback(new Error(rule.message));
     } else {
         callback();
@@ -109,12 +107,7 @@ const submitForm = async () => {
         if (!valid) {
             return;
         }
-        const result = await proxy.Request({
-            url: api.updatePassword,
-            params: {
-                password: formData.value.password,
-            },
-        });
+        const result = await accountService.updatePassword(formData.value.password);
 
         if (!result) {
             return;

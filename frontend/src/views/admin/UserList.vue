@@ -107,13 +107,9 @@
 
 <script setup>
 import { ref, getCurrentInstance, nextTick } from "vue";
+import * as adminService from "@/services/adminService";
 const { proxy } = getCurrentInstance();
 
-const api = {
-    loadDataList: "/admin/loadUserList",
-    updateUserStatus: "/admin/updateUserStatus",
-    updateUserSpace: "/admin/updateUserSpace",
-};
 
 const columns = [
     {
@@ -169,26 +165,20 @@ const loadDataList = async () => {
         pageSize: tableData.value.pageSize,
     };
     Object.assign(params, searchFormData.value);
-    const result = await proxy.Request({
-        url: api.loadDataList,
-        params,
-    });
+    const result = await adminService.loadUserList(params);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 // 修改状态
 const updateUserStatus = (row) => {
     proxy.Confirm(
         `你确定要【${row.status == 0 ? "启用" : "禁用"}】吗?`,
         async () => {
-            const result = await proxy.Request({
-                url: api.updateUserStatus,
-                params: {
-                    userId: row.userId,
-                    status: row.status == 0 ? 1 : 0,
-                },
+            const result = await adminService.updateUserStatus({
+                userId: row.userId,
+                status: row.status == 0 ? 1 : 0,
             });
             if (!result) {
                 return;
@@ -233,10 +223,7 @@ const submitForm = () => {
         }
         const params = {};
         Object.assign(params, formData.value);
-        const result = await proxy.Request({
-            url: api.updateUserSpace,
-            params,
-        });
+        const result = await adminService.updateUserSpace(params);
         if (!result) {
             return;
         }

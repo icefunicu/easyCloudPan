@@ -22,7 +22,12 @@
             >
             <template #fileName="{ row }">
               <div
-                class="file-item"
+                v-touch="{
+                  onLongPress: () => showOp(row),
+                  onSwipeLeft: () => cancelShare(row),
+                  onSwipeRight: () => copy(row),
+                }"
+                :class="['file-item', row.showOp ? 'show-op' : '']"
                 @mouseenter="showOp(row)"
                 @mouseleave="cancelShowOp(row)"
               >
@@ -65,12 +70,9 @@ import useClipboard from "vue-clipboard3";
 const { toClipboard } = useClipboard();
 
 import { ref, getCurrentInstance } from "vue";
+import * as shareService from "@/services/shareService";
 const { proxy } = getCurrentInstance();
 
-const api = {
-    loadDataList: "/share/loadShareList",
-    cancelShare: "/share/cancelShare",
-};
 
 const columns = [
     {
@@ -107,14 +109,11 @@ const loadDataList = async () => {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
     };
-    const result = await proxy.Request({
-        url: api.loadDataList,
-        params,
-    });
+    const result = await shareService.loadShareList(params);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 
 // 多选 批量选择
@@ -127,10 +126,11 @@ const rowSelected = (rows) => {
 };
 
 const showOp = (row) => {
+    const nextShow = !row.showOp;
     tableData.value.list.forEach((item) => {
         item.showOp = false;
     });
-    row.showOp = true;
+    row.showOp = nextShow;
 };
 
 const cancelShowOp = (row) => {
@@ -162,12 +162,7 @@ const cancelShare = (row) => {
 
 const cancelShareDone = () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
-        const result = await proxy.Request({
-            url: api.cancelShare,
-            params: {
-                shareIds: cancelShareIdList.value.join(","),
-            },
-        });
+        const result = await shareService.cancelShare(cancelShareIdList.value.join(","));
         if (!result) {
             return;
         }

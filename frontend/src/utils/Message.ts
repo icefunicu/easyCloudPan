@@ -1,6 +1,6 @@
 import { ElMessage } from 'element-plus'
 
-const showMessage = (msg: string, callback: (() => void) | undefined, type: string) => {
+const showMessage = (msg: string, callback: (() => void) | undefined, type: 'success' | 'warning' | 'info' | 'error') => {
     ElMessage({
         type: type,
         message: msg,

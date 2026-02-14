@@ -37,7 +37,12 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
             + "</script>")
     int insertOrUpdateBatch(@Param("list") List<FileInfo> list);
 
-    @Update("UPDATE file_info SET status = #{bean.status}, recovery_time = #{bean.recoveryTime} "
+    @Update("UPDATE file_info "
+            + "SET status = #{bean.status}, "
+            + "file_size = #{bean.fileSize}, "
+            + "file_cover = #{bean.fileCover}, "
+            + "recovery_time = COALESCE(#{bean.recoveryTime}, recovery_time), "
+            + "last_update_time = CURRENT_TIMESTAMP "
             + "WHERE file_id = #{fileId} AND user_id = #{userId} AND status = #{oldStatus}")
     void updateFileStatusWithOldStatus(@Param("fileId") String fileId, @Param("userId") String userId,
             @Param("bean") FileInfo t, @Param("oldStatus") Integer oldStatus);

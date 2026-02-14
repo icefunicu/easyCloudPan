@@ -1,3 +1,4 @@
+
 <template>
     <div>
         <Dialog
@@ -31,21 +32,18 @@
 import AvatarUpload from "@/components/AvatarUpload.vue";
 import { ref, getCurrentInstance } from "vue";
 import { useUserInfoStore } from "@/stores/userInfoStore";
+import * as accountService from "@/services/accountService";
 const { proxy } = getCurrentInstance();
 const userInfoStore = useUserInfoStore();
-
-const api = {
-    updateUserAvatar: "updateUserAvatar",
-};
 
 const formData = ref({});
 const formDataRef = ref();
 
-const show = (data) => {
-    formData.value = Object.assign({}, data);
+  const show = (data) => {
+    formData.value = { ...data };
     formData.value.avatar = { userId: data.userId, qqAvatar: data.avatar };
     dialogConfig.value.show = true;
-};
+  };
 
 defineExpose({ show });
 
@@ -69,20 +67,14 @@ const submitForm = async () => {
         return;
     }
 
-    const result = await proxy.Request({
-        url: api.updateUserAvatar,
-        params: {
-            avatar: formData.value.avatar,
-        },
-        dataType: 'file',
-    });
+    const result = await accountService.updateUserAvatar(formData.value.avatar);
     if (!result) {
         return;
     }
     dialogConfig.value.show = false;
-    const cookieUserInfo = userInfoStore.userInfo;
-    delete cookieUserInfo.avatar;
-    userInfoStore.setUserInfo(cookieUserInfo);
+    const currentInfo = { ...(userInfoStore.userInfo || {}) };
+    delete currentInfo.avatar;
+    userInfoStore.setUserInfo(currentInfo);
     emit("updateAvatar");
 };
 </script>

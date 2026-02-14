@@ -1,8 +1,10 @@
 # EasyCloudPan Local One-Click Startup Script
-# Usage: .\ops\local\startup.ps1 [-NoBrowser]
+# Usage: .\ops\local\startup.ps1 [-NoBrowser] [-AllowDevMode] [-ExposeCaptcha]
 
 param(
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$AllowDevMode,
+    [switch]$ExposeCaptcha
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,6 +34,28 @@ Get-Content $EnvFile | Where-Object { $_ -notmatch '^#' -and $_ -match '=' } | F
     $parts = $_.Split('=', 2)
     [Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1].Trim(), "Process")
 }
+
+if (-not $AllowDevMode) {
+    # Enforce real authentication flow by default in local one-click startup.
+    $env:DEV_MODE = "false"
+    Write-Host "[INFO] DEV_MODE is forced to false for auth verification. Use -AllowDevMode to keep bypass."
+} else {
+    Write-Host "[WARN] DEV_MODE from .env is kept because -AllowDevMode is specified."
+}
+
+if ($ExposeCaptcha) {
+    # Convenience for local automation (smoke tests): expose captcha code in response header.
+    $env:CAPTCHA_DEBUG_HEADER = "true"
+    Write-Host "[WARN] CAPTCHA_DEBUG_HEADER is enabled. /api/checkCode will include X-EasyPan-CheckCode header."
+} else {
+    $env:CAPTCHA_DEBUG_HEADER = "false"
+}
+
+# Local dev (Windows) should not use the Docker-style PROJECT_FOLDER (e.g. /data/easypan/),
+# otherwise multipart uploads may be written relative to Tomcat's temp dir.
+$projectFolder = ($RepoRoot -replace '\\\\','/') + '/backend/file/'
+$env:PROJECT_FOLDER = $projectFolder
+Write-Host "[INFO] PROJECT_FOLDER is set to $projectFolder"
 
 # Set Spring Boot properties
 $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5433/$env:POSTGRES_DB"
@@ -80,6 +104,9 @@ chcp 65001 > `$null
 `$env:MINIO_ACCESS_KEY='$minioUser'
 `$env:MINIO_SECRET_KEY='$minioPass'
 `$env:MINIO_BUCKET_NAME='$minioBucket'
+`$env:CAPTCHA_DEBUG_HEADER='$env:CAPTCHA_DEBUG_HEADER'
+`$env:PROJECT_FOLDER='$projectFolder'
+`$env:DEV_MODE='$env:DEV_MODE'
 `$env:JAVA_TOOL_OPTIONS='-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8'
 cd '$RepoRoot\backend'
 mvn spring-boot:run

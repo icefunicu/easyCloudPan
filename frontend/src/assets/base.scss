@@ -1,52 +1,133 @@
+/* Google Fonts are imported in index.html */
+
+:root {
+    /* Color Palette - Professional SaaS Blue & Fresh Orange */
+    --primary: #2563EB;       /* Trust Blue */
+    --primary-light: #3B82F6; /* Hover Blue */
+    --primary-dark: #1D4ED8;  /* Active Blue */
+    --secondary: #64748B;     /* Slate */
+    --success: #10B981;       /* Emerald */
+    --warning: #F59E0B;       /* Amber */
+    --danger: #EF4444;        /* Red */
+    --info: #3B82F6;          /* Blue */
+    --cta: #F97316;           /* Orange CTA */
+
+    /* Backgrounds */
+    --bg-body: #F8FAFC;       /* Light Grayish Blue */
+    --bg-card: #FFFFFF;
+    --bg-hover: #F1F5F9;
+    --bg-active: #E2E8F0;
+
+    /* Text Colors */
+    --text-main: #1E293B;     /* Dark Slate */
+    --text-secondary: #475569;
+    --text-light: #94A3B8;
+    --text-white: #FFFFFF;
+    --link: var(--primary);
+
+    /* Borders */
+    --border-color: #E2E8F0;
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+
+    /* Typography */
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Work Sans', sans-serif;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-hover: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+    /* Transitions */
+    --transition-fast: all 0.15s ease;
+    --transition-normal: all 0.3s ease;
+
+    /* Focus */
+    --focus-ring: rgba(37, 99, 235, 0.35);
+}
+
+/* Scrollbar Customization */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgb(239, 239, 239);
-    border-radius: 2px;
+    background: transparent;
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #bfbfbf;
-    border-radius: 10px;
+    background: #CBD5E1;
+    border-radius: 4px;
+    transition: var(--transition-normal);
 }
 
-::-webkit-slider-thumb:hover {
-    background: #bfbfbf;
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
 }
 
 ::-webkit-scrollbar-corner {
-    background: #bfbfbf;
+    background: transparent;
 }
 
-:root {
-    --link: #007fff;
-    --pink: #FF6699;
-    --text2: #61666d;
-    --icon: #9499a0;
-}
-
-body {
-    padding: 0px;
-    margin: 0px;
-    font-size: 14px;
-    color: #636d7e;
-}
-
+/* Global Reset & Typography */
 * {
     box-sizing: border-box;
     padding: 0;
     border: 0;
-    outline: 0;
-    vertical-align: middle;
+    vertical-align: baseline;
 }
 
+/* Accessible focus ring (keyboard) */
+:where(a, button, input, textarea, select, [tabindex]:not([tabindex='-1'])):focus {
+    outline: none;
+}
+
+:where(a, button, input, textarea, select, [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* Avoid double focus styles on Element Plus wrappers */
+:where(.el-input__wrapper):focus-visible {
+    outline: none;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-secondary);
+    background-color: var(--bg-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    color: var(--text-main);
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Utility Classes */
 .a-link {
     text-decoration: none;
     color: var(--link);
     cursor: pointer;
+    transition: var(--transition-fast);
+    
+    &:hover {
+        color: var(--primary-light);
+        text-decoration: underline;
+    }
 }
 
 .el-from-item {
@@ -54,17 +135,63 @@ body {
 }
 
 .container-body {
-    margin: 0px auto;
+    margin: 0 auto;
     padding-top: 5px;
 }
 
+/* Element Plus Custom Overrides */
+:root {
+    --el-color-primary: var(--primary);
+    --el-color-primary-light-3: var(--primary-light);
+    --el-color-primary-dark-2: var(--primary-dark);
+    --el-color-success: var(--success);
+    --el-color-warning: var(--warning);
+    --el-color-danger: var(--danger);
+    --el-color-info: var(--info);
+    --el-text-color-primary: var(--text-main);
+    --el-text-color-regular: var(--text-secondary);
+    --el-text-color-secondary: var(--text-light);
+    --el-border-color: var(--border-color);
+    --el-border-radius-base: var(--border-radius-md);
+    --el-font-family: var(--font-body);
+}
+
 .el-button {
+    font-family: var(--font-body);
+    font-weight: 500;
+    
+    &.el-button--primary {
+        --el-button-bg-color: var(--primary);
+        --el-button-border-color: var(--primary);
+        --el-button-hover-bg-color: var(--primary-light);
+        --el-button-hover-border-color: var(--primary-light);
+        
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+    }
+    
     .iconfont::before {
         margin-right: 5px;
     }
+    
+    transition: var(--transition-fast);
 }
 
-// Responsive Breakpoints
+.el-input__wrapper {
+    box-shadow: 0 0 0 1px var(--border-color) inset;
+    
+    &:hover {
+        box-shadow: 0 0 0 1px var(--primary-light) inset;
+    }
+    
+    &.is-focus {
+        box-shadow: 0 0 0 1px var(--primary) inset !important; 
+    }
+}
+
+/* Responsive Breakpoints */
 $mobile-width: 768px;
 
 @mixin mobile {
@@ -73,7 +200,6 @@ $mobile-width: 768px;
     }
 }
 
-// Utility classes
 .hidden-mobile {
     @include mobile {
         display: none !important;

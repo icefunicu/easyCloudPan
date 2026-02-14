@@ -125,8 +125,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     FILE_INFO.STATUS,
                     FILE_INFO.RECOVERY_TIME,
                     FILE_INFO.DEL_FLAG,
-                    USER_INFO.NICK_NAME
-            );
+                    USER_INFO.NICK_NAME);
             qw.leftJoin(USER_INFO).on(USER_INFO.USER_ID.eq(FILE_INFO.USER_ID));
         } else {
             qw.select(
@@ -145,8 +144,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     FILE_INFO.FILE_TYPE,
                     FILE_INFO.STATUS,
                     FILE_INFO.RECOVERY_TIME,
-                    FILE_INFO.DEL_FLAG
-            );
+                    FILE_INFO.DEL_FLAG);
         }
 
         return this.fileInfoMapper.selectListByQuery(qw);
@@ -172,17 +170,18 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     @Override
-    public com.easypan.entity.query.CursorPage<FileInfo> findListByCursor(String userId, String cursor, Integer pageSize) {
+    public com.easypan.entity.query.CursorPage<FileInfo> findListByCursor(String userId, String cursor,
+            Integer pageSize) {
         if (pageSize == null || pageSize <= 0) {
             pageSize = 20;
         }
         if (pageSize > 100) {
             pageSize = 100;
         }
-        
+
         Date cursorTime = null;
         String cursorId = null;
-        
+
         if (cursor != null && !cursor.isEmpty()) {
             String[] parts = cursor.split("_");
             if (parts.length >= 2) {
@@ -194,10 +193,10 @@ public class FileInfoServiceImpl implements FileInfoService {
                 }
             }
         }
-        
+
         int fetchSize = pageSize + 1;
         List<FileInfo> list;
-        
+
         if (cursorTime == null || cursorId == null) {
             QueryWrapper qw = QueryWrapper.create()
                     .where(FILE_INFO.USER_ID.eq(userId))
@@ -207,14 +206,14 @@ public class FileInfoServiceImpl implements FileInfoService {
         } else {
             list = this.fileInfoMapper.selectByCursorPagination(userId, cursorTime, cursorId, fetchSize);
         }
-        
+
         String nextCursor = null;
         if (list.size() > pageSize) {
             FileInfo lastItem = list.get(pageSize - 1);
             nextCursor = lastItem.getCreateTime().getTime() + "_" + lastItem.getFileId();
             list = list.subList(0, pageSize);
         }
-        
+
         return com.easypan.entity.query.CursorPage.of(list, nextCursor, pageSize);
     }
 
@@ -247,7 +246,7 @@ public class FileInfoServiceImpl implements FileInfoService {
 
     @Override
     public Integer updateFileInfoByFileIdAndUserId(FileInfo bean, String fileId, String userId) {
-        return this.fileInfoMapper.updateByQuery(bean, 
+        return this.fileInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(FILE_INFO.FILE_ID.eq(fileId)).and(FILE_INFO.USER_ID.eq(userId)));
     }
 
@@ -271,7 +270,7 @@ public class FileInfoServiceImpl implements FileInfoService {
         }
 
         tenantQuotaService.checkStorageQuota(file.getSize());
-        
+
         File tempFileFolder = null;
         Boolean uploadSuccess = true;
         try {
@@ -281,6 +280,9 @@ public class FileInfoServiceImpl implements FileInfoService {
                 if (com.easypan.utils.FileTypeValidator.isDangerousFileType(fileSuffix)) {
                     throw new BusinessException("不允许上传可执行文件类型");
                 }
+
+                logger.info("📤 开始上传文件: userId={}, fileId={}, fileName={}, chunks={}",
+                        webUserDto.getUserId(), fileId, fileName, chunks);
 
                 try (InputStream inputStream = file.getInputStream()) {
                     if (!com.easypan.utils.FileTypeValidator.validateFileType(inputStream, fileSuffix)) {
@@ -306,24 +308,39 @@ public class FileInfoServiceImpl implements FileInfoService {
                     dbFile = this.fileInfoMapper.selectOneByMd5AndStatus(fileMd5, FileStatusEnums.USING.getStatus());
                 }
                 if (dbFile != null) {
-                    if (dbFile.getFileSize() + spaceDto.getUseSpace() > spaceDto.getTotalSpace()) {
+                    Long dbFileSize = dbFile.getFileSize();
+                    if (dbFileSize == null) {
+                        // Historical data or incomplete metadata: fallback to normal upload to avoid
+                        // NPE and space
+                        // mis-calculation.
+                        logger.warn(
+                                "Quick upload source file has null fileSize, fallback to normal upload. fileId={}, md5={}",
+                                dbFile.getFileId(), fileMd5);
+                        dbFile = null;
+                    } else if (dbFileSize + spaceDto.getUseSpace() > spaceDto.getTotalSpace()) {
                         throw new BusinessException(ResponseCodeEnum.CODE_904);
                     }
-                    dbFile.setFileId(fileId);
-                    dbFile.setFilePid(filePid);
-                    dbFile.setUserId(webUserDto.getUserId());
-                    dbFile.setFileMd5(null);
-                    dbFile.setCreateTime(curDate);
-                    dbFile.setLastUpdateTime(curDate);
-                    dbFile.setStatus(FileStatusEnums.USING.getStatus());
-                    dbFile.setDelFlag(FileDelFlagEnums.USING.getFlag());
-                    dbFile.setFileMd5(fileMd5);
-                    fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
-                    dbFile.setFileName(fileName);
-                    this.fileInfoMapper.insert(dbFile);
-                    resultDto.setStatus(UploadStatusEnums.UPLOAD_SECONDS.getCode());
-                    updateUserSpace(webUserDto, dbFile.getFileSize());
-                    return resultDto;
+                    if (dbFile != null) {
+                        dbFile.setFileId(fileId);
+                        dbFile.setFilePid(filePid);
+                        dbFile.setUserId(webUserDto.getUserId());
+                        dbFile.setFileMd5(null);
+                        dbFile.setCreateTime(curDate);
+                        dbFile.setLastUpdateTime(curDate);
+                        dbFile.setStatus(FileStatusEnums.USING.getStatus());
+                        dbFile.setDelFlag(FileDelFlagEnums.USING.getFlag());
+                        dbFile.setFileMd5(fileMd5);
+                        fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
+                        dbFile.setFileName(fileName);
+                        this.fileInfoMapper.insert(dbFile);
+                        resultDto.setStatus(UploadStatusEnums.UPLOAD_SECONDS.getCode());
+                        updateUserSpace(webUserDto, dbFileSize);
+
+                        logger.info("⚡ 秒传成功: userId={}, fileId={}, fileName={}, md5={}",
+                                webUserDto.getUserId(), fileId, fileName, fileMd5);
+
+                        return resultDto;
+                    }
                 }
             }
             String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
@@ -352,6 +369,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
             if (chunkIndex < chunks - 1) {
                 resultDto.setStatus(UploadStatusEnums.UPLOADING.getCode());
+
+                logger.info("📦 分片上传完成: userId={}, fileId={}, chunkIndex={}/{}, size={}",
+                        webUserDto.getUserId(), fileId, chunkIndex, chunks, file.getSize());
+
                 return resultDto;
             }
             fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
@@ -383,6 +404,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             updateUserSpace(webUserDto, totalSize);
 
             resultDto.setStatus(UploadStatusEnums.UPLOAD_FINISH.getCode());
+
+            logger.info("✅ 文件上传完成，开始转码: userId={}, fileId={}, fileName={}",
+                    webUserDto.getUserId(), fileId, fileName);
+
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
@@ -437,7 +462,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     /**
      * 异步转码文件.
      *
-     * @param fileId 文件ID
+     * @param fileId     文件ID
      * @param webUserDto 用户会话信息
      */
     @Async
@@ -474,6 +499,10 @@ public class FileInfoServiceImpl implements FileInfoService {
             storageStrategy.upload(new File(targetFilePath), fileInfo.getFilePath());
 
             fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
+
+            logger.info("🔄 转码开始: fileId={}, userId={}, fileType={}",
+                    fileId, webUserDto.getUserId(), fileTypeEnum);
+
             if (FileTypeEnums.VIDEO == fileTypeEnum) {
                 cutFile4Video(fileId, targetFilePath);
                 cover = month + "/" + currentUserFolderName + Constants.IMAGE_PNG_SUFFIX;
@@ -522,6 +551,9 @@ public class FileInfoServiceImpl implements FileInfoService {
                 String tsFolderName = targetFilePath.substring(0, targetFilePath.lastIndexOf("."));
                 FileUtils.deleteQuietly(new File(tsFolderName));
             }
+
+            logger.info("🏁 转码完成: fileId={}, userId={}, success={}",
+                    fileId, webUserDto.getUserId(), transferSuccess);
         }
     }
 
@@ -679,7 +711,7 @@ public class FileInfoServiceImpl implements FileInfoService {
      *
      * @param fileIds 文件ID列表
      * @param filePid 目标父文件夹ID
-     * @param userId 用户ID
+     * @param userId  用户ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void changeFileFolder(String fileIds, String filePid, String userId) {
@@ -701,7 +733,7 @@ public class FileInfoServiceImpl implements FileInfoService {
 
         Map<String, FileInfo> dbFileNameMap = dbFileList.stream()
                 .collect(Collectors.toMap(FileInfo::getFileName, Function.identity(), (file1, file2) -> file2));
-        
+
         List<FileInfo> selectFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(userId))
@@ -723,13 +755,13 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Transactional(rollbackFor = Exception.class)
     public void removeFile2RecycleBatch(String userId, String fileIds) {
         String[] fileIdArray = fileIds.split(",");
-        
+
         List<FileInfo> fileInfoList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(userId))
                         .and(FILE_INFO.FILE_ID.in((Object[]) fileIdArray))
                         .and(FILE_INFO.DEL_FLAG.eq(FileDelFlagEnums.USING.getFlag())));
-        
+
         if (fileInfoList.isEmpty()) {
             return;
         }
@@ -762,7 +794,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Transactional(rollbackFor = Exception.class)
     public void recoverFileBatch(String userId, String fileIds) {
         String[] fileIdArray = fileIds.split(",");
-        
+
         List<FileInfo> fileInfoList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(userId))
@@ -778,7 +810,7 @@ public class FileInfoServiceImpl implements FileInfoService {
             delFileSubFolderFileIdList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
                     FileDelFlagEnums.DEL.getFlag());
         }
-        
+
         List<FileInfo> allRootFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(userId))
@@ -825,7 +857,7 @@ public class FileInfoServiceImpl implements FileInfoService {
             queryQw.and(FILE_INFO.DEL_FLAG.eq(FileDelFlagEnums.RECYCLE.getFlag()));
         }
         List<FileInfo> fileInfoList = this.fileInfoMapper.selectListByQuery(queryQw);
-        
+
         List<String> delFileSubFolderFileIdList = new ArrayList<>();
         List<String> folderIds = fileInfoList.stream()
                 .filter(item -> FileFolderTypeEnums.FOLDER.getType().equals(item.getFolderType()))
@@ -880,20 +912,20 @@ public class FileInfoServiceImpl implements FileInfoService {
     public void saveShare(String shareRootFilePid, String shareFileIds, String myFolderId, String shareUserId,
             String cureentUserId) {
         String[] shareFileIdArray = shareFileIds.split(",");
-        
+
         List<FileInfo> currentFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(cureentUserId))
                         .and(FILE_INFO.FILE_PID.eq(myFolderId)));
-        
+
         Map<String, FileInfo> currentFileMap = currentFileList.stream()
                 .collect(Collectors.toMap(FileInfo::getFileName, Function.identity(), (file1, file2) -> file2));
-        
+
         List<FileInfo> shareFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(shareUserId))
                         .and(FILE_INFO.FILE_ID.in((Object[]) shareFileIdArray)));
-        
+
         List<FileInfo> copyFileList = new ArrayList<>();
         Date curDate = new Date();
         for (FileInfo item : shareFileList) {

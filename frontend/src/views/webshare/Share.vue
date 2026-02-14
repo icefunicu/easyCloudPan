@@ -68,7 +68,20 @@
         >
           <template #fileName="{ row }">
             <div
-              class="file-item"
+              v-touch="{
+                onLongPress: () => showOp(row),
+                onSwipeLeft: () => {
+                  if (row.folderType == 0) {
+                    download(row);
+                  }
+                },
+                onSwipeRight: () => {
+                  if (!shareInfo.currentUser && row.folderType == 0) {
+                    save2MyPanSingle(row);
+                  }
+                },
+              }"
+              :class="['file-item', row.showOp ? 'show-op' : '']"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
             >
@@ -124,40 +137,28 @@
 
 <script setup>
 import { ref, getCurrentInstance } from "vue";
-const { proxy } = getCurrentInstance();
 import { useRouter, useRoute } from "vue-router";
 import { useUserInfoStore } from "@/stores/userInfoStore";
+import * as shareService from "@/services/shareService";
+
+const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
 const userInfoStore = useUserInfoStore();
 
-const api = {
-    getShareLoginInfo: "/showShare/getShareLoginInfo",
-    loadFileList: "/showShare/loadFileList",
-    createDownloadUrl: "/showShare/createDownloadUrl",
-    download: "/api/showShare/download",
-    cancelShare: "/share/cancelShare",
-    saveShare: "/showShare/saveShare",
-};
 
 const shareId = route.params.shareId;
 const shareInfo = ref({});
 const getShareInfo = async () => {
-    const result = await proxy.Request({
-        url: api.getShareLoginInfo,
-        showLoading: false,
-        params: {
-            shareId
-        },
-    });
+    const result = await shareService.getShareLoginInfo(shareId);
     if (!result) {
         return;
     }
-    if (result.data == null) {
+    if (result == null) {
         router.push(`/shareCheck/${shareId}`);
         return;
     }
-    shareInfo.value = result.data;
+    shareInfo.value = result;
 };
 getShareInfo();
 
@@ -171,12 +172,14 @@ const columns = [
         label: "修改时间",
         prop: "lastUpdateTime",
         width: 200,
+        className: "hidden-mobile",
     },
     {
         label: "大小",
         prop: "fileSize",
         scopedSlots: "fileSize",
         width: 200,
+        className: "hidden-mobile",
     },
 ];
 const tableData = ref({});
@@ -192,22 +195,20 @@ const loadDataList = async () => {
         shareId: shareId,
         filePid: currentFolder.value.fileId,
     };
-    const result = await proxy.Request({
-        url: api.loadFileList,
-        params,
-    });
+    const result = await shareService.loadFileList(params);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 
 // 展示操作按钮
 const showOp = (row) => {
+    const nextShow = !row.showOp;
     tableData.value.list.forEach((element) => {
         element.showOp = false;
     });
-    row.showOp = true;
+    row.showOp = nextShow;
 };
 
 const cancelShowOp = (row) => {
@@ -244,47 +245,52 @@ const preview = (data) => {
 
 // 下载文件
 const download = async (row) => {
-  const result = await proxy.Request({
-      url: api.createDownloadUrl + "/" + shareId + "/" + row.fileId,
-  });
+  const result = await shareService.createDownloadUrl(shareId, row.fileId);
   if (!result) {
       return;
   }
-  window.location.href = api.download + "/" + result.data;
+  window.location.href = shareService.getDownloadUrl(result);
 };
 
 // 保存到我的网盘
 const folderSelectRef = ref();
-const save2MyPanFileIdArray = [];
+const save2MyPanFileIdArray = ref([]);
 const save2MyPan = () => {
     if (selectIdList.value.length == 0) {
         return;
     }
     if (!userInfoStore.userInfo) {
-        router.push("/login?redirectUrl=" + route.path);
+        router.push({
+            path: "/login",
+            query: {
+                redirectUrl: route.fullPath,
+            },
+        });
         return;
     }
     save2MyPanFileIdArray.value = selectIdList.value;
-    folderSelectRef.value.showFolderDialog();
+    folderSelectRef.value.showFolderDialog({});
 };
 
 const save2MyPanSingle = (row) => {
     if (!userInfoStore.userInfo) {
-        router.push("/login?redirectUrl=" + route.path);
+        router.push({
+            path: "/login",
+            query: {
+                redirectUrl: route.fullPath,
+            },
+        });
         return;
     }
     save2MyPanFileIdArray.value = [row.fileId];
-    folderSelectRef.value.showFolderDialog();
+    folderSelectRef.value.showFolderDialog({});
 };
 
 const save2MyPanDone = async (folderId) => {
-    const result = await proxy.Request({
-        url: api.saveShare,
-        params: {
-            shareId: shareId,
-            shareFileIds: save2MyPanFileIdArray.value.join(","),
-            myFolderId: folderId,
-        },
+    const result = await shareService.saveShare({
+        shareId: shareId,
+        shareFileIds: save2MyPanFileIdArray.value.join(","),
+        myFolderId: folderId,
     });
     if (!result) {
         return;
@@ -297,12 +303,7 @@ const save2MyPanDone = async (folderId) => {
 // 取消分享
 const cancelShare = () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
-        const result = await proxy.Request({
-            url: api.cancelShare,
-            params: {
-                shareIds: shareId,
-            },
-        });
+        const result = await shareService.cancelShare(shareId);
         if (!result) {
             return;
         }
@@ -318,20 +319,26 @@ const jump = () => {
 
 <style lang="scss" scoped>
 @import "@/assets/file.list.scss";
+.share {
+    background: var(--bg-body);
+}
+
 .header {
     width: 100%;
     position: fixed;
-    background: #f701ff;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
     height: 50px;
+    z-index: 10;
     .header-content {
-        width: 70%;
-        margin: 0px auto;
-        color: #fff;
+        width: min(1100px, calc(100% - 32px));
+        margin: 0 auto;
+        color: var(--text-white);
         line-height: 50px;
         .logo {
             display: flex;
             align-items: center;
             cursor: pointer;
+            user-select: none;
             .icon-pan {
                 font-size: 40px;
             }
@@ -339,36 +346,29 @@ const jump = () => {
                 font-weight: bold;
                 margin-left: 5px;
                 font-size: 25px;
-                animation-name: glitched;
-                animation-duration: calc(.9s * 3.5);
-                animation-iteration-count: infinite;
-                animation-timing-function: linear;
-                }
-                @keyframes glitched {
-                0% { left: -4px; transform: skew(-20deg); }
-                11% { left: 2px; transform: skew(0deg); }
-                50% { transform: skew(0deg); }
-                51% { transform: skew(10deg); }
-                60% { transform: skew(0deg); }
-                100% { transform: skew(0deg); }
             }
         }
     }
 }
 .share-body {
-    width: 70%;
-    margin: 0px auto;
-    padding-top: 50px;
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+    padding-top: 70px;
     .loading {
         height: calc(100vh / 2);
         width: 100%;
     }
     .share-panel {
-        margin-top: 20px;
+        margin-top: 16px;
         display: flex;
-        justify-content: space-around;
-        border-bottom: 1px solid #ddd;
-        padding-bottom: 10px;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
         .share-user-info {
             flex: 1;
             display: flex;
@@ -380,19 +380,32 @@ const jump = () => {
                 .user-info {
                     display: flex;
                     align-items: center;
+                    flex-wrap: wrap;
                     .nick-name {
                         font-size: 15px;
+                        font-weight: 600;
+                        color: var(--text-main);
                     }
                     .share-time {
                         margin-left: 20px;
                         font-size: 12px;
+                        color: var(--text-light);
                     }
                 }
                 .file-name {
                     margin-top: 10px;
                     font-size: 12px;
+                    color: var(--text-secondary);
                 }
             }
+        }
+
+        .share-op-btn {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-shrink: 0;
         }
     }
 }
@@ -403,6 +416,21 @@ const jump = () => {
         .op {
             width: 170px;
         }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .share-body {
+        padding-top: 64px;
+    }
+    .share-body .share-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .share-body .share-panel .share-user-info .share-info .user-info .share-time {
+        margin-left: 0;
+        width: 100%;
+        margin-top: 4px;
     }
 }
 </style>

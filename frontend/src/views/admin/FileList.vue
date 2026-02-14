@@ -45,7 +45,7 @@
                 onLongPress: () => showOp(row),
                 onSwipeLeft: () => delFile(row),
               }"
-              class="file-item"
+              :class="['file-item', row.showOp ? 'show-op' : '']"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
             >
@@ -94,14 +94,9 @@
 
 <script setup>
 import { ref, getCurrentInstance } from "vue";
+import * as adminService from "@/services/adminService";
 const { proxy } = getCurrentInstance();
 
-const api = {
-    loadDataList: "/admin/loadFileList",
-    delFile: "/admin/delFile",
-    createDownloadUrl: "/admin/createDownloadUrl",
-    download: "/api/admin/download",
-};
 
 const columns = [
     {
@@ -158,23 +153,20 @@ const loadDataList = async () => {
         fileNameFuzzy: fileNameFuzzy.value,
         filePid: currentFolder.value.fileId,
     };
-    const result = await proxy.Request({
-        url: api.loadDataList,
-        showLoading: showLoading.value,
-        params: params,
-    });
+    const result = await adminService.loadFileList(params);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 
 // 展示操作按钮
 const showOp = (row) => {
+  const nextShow = !row.showOp;
   tableData.value.list.forEach((element) => {
     element.showOp = false;
   });
-  row.showOp = true;
+  row.showOp = nextShow;
 };
 
 const cancelShowOp = (row) => {
@@ -211,12 +203,7 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除后不可还原`,
     async () => {
-      const result = await proxy.Request({
-        url: api.delFile,
-        params: {
-          fileIdAndUserIds: row.userId + "_" + row.fileId,
-        },
-      });
+      const result = await adminService.delFile(row.userId + "_" + row.fileId);
       if (!result) {
         return;
       }
@@ -232,12 +219,7 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除后不可还原`,
     async () => {
-      const result = await proxy.Request({
-        url: api.delFile,
-        params: {
-            fileIdAndUserIds: selectFileIdList.value.join(","),
-        },
-      });
+      const result = await adminService.delFile(selectFileIdList.value.join(","));
       if (!result) {
         return;
       }
@@ -248,13 +230,11 @@ const delFileBatch = () => {
 
 // 下载文件
 const download = async (row) => {
-  const result = await proxy.Request({
-      url: api.createDownloadUrl + "/" + row.userId + "/" + row.fileId,
-  });
+  const result = await adminService.createDownloadUrl(row.userId, row.fileId);
   if (!result) {
       return;
   }
-  window.location.href = api.download + "/" + result.data;
+  window.location.href = adminService.getDownloadUrl(result);
 };
 </script>
 

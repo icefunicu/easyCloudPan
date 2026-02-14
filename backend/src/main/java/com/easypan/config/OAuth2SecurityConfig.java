@@ -30,6 +30,9 @@ public class OAuth2SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                // Disable Spring Security default /logout endpoint to avoid
+                // conflicting with AccountController.logout (/api/logout).
+                .logout(logout -> logout.disable())
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

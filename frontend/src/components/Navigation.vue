@@ -122,7 +122,7 @@ const setPath = () => {
 // 获取当前路径的目录
 const getNavigationFolder = async (path) => {
     let url = api.getFolderInfo;
-    if (proxy.shareId) {
+    if (props.shareId) {
         url = api.getFolderInfo4Share;
     }
     if (props.adminShow) {
@@ -181,21 +181,38 @@ watch(
 
 <style lang="scss" scoped>
 .top-navigation {
-    font-size: 13px;
+    font-size: 14px;
     display: flex;
     align-items: center;
     line-height: 40px;
+    color: var(--text-secondary);
+    
     .all-file {
-        font-weight: bold;
+        font-weight: 600;
+        color: var(--text-main);
     }
+    
     .link {
-        color: #f701ff;
+        color: var(--primary);
         cursor: pointer;
+        transition: var(--transition-fast);
+        
+        &:hover {
+            color: var(--primary-light);
+            text-decoration: underline;
+        }
     }
+    
     .icon-right {
-        color: #f701ff;
-        padding: 0px 5px;
-        font-size: 13px;
+        color: var(--text-light);
+        padding: 0px 8px;
+        font-size: 12px;
+    }
+    
+    .text {
+        color: var(--text-secondary);
+        font-weight: 500;
+        cursor: default;
     }
 }
 </style>

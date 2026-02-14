@@ -29,8 +29,10 @@ public class OKHttpUtils {
     private static Logger logger = LoggerFactory.getLogger(OKHttpUtils.class);
 
     private static OkHttpClient.Builder getClientBuilder() {
-        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder().followRedirects(false).retryOnConnectionFailure(false);
-        clientBuilder.connectTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS).readTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS);
+        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder().followRedirects(false)
+                .retryOnConnectionFailure(false);
+        clientBuilder.connectTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS).readTimeout(TIME_OUT_SECONDS,
+                TimeUnit.SECONDS);
         return clientBuilder;
     }
 
@@ -59,10 +61,22 @@ public class OKHttpUtils {
      * @throws BusinessException 业务异常
      */
     public static String getRequest(String url) throws BusinessException {
+        return getRequest(url, null);
+    }
+
+    /**
+     * 发送 GET 请求 (支持 Header).
+     *
+     * @param url    请求地址
+     * @param header 请求头
+     * @return 响应字符串
+     * @throws BusinessException 业务异常
+     */
+    public static String getRequest(String url, Map<String, String> header) throws BusinessException {
         ResponseBody responseBody = null;
         try {
             OkHttpClient.Builder clientBuilder = getClientBuilder();
-            Request.Builder requestBuilder = getRequestBuilder(null);
+            Request.Builder requestBuilder = getRequestBuilder(header);
             OkHttpClient client = clientBuilder.build();
             Request request = requestBuilder.url(url).build();
             Response response = client.newCall(request).execute();
@@ -72,10 +86,11 @@ public class OKHttpUtils {
                 return null;
             }
             String responseStr = responseBody.string();
-            logger.info("postRequest请求地址:{},返回信息:{}", url, responseStr);
+            // 避免日志打印过长，可根据需要截断或仅打印关键信息
+            logger.info("getRequest请求地址:{},返回信息:{}", url, responseStr);
             return responseStr;
         } catch (SocketTimeoutException | ConnectException e) {
-            logger.error("OKhttp POST 请求超时,url:{}", url, e);
+            logger.error("OKhttp GET 请求超时,url:{}", url, e);
             throw new BusinessException(ResponseCodeEnum.CODE_500);
         } catch (Exception e) {
             logger.error("OKhttp GET 请求异常", e);
@@ -90,7 +105,7 @@ public class OKHttpUtils {
     /**
      * 发送 POST 请求.
      *
-     * @param url 请求地址
+     * @param url    请求地址
      * @param params 请求参数
      * @return 响应字符串
      * @throws BusinessException 业务异常
@@ -101,9 +116,10 @@ public class OKHttpUtils {
             if (params == null) {
                 params = new HashMap<>();
             }
-            OkHttpClient.Builder clientBuilder =
-                    new OkHttpClient.Builder().followRedirects(false).retryOnConnectionFailure(false);
-            clientBuilder.connectTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS).readTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS);
+            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder().followRedirects(false)
+                    .retryOnConnectionFailure(false);
+            clientBuilder.connectTimeout(TIME_OUT_SECONDS, TimeUnit.SECONDS).readTimeout(TIME_OUT_SECONDS,
+                    TimeUnit.SECONDS);
             OkHttpClient client = clientBuilder.build();
             FormBody.Builder builder = new FormBody.Builder();
             RequestBody requestBody = null;

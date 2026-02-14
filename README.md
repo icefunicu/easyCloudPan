@@ -106,6 +106,12 @@ docker compose version
 .\ops\local\startup.ps1
 ```
 
+说明：
+- `startup.ps1` 默认会强制 `DEV_MODE=false`，确保本地联调走真实鉴权链路。
+- 如需保留开发旁路（仅限本地调试），可使用 `.\ops\local\startup.ps1 -AllowDevMode`。
+- 如需便捷做接口联调/自动化（仅限本地），可使用 `.\ops\local\startup.ps1 -ExposeCaptcha` 启用验证码调试头：`/api/checkCode` 会额外返回 `X-EasyPan-CheckCode`。
+- `startup.ps1` 会为本地开发强制设置 `PROJECT_FOLDER` 到仓库内 `backend/file/`，避免 Windows 下 `/data/easypan/` 这类路径导致上传落到 Tomcat 临时目录并失败。
+
 默认访问地址：
 
 - 前端：`http://localhost:8080`
@@ -130,7 +136,7 @@ copy ops\docker\.env.example ops\docker\.env
 | 脚本 | 用途 | 常用参数 |
 | --- | --- | --- |
 | `ops\local\setup.ps1` | 本地环境初始化、依赖检查、生成 `.env` | `-Force`, `-SkipNpm` |
-| `ops\local\startup.ps1` | 本地开发一键启动（依赖容器 + 后端 + 前端） | `-NoBrowser` |
+| `ops\local\startup.ps1` | 本地开发一键启动（依赖容器 + 后端 + 前端） | `-NoBrowser`, `-AllowDevMode`, `-ExposeCaptcha` |
 | `ops\docker\deploy_docker.ps1` | Docker 全栈部署 | `-NoBuild` |
 | `ops\docker\stop_docker.ps1` | 停止 Docker 服务 | `-Volumes` |
 | `ops\tools\health_check.ps1` | 服务健康检查 | - |

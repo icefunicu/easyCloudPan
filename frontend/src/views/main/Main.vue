@@ -71,7 +71,7 @@
                 onSwipeLeft: () => delFile(row),
                 onSwipeRight: () => share(row)
               }"
-              class="file-item"
+              :class="['file-item', row.showOp ? 'show-op' : '', row.showEdit ? 'editing' : '']"
               @mouseenter="showOp(row)"
               @mouseleave="cancelShowOp(row)"
             >
@@ -95,7 +95,7 @@
                 <el-input
                   ref="editNameRef"
                   v-model.trim="row.fileNameReal"
-                  :max-length="190"
+                  :maxlength="190"
                   @keyup.enter="saveNameEdit(index)"
                 >
                   <template #suffix>{{ row.fileSuffix }}</template>
@@ -180,6 +180,7 @@
 import CategoryInfo from "@/js/CategoryInfo.js";
 import ShareFile from "./ShareFile.vue";
 import { ref, getCurrentInstance, nextTick, computed } from "vue";
+import * as fileService from "@/services/fileService";
 const { proxy } = getCurrentInstance();
 
 const emit = defineEmits(["addFile"]);
@@ -197,17 +198,6 @@ defineExpose({
 });
 // 当前目录
 const currentFolder = ref({ fileId: "0" });
-
-const api = {
-    loadDataList: "/file/loadDataList",
-    rename: "/file/rename",
-    newFoloder: "/file/newFoloder",
-    getFolderInfo: "/file/getFolderInfo",
-    delFile: "/file/delFile",
-    changeFileFolder: "/file/changeFileFolder",
-    createDownloadUrl: "/file/createDownloadUrl",
-    download: "/api/file/download",
-};
 
 const fileAccept = computed( () => {
   const categoryItem = CategoryInfo[category.value];
@@ -244,6 +234,7 @@ const tableData = ref({});
 const tableOptions = ref({
     extHeight: 50,
     selectType: "checkbox",
+    rowKey: "fileId",
 });
 
 const fileNameFuzzy = ref();
@@ -260,23 +251,20 @@ const loadDataList = async () => {
     if (params.category !== "all") {
         delete params.filePid;
     }
-    const result = await proxy.Request({
-        url: api.loadDataList,
-        showLoading: showLoading.value,
-        params: params,
-    });
+    const result = await fileService.loadDataList(params, showLoading.value);
     if (!result) {
         return;
     }
-    tableData.value = result.data;
+    tableData.value = result;
 };
 
 // 展示操作按钮
 const showOp = (row) => {
+  const nextShow = !row.showOp;
   tableData.value.list.forEach((element) => {
     element.showOp = false;
   });
-  row.showOp = true;
+  row.showOp = nextShow;
 };
 
 const cancelShowOp = (row) => {
@@ -321,22 +309,22 @@ const saveNameEdit = async (index) => {
         proxy.Message.warning("文件名不能为空且不能含有斜杠");
         return;
     }
-    let url = api.rename;
+    let result;
     if (fileId == "") {
-        url = api.newFoloder;
-    }
-    const result = await proxy.Request({
-        url: url,
-        params: {
-            fileId: fileId,
+        result = await fileService.newFolder({
             filePid: filePid,
             fileName: fileNameReal,
-        },
-    });
+        });
+    } else {
+        result = await fileService.rename({
+            fileId: fileId,
+            fileName: fileNameReal,
+        });
+    }
     if (!result) {
         return;
     }
-    tableData.value.list[index] = result.data;
+    tableData.value.list[index] = result;
     editing.value = false;
 };
 
@@ -382,12 +370,7 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
-      const result = await proxy.Request({
-        url: api.delFile,
-        params: {
-          fileIds: row.fileId,
-        },
-      });
+      const result = await fileService.delFile(row.fileId);
       if (!result) {
         return;
       }
@@ -403,12 +386,7 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
-      const result = await proxy.Request({
-        url: api.delFile,
-        params: {
-          fileIds: selectFileIdList.value.join(","),
-        },
-      });
+      const result = await fileService.delFile(selectFileIdList.value.join(","));
       if (!result) {
         return;
       }
@@ -441,12 +419,9 @@ const moveFolderDone  = async (folderId) => {
   } else {
     fileIdsArray = fileIdsArray.concat(selectFileIdList.value);
   }
-  const result = await proxy.Request({
-    url: api.changeFileFolder,
-    params: {
-      fileIds: fileIdsArray.join(","),
-      filePid: folderId,
-    },
+  const result = await fileService.changeFileFolder({
+    fileIds: fileIdsArray.join(","),
+    filePid: folderId,
   });
   if (!result) {
     return;
@@ -481,13 +456,11 @@ const navChange = (data) => {
 
 // 下载文件
 const download = async (row) => {
-  const result = await proxy.Request({
-      url: api.createDownloadUrl + "/" + row.fileId,
-  });
+  const result = await fileService.createDownloadUrl(row.fileId);
   if (!result) {
       return;
   }
-  window.location.href = api.download + "/" + result.data;
+  window.location.href = fileService.getDownloadUrl(result);
 };
 
 // 分享
@@ -502,26 +475,26 @@ const share = (row) => {
 
 @media screen and (max-width: 768px) {
   .top {
-    flex-direction: column;
-    
     .top-op {
       flex-wrap: wrap;
-      gap: 5px;
+      gap: 8px;
       
       .btn, .el-button {
-        margin-right: 5px;
-        margin-bottom: 5px;
+        margin-right: 0;
+        margin-bottom: 8px;
+        flex: 1 1 auto;
       }
       
       .search-panel {
         width: 100%;
         margin-left: 0 !important;
-        margin-top: 5px;
+        margin-top: 8px;
+      }
+      
+      .icon-refresh {
+          display: none;
       }
     }
-    
-    // Adjust Navigation component styles if necessary via deep selector
-    // Assuming Navigation is the sidebar
   }
 }
 </style>

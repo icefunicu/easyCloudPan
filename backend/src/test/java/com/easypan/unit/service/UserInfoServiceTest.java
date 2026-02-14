@@ -215,17 +215,14 @@ class UserInfoServiceTest {
     @DisplayName("修改用户空间成功")
     void testChangeUserSpace_Success() {
         Integer changeSpace = 10;
-        when(userInfoMapper.updateUserSpaceAdmin(eq(TEST_USER_ID), isNull(), eq(10 * 1024 * 1024L)))
-            .thenReturn(1);
-        
-        UserSpaceDto spaceDto = new UserSpaceDto();
-        spaceDto.setUseSpace(0L);
-        spaceDto.setTotalSpace(10 * 1024 * 1024L);
-        when(redisComponent.resetUserSpaceUse(TEST_USER_ID)).thenReturn(spaceDto);
+        UserInfo userInfo = createTestUser();
+        when(userInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(userInfo);
+        when(userInfoMapper.updateTotalSpace(eq(TEST_USER_ID), anyLong())).thenReturn(1);
 
         userInfoService.changeUserSpace(TEST_USER_ID, changeSpace);
 
-        verify(userInfoMapper).updateUserSpaceAdmin(TEST_USER_ID, null, 10 * 1024 * 1024L);
+        verify(userInfoMapper).selectOneByQuery(any(QueryWrapper.class));
+        verify(userInfoMapper).updateTotalSpace(eq(TEST_USER_ID), anyLong());
         verify(redisComponent).resetUserSpaceUse(TEST_USER_ID);
     }
 

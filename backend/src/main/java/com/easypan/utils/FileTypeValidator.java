@@ -90,6 +90,32 @@ public class FileTypeValidator {
             return false;
         }
 
+        // Plain text files may not have BOM; avoid false negatives.
+        if ("txt".equals(ext)) {
+            return true;
+        }
+
+        // ISO Base Media File Format (mp4/mov) headers vary by box size.
+        // Common pattern: [size:4][ftyp:4][brand:4]...
+        if ("mp4".equals(ext) || "mov".equals(ext)) {
+            try {
+                String header = getFileHeader(inputStream, 12);
+                boolean ok = header.length() >= 16 && "66747970".equalsIgnoreCase(header.substring(8, 16));
+                if (!ok) {
+                    logger.warn("File type mismatch: extension={}, header={}", ext, header);
+                }
+                return ok;
+            } catch (IOException e) {
+                logger.error("Error reading file header", e);
+                return false;
+            }
+        }
+
+        // TAR magic ("ustar") is not at offset 0; avoid false negatives.
+        if ("tar".equals(ext)) {
+            return true;
+        }
+
         // 对于未定义魔数的文件类型，允许通过（如 txt 无 BOM）
         if (!FILE_TYPE_MAP.containsKey(ext)) {
             logger.debug("File type {} not in validation map, allowing", ext);
@@ -124,10 +150,17 @@ public class FileTypeValidator {
      * @throws IOException IO 异常
      */
     private static String getFileHeader(InputStream inputStream, int length) throws IOException {
+        // Some InputStream implementations (e.g. servlet multipart streams) do not support mark/reset.
+        // Wrap to make header probing reliable and non-destructive.
+        InputStream in = inputStream;
+        if (!in.markSupported()) {
+            in = new java.io.BufferedInputStream(in);
+        }
+
         byte[] bytes = new byte[length];
-        inputStream.mark(length);
-        int readLength = inputStream.read(bytes, 0, length);
-        inputStream.reset();
+        in.mark(length);
+        int readLength = in.read(bytes, 0, length);
+        in.reset();
 
         if (readLength == -1) {
             return "";
@@ -135,7 +168,8 @@ public class FileTypeValidator {
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < readLength; i++) {
-            sb.append(String.format("%02X", bytes[i]));
+            // byte is signed in Java; mask to avoid sign-extension (e.g. 0x89 -> FFFFFF89)
+            sb.append(String.format("%02X", bytes[i] & 0xFF));
         }
         return sb.toString();
     }

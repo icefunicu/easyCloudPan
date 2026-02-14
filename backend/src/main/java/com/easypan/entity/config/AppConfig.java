@@ -60,6 +60,38 @@ public class AppConfig {
     @Value("${qq.url.redirect:}")
     private String qqUrlRedirect;
 
+    // OAuth: GitHub
+    @Value("${oauth.github.client-id:}")
+    private String githubClientId;
+    @Value("${oauth.github.client-secret:}")
+    private String githubClientSecret;
+    @Value("${oauth.github.redirect-uri:}")
+    private String githubRedirectUri;
+
+    // OAuth: Gitee
+    @Value("${oauth.gitee.client-id:}")
+    private String giteeClientId;
+    @Value("${oauth.gitee.client-secret:}")
+    private String giteeClientSecret;
+    @Value("${oauth.gitee.redirect-uri:}")
+    private String giteeRedirectUri;
+
+    // OAuth: Google
+    @Value("${oauth.google.client-id:}")
+    private String googleClientId;
+    @Value("${oauth.google.client-secret:}")
+    private String googleClientSecret;
+    @Value("${oauth.google.redirect-uri:}")
+    private String googleRedirectUri;
+
+    // OAuth: Microsoft
+    @Value("${oauth.microsoft.client-id:}")
+    private String microsoftClientId;
+    @Value("${oauth.microsoft.client-secret:}")
+    private String microsoftClientSecret;
+    @Value("${oauth.microsoft.redirect-uri:}")
+    private String microsoftRedirectUri;
+
     // Jackson configuration
     @Value("${spring.jackson.date-format:yyyy-MM-dd HH:mm:ss}")
     private String jsonDateFormat;

@@ -42,8 +42,7 @@ public class RedisComponent {
      * @return 系统设置对象
      */
     public SysSettingsDto getSysSettingsDto() {
-        SysSettingsDto sysSettingsDto =
-                (SysSettingsDto) redisUtils.get(Constants.REDIS_KEY_SYS_SETTING);
+        SysSettingsDto sysSettingsDto = (SysSettingsDto) redisUtils.get(Constants.REDIS_KEY_SYS_SETTING);
         if (sysSettingsDto == null) {
             sysSettingsDto = new SysSettingsDto();
             redisUtils.setex(Constants.REDIS_KEY_SYS_SETTING, sysSettingsDto, CacheTTL.SYS_CONFIG);
@@ -63,7 +62,7 @@ public class RedisComponent {
     /**
      * 保存下载码.
      *
-     * @param code 下载码
+     * @param code            下载码
      * @param downloadFileDto 下载文件信息
      */
     public void saveDownloadCode(String code, DownloadFileDto downloadFileDto) {
@@ -88,23 +87,48 @@ public class RedisComponent {
      * @return 用户空间使用情况
      */
     public UserSpaceDto getUserSpaceUse(String userId) {
-        UserSpaceDto spaceDto =
-                (UserSpaceDto) redisUtils.get(Constants.REDIS_KEY_USER_SPACE_USE + userId);
-        if (null == spaceDto) {
-            spaceDto = new UserSpaceDto();
+        String key = Constants.REDIS_KEY_USER_SPACE_USE + userId;
+        UserSpaceDto spaceDto = (UserSpaceDto) redisUtils.get(key);
+        if (spaceDto == null || spaceDto.getTotalSpace() == null || spaceDto.getUseSpace() == null) {
+            if (spaceDto == null) {
+                spaceDto = new UserSpaceDto();
+            }
+
             Long useSpace = this.fileInfoMapper.selectUseSpace(userId);
             spaceDto.setUseSpace(useSpace);
-            spaceDto.setTotalSpace(getSysSettingsDto().getUserInitUseSpace() * Constants.MB);
-            redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE + userId,
-                    spaceDto, CacheTTL.WARM_DATA);
+            spaceDto.setTotalSpace(resolveUserTotalSpace(userId));
+            redisUtils.setex(key, spaceDto, CacheTTL.WARM_DATA);
         }
         return spaceDto;
+    }
+
+    private Long resolveUserTotalSpace(String userId) {
+        Long totalSpace = null;
+        try {
+            UserInfo userInfo = this.userInfoMapper.selectOneByQuery(
+                    QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
+            if (userInfo != null) {
+                totalSpace = userInfo.getTotalSpace();
+            }
+        } catch (Exception e) {
+            // Keep fallback path to avoid breaking uploads when total_space is
+            // null/corrupted.
+        }
+        if (totalSpace != null) {
+            return totalSpace;
+        }
+
+        Integer initMb = getSysSettingsDto().getUserInitUseSpace();
+        if (initMb == null) {
+            initMb = 1024;
+        }
+        return initMb * Constants.MB;
     }
 
     /**
      * 保存已使用的空间.
      *
-     * @param userId 用户ID
+     * @param userId       用户ID
      * @param userSpaceDto 用户空间使用情况
      */
     public void saveUserSpaceUse(String userId, UserSpaceDto userSpaceDto) {
@@ -125,7 +149,11 @@ public class RedisComponent {
 
         UserInfo userInfo = this.userInfoMapper.selectOneByQuery(
                 QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
-        spaceDto.setTotalSpace(userInfo.getTotalSpace());
+        Long totalSpace = userInfo != null ? userInfo.getTotalSpace() : null;
+        if (totalSpace == null) {
+            totalSpace = resolveUserTotalSpace(userId);
+        }
+        spaceDto.setTotalSpace(totalSpace);
         redisUtils.setex(Constants.REDIS_KEY_USER_SPACE_USE + userId,
                 spaceDto, CacheTTL.WARM_DATA);
         return spaceDto;
@@ -134,8 +162,8 @@ public class RedisComponent {
     /**
      * 保存文件临时大小.
      *
-     * @param userId 用户ID
-     * @param fileId 文件ID
+     * @param userId   用户ID
+     * @param fileId   文件ID
      * @param fileSize 文件大小
      */
     public void saveFileTempSize(String userId, String fileId, Long fileSize) {
@@ -174,7 +202,7 @@ public class RedisComponent {
     /**
      * 添加 JWT 到黑名单.
      *
-     * @param token JWT Token
+     * @param token                   JWT Token
      * @param expirationTimeInSeconds 过期时间（秒）
      */
     public void addBlacklistToken(String token, long expirationTimeInSeconds) {
@@ -194,8 +222,8 @@ public class RedisComponent {
     /**
      * 保存 Refresh Token.
      *
-     * @param userId 用户ID
-     * @param refreshToken Refresh Token
+     * @param userId                  用户ID
+     * @param refreshToken            Refresh Token
      * @param expirationTimeInSeconds 过期时间（秒）
      */
     public void saveRefreshToken(String userId, String refreshToken, long expirationTimeInSeconds) {
@@ -216,7 +244,7 @@ public class RedisComponent {
     /**
      * 验证 Refresh Token.
      *
-     * @param userId 用户ID
+     * @param userId       用户ID
      * @param refreshToken Refresh Token
      * @return 是否有效
      */
@@ -258,5 +286,13 @@ public class RedisComponent {
             return;
         }
         fileMd5BloomFilter.put(fileMd5);
+    }
+
+    public void saveOAuthTempUser(String key, Object info, long expire) {
+        redisUtils.setex(key, info, expire);
+    }
+
+    public Object getOAuthTempUser(String key) {
+        return redisUtils.get(key);
     }
 }

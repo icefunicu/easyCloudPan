@@ -156,7 +156,8 @@ export default defineConfig(({ mode }): UserConfig => {
             }
 
             if (
-              normalizedId.includes('/highlight.js/')
+              normalizedId.includes('/highlight.js/') ||
+              normalizedId.includes('/@highlightjs/')
             ) {
               return 'highlight-js' // Code highlighting
             }

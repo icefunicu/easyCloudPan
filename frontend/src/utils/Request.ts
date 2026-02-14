@@ -15,6 +15,7 @@ let refreshSubscribers: ((token: string) => void)[] = [];
 const instance = axios.create({
     baseURL: '/api',
     timeout: 20 * 1000,
+    withCredentials: true,
 });
 
 interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
@@ -46,7 +47,11 @@ async function refreshToken(): Promise<string | null> {
     try {
         const response = await axios.post('/api/refreshToken', 
             new URLSearchParams({ refreshToken }).toString(), {
-            headers: { 'Content-Type': contentTypeForm }
+            headers: { 
+                'Content-Type': contentTypeForm,
+                'X-Tenant-Id': 'default' 
+            },
+            withCredentials: true,
         });
         
         if (response.data && response.data.code === 200 && response.data.data) {
@@ -71,6 +76,7 @@ async function refreshToken(): Promise<string | null> {
 instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const customConfig = config as CustomAxiosRequestConfig;
+        config.headers['X-Tenant-Id'] = 'default';
         
         const userInfoStore = useUserInfoStore();
         const token = userInfoStore.getToken();
@@ -116,7 +122,12 @@ instance.interceptors.response.use(
             if (customConfig.skipAuthRefresh) {
                 const userInfoStore = useUserInfoStore();
                 userInfoStore.clearUserInfo();
-                router.push("/login?redirectUrl=" + encodeURI(router.currentRoute.value.path));
+                router.push({
+                    path: "/login",
+                    query: {
+                        redirectUrl: router.currentRoute.value.fullPath,
+                    },
+                });
                 return Promise.reject({ showError: false, msg: "登录超时" });
             }
             
@@ -133,14 +144,24 @@ instance.interceptors.response.use(
                     } else {
                         const userInfoStore = useUserInfoStore();
                         userInfoStore.clearUserInfo();
-                        router.push("/login?redirectUrl=" + encodeURI(router.currentRoute.value.path));
+                        router.push({
+                            path: "/login",
+                            query: {
+                                redirectUrl: router.currentRoute.value.fullPath,
+                            },
+                        });
                         return Promise.reject({ showError: false, msg: "登录超时" });
                     }
                 }).catch(error => {
                     isRefreshing = false;
                     const userInfoStore = useUserInfoStore();
                     userInfoStore.clearUserInfo();
-                    router.push("/login?redirectUrl=" + encodeURI(router.currentRoute.value.path));
+                    router.push({
+                        path: "/login",
+                        query: {
+                            redirectUrl: router.currentRoute.value.fullPath,
+                        },
+                    });
                     return Promise.reject({ showError: false, msg: "登录超时" });
                 });
             } else {

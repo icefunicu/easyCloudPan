@@ -66,7 +66,7 @@ export interface UploadFileParams {
 
 export interface UploadedChunksParams {
   fileId: string
-  fileMd5?: string
+  filePid: string
 }
 
 export interface LoadAllFolderParams {

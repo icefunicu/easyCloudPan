@@ -111,7 +111,7 @@ const navChange = (data) => {
 <style lang="scss" scoped>
 .navigation-panel {
     padding-left: 10px;
-    background: #f1f1f1;
+    background: var(--bg-hover);
 }
 .folder-list {
     .folder-item {
@@ -124,7 +124,7 @@ const navChange = (data) => {
             margin-left: 10px;
         }
         &:hover {
-            background: #f8f8f8;
+            background: var(--bg-hover);
         }
     }
     max-height: calc(100vh - 200px);
@@ -134,7 +134,7 @@ const navChange = (data) => {
     text-align: center;
     line-height: 200px;
     span {
-        color: #f701ff;
+        color: var(--primary);
     }
 }
 </style>

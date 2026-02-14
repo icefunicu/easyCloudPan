@@ -17,7 +17,7 @@
                 size="large"
                 clearable
                 placeholder="请输入邮箱"
-                max-length="150"
+                maxlength="150"
                 >
                 <template #prefix>
                     <span class="iconfont icon-account"></span>
@@ -73,7 +73,7 @@
                         v-model.trim="formData.nickName"
                         size="large"
                         placeholder="请输入昵称"
-                        max-length="20"
+                        maxlength="20"
                     >
                         <template #prefix>
                             <span class="iconfont icon-account"></span>
@@ -131,7 +131,7 @@
             </el-form-item>
             <!-- 登录 -->
             <el-form-item v-if="opType == 1">
-                <div class="rememberme=panel">
+                <div class="rememberme-panel">
                     <el-checkbox v-model="formData.rememberMe">记住我</el-checkbox>
                 </div>
                 <div class="no-account">
@@ -159,9 +159,31 @@
                     <span v-if="opType == 2">重置密码</span>
                 </el-button>
             </el-form-item>
-            <div v-if="opType == 1" class="login-btn-qq">
-                快捷登录<img src="@/assets/qq.png" @click="qqLogin" />
+            <div v-if="opType == 1" class="quick-login-panel">
+            <div class="quick-login-title">选择其他方式登录</div>
+            <div class="oauth-buttons">
+              <!-- GitHub -->
+              <div class="oauth-btn github" @click="oauthLogin('github')" title="GitHub登录">
+                <svg viewBox="0 0 1024 1024" width="24" height="24"><path d="M511.6 76.3C264.3 76.2 64 276.4 64 523.5 64 718.9 189.3 885 363.8 946c23.5 5.9 19.9-10.8 19.9-22.2v-77.5c-135.7 15.9-141.2-73.9-150.3-88.9C215 726 171.5 718 184.5 703c30.9-15.9 62.4 4 98.9 57.9 26.4 39.1 77.9 32.5 104 26 5.7-23.5 17.9-44.5 34.7-60.8-140.6-25.2-199.2-111-199.2-213 0-49.5 16.3-95 48.3-131.7-20.4-60.5 1.9-112.3 4.9-120 58.1-5.2 118.5 41.6 123.2 45.3 33-8.9 70.7-13.6 112.9-13.6 42.4 0 80.2 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.3-43.9 2.9 7.7 24.7 58.3 5.5 118 32.4 36.8 48.9 82.7 48.9 132.3 0 102.2-59 188.1-200 212.9a127.5 127.5 0 0 1 38.1 91v112.5c0.8 9 0 17.9 15 17.9 177.1-59.7 304.6-227 304.6-424.1 0-247.2-200.4-447.3-447.5-447.3z" fill="#333"/></svg>
+              </div>
+              <!-- Gitee -->
+              <div class="oauth-btn gitee" @click="oauthLogin('gitee')" title="Gitee登录">
+                <svg viewBox="0 0 1024 1024" width="24" height="24"><path d="M512 1024C230.4 1024 0 793.6 0 512S230.4 0 512 0s512 230.4 512 512-230.4 512-512 512z m259.2-569.6H480c-12.8 0-25.6 12.8-25.6 25.6v64c0 12.8 12.8 25.6 25.6 25.6h176c12.8 0 25.6 12.8 25.6 25.6v12.8c0 41.6-35.2 76.8-76.8 76.8h-240c-12.8 0-25.6-12.8-25.6-25.6V416c0-41.6 35.2-76.8 76.8-76.8h355.2c12.8 0 25.6-12.8 25.6-25.6v-64c0-12.8-12.8-25.6-25.6-25.6H416c-105.6 0-192 86.4-192 192v256c0 105.6 86.4 192 192 192h240c105.6 0 192-86.4 192-192V476.8c0-12.8-12.8-22.4-25.6-22.4z" fill="#C71D23"/></svg>
+              </div>
+              <!-- Google -->
+              <div class="oauth-btn google" @click="oauthLogin('google')" title="Google登录">
+                <svg viewBox="0 0 1024 1024" width="24" height="24"><path d="M512 426.666667v170.666666h241.066667c-10.666667 59.733333-68.266667 170.666667-241.066667 170.666667-145.066667 0-262.4-117.333333-262.4-262.4s117.333333-262.4 262.4-262.4c68.266667 0 113.066667 29.866667 138.666667 55.466667L742.4 198.4C680.533333 138.666667 603.733333 106.666667 512 106.666667 288 106.666667 106.666667 288 106.666667 512S288 917.333333 512 917.333333c202.666667 0 339.2-142.933333 339.2-345.6 0-23.466667-2.133333-40.533333-6.4-59.733333l-332.8-85.333333z" fill="#EA4335"/></svg>
+              </div>
+              <!-- Microsoft -->
+              <div class="oauth-btn microsoft" @click="oauthLogin('microsoft')" title="Microsoft登录">
+                <svg viewBox="0 0 23 23" width="24" height="24"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>
+              </div>
             </div>
+            <!-- QQ (Keep Old) -->
+            <div class="oauth-btn qq" @click="qqLogin" title="QQ登录" style="display:none">
+                 <!-- Hidden old qq login to use new style if needed, or just keep it simple -->
+            </div>
+          </div>
           </el-form>
         </div>
         <Dialog
@@ -223,6 +245,20 @@ const api = {
     login: "/login",
     resetPwd: "/resetPwd",
     qqlogin: "/qqlogin",
+    oauthLogin: "/oauth/login/",
+};
+
+const oauthLogin = async (provider) => {
+    let result = await proxy.Request({
+        url: api.oauthLogin + provider,
+        params: {
+            callbackUrl: route.query.redirectUrl || "",
+        },
+    });
+    if (!result) {
+        return;
+    }
+    document.location.href = result.data;
 };
 
 // 操作类型 0:注册 1:登录 2:重置密码
@@ -400,7 +436,11 @@ const doSubmit = ()=> {
             }
             proxy.Message.success("登录成功");
             // 存储cookie
-            userInfoStore.setUserInfo(result.data.userInfo);
+            userInfoStore.setUserInfo({
+                ...result.data.userInfo,
+                token: result.data.token,
+                refreshToken: result.data.refreshToken
+            });
             // 重定向到原始页面
             const redirectUrl = route.query.redirectUrl || "/";
             router.push(redirectUrl);
@@ -430,135 +470,157 @@ const qqLogin = async () => {
 
 <style lang="scss" scoped>
 .login-body {
-    height: calc(100vh);
+    height: 100vh;
     background-size: cover;
-    background: url("../assets/login_bg.jpg");
+    background: url("../assets/login_bg.jpg") no-repeat center center;
     display: flex;
+    align-items: center;
+    justify-content: center;
+    
     .bg {
-        flex: 1;
-        background-size: cover;
-        background-position: left;
-        background-size: 660px;
-        background-repeat: no-repeat;
-        background-image: url("../assets/login_img.svg");
+        display: none; /* Removed the side SVG for cleaner look, or can be kept as background element */
     }
+
     .login-panel {
-        width: 430px;
-        margin-right: 5%;
-        margin-top: calc((100vh - 550px) / 2);
+        width: min(480px, calc(100vw - 24px));
+        position: relative;
+        z-index: 1;
+
         .login-register {
-            padding: 25px;
-            background: #fff;
-            border-radius: 5px;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-hover);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+
             .login-title {
                 text-align: center;
-                font-size: 18px;
-                font-weight: bold;
-                color: #e704fc;
-                letter-spacing: 1px;
-                margin-bottom: 20px;
-                animation-name: glitched;
-                animation-duration: calc(.8s * 1.4);
-                animation-iteration-count: infinite;
-                animation-timing-function: linear;
-                }
-                @keyframes glitched {
-                0% { left: -4px; transform: skew(-20deg); }
-                11% { left: 2px; transform: skew(0deg); }
-                50% { transform: skew(0deg); }
-                51% { transform: skew(10deg); }
-                60% { transform: skew(0deg); }
-                100% { transform: skew(0deg); }
+                font-size: 28px;
+                font-weight: 700;
+                color: var(--primary);
+                letter-spacing: 0.5px;
+                margin-bottom: 30px;
+                font-family: var(--font-heading);
             }
+
             .send-email-panel {
                 display: flex;
                 width: 100%;
-                justify-content: space-between;
+                gap: 10px;
+
                 .send-mail-btn {
-                    margin-left: 5px;
-                    background: linear-gradient(45deg, transparent 5%, #f701ff 5%);
-                    border: 0;
-                    letter-spacing: 1px;
-                    line-height: 44px;
-                    box-shadow: 3px 0px 0px #04ebfc;
-                    outline: transparent;
-                    position: relative;
+                    background: var(--primary);
+                    border: none;
+                    color: white;
+                    border-radius: var(--border-radius-md);
+                    padding: 0 15px;
+                    transition: var(--transition-fast);
+                    
+                    &:hover {
+                        background: var(--primary-light);
+                    }
                 }
             }
+
             .rememberme-panel {
                 width: 100%;
+                margin-bottom: 5px;
             }
+
             .no-account {
                 width: 100%;
                 display: flex;
                 justify-content: space-between;
+                margin-top: 10px;
+                font-size: 14px;
             }
+
             .op-btn {
                 width: 100%;
-                background: linear-gradient(45deg, transparent 5%, #f701ff 5%);
+                background: var(--primary);
                 border: 0;
                 color: #fff;
-                letter-spacing: 3px;
-                line-height: 33px;
-                box-shadow: 6px 0px 0px #04ebfc;
-                outline: transparent;
-                position: relative;
-                }
-                button::after {
-                --slice-0: inset(50% 50% 50% 50%);
-                --slice-1: inset(80% -6px 0 0);
-                --slice-2: inset(50% -6px 30% 0);
-                --slice-3: inset(10% -6px 85% 0);
-                --slice-4: inset(40% -6px 43% 0);
-                --slice-5: inset(80% -6px 5% 0);
-                content: 'LanVinci';
-                display: block;
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: linear-gradient(45deg, transparent 3%, #00E6F6 3%, #00E6F6 5%, #ff0101 5%);
-                text-shadow: -3px -3px 0px #f8f405, 3px 3px 0px #00E6F6;
-                clip-path: var(--slice-0);
-                }
-                button:hover::after {
-                animation: 1s glitch;
-                animation-timing-function: steps(2, end);
-                }
-                @keyframes glitch {
-                0% { clip-path: var(--slice-1); transform: translate(-20px, -10px); }
-                10% { clip-path: var(--slice-3); transform: translate(10px, 10px); }
-                20% { clip-path: var(--slice-1); transform: translate(-10px, 10px); }
-                30% { clip-path: var(--slice-3); transform: translate(0px, 5px); }
-                40% { clip-path: var(--slice-2); transform: translate(-5px, 0px); }
-                50% { clip-path: var(--slice-3); transform: translate(5px, 0px); }
-                60% { clip-path: var(--slice-4); transform: translate(5px, 10px); }
-                70% { clip-path: var(--slice-2); transform: translate(-10px, 10px); }
-                80% { clip-path: var(--slice-5); transform: translate(20px, -10px); }
-                90% { clip-path: var(--slice-1); transform: translate(-10px, 0px); }
-                100% { clip-path: var(--slice-1); transform: translate(0); }
+                font-size: 16px;
+                font-weight: 600;
+                letter-spacing: 1px;
+                margin-top: 10px;
+                height: 44px;
+                border-radius: var(--border-radius-md);
+                transition: var(--transition-fast);
+                
+                &:hover {
+                    background: var(--primary-light);
+                    transform: translateY(-1px);
+                    box-shadow: var(--shadow-md);
                 }
             }
         }
+    }
+
     .check-code-panel {
         width: 100%;
         display: flex;
+        gap: 10px;
+        
         .check-code {
-            margin-left: 5px;
+            height: 40px;
             cursor: pointer;
+            border-radius: var(--border-radius-sm);
+            border: 1px solid var(--border-color);
         }
     }
-    .login-btn-qq {
+
+    .quick-login-panel {
         margin-top: 20px;
         text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        img {
+
+        .quick-login-title {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .oauth-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .oauth-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            margin-left: 10px;
-            width: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition-fast);
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-md);
+                background: var(--bg-hover);
+            }
+
+            svg {
+                width: 22px;
+                height: 22px;
+                display: block;
+            }
+        }
+    }
+
+    @media screen and (max-width: 768px) {
+        .login-panel {
+            .login-register {
+                padding: 28px 20px;
+            }
         }
     }
 }
