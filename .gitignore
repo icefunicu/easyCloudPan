@@ -78,6 +78,19 @@ application-local.properties
 application-local.properties.bak
 ops/docker/.env
 
+# Local verification artifacts (do not commit)
+scripts/.captcha_train/
+scripts/.captcha_classes/
+scripts/.tmp.*
+scripts/_*.ps1
+
+# Frontend test artifacts (Playwright)
+frontend/test-results/
+frontend/playwright-report/
+
+# Docs artifacts
+docs/test_logs/
+
 # Agent collaboration
 .agent/
 agent_runs/
@@ -91,3 +104,7 @@ ARTIFACTS/
 *.bak
 *.swp
 *~
+
+# Local debug logs (do not commit)
+error.md
+front-error.md
