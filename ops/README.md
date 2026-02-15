@@ -36,7 +36,7 @@
 ### Prometheus 配置
 - 配置文件：`ops/monitoring/prometheus.yml`
 - 采集目标：
-  - `easypan-backend`：后端应用指标（`/actuator/prometheus`）
+  - `easypan-backend`：后端应用指标（`/api/actuator/prometheus`）
   - `postgres`：PostgreSQL 数据库指标
   - `redis`：Redis 缓存指标
 
@@ -73,7 +73,7 @@
 #### 数据库连接失败
 1. 检查 PostgreSQL 状态：`docker compose logs postgres`
 2. 检查连接配置：`POSTGRES_HOST`、`POSTGRES_PORT`、`POSTGRES_USER`、`POSTGRES_PASSWORD`
-3. 检查连接池：访问 `/actuator/health` 查看数据库连接状态
+3. 检查连接池：访问 `/api/actuator/health` 查看数据库连接状态
 
 #### Redis 连接失败
 1. 检查 Redis 状态：`docker compose logs redis`
@@ -90,7 +90,7 @@
 1. 查看 Prometheus 指标：`http://localhost:7090/api/actuator/prometheus`
 2. 检查慢查询日志：`backend/file/logs/easypan.log`
 3. 检查缓存命中率：Grafana 性能仪表板
-4. 检查虚拟线程状态：`/actuator/health/custom`
+4. 检查虚拟线程状态：`/api/actuator/health/custom`
 
 ### 日志查看
 - 后端日志：`backend/file/logs/easypan.log`

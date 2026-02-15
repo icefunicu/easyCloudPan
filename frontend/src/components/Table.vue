@@ -1,6 +1,23 @@
 <template>
     <div>
+        <template v-if="loading && skeleton">
+            <el-skeleton animated>
+                <template #default>
+                    <div class="skeleton-wrapper">
+                        <div class="skeleton-header">
+                            <el-skeleton-item v-if="options.selectType === 'checkbox'" variant="text" style="width: 40px; margin-right: 10px;" />
+                            <el-skeleton-item v-for="(col, idx) in columns" :key="idx" variant="text" :style="{ width: col.width ? `${Number(col.width) - 20}px` : '120px', marginRight: '10px' }" />
+                        </div>
+                        <div v-for="i in skeletonRows" :key="i" class="skeleton-row">
+                            <el-skeleton-item v-if="options.selectType === 'checkbox'" variant="text" style="width: 20px; height: 20px; margin-right: 10px; border-radius: 4px;" />
+                            <el-skeleton-item v-for="(col, idx) in columns" :key="idx" variant="text" :style="{ width: col.width ? `${Number(col.width) - 20}px` : (idx === 0 ? '200px' : '100px') }" />
+                        </div>
+                    </div>
+                </template>
+            </el-skeleton>
+        </template>
         <el-table
+          v-else
           ref="dataTable"
           :data="dataSource?.list || []"
           :height="tableHeight"
@@ -8,10 +25,10 @@
           :border="options.border"
           header-row-class-name="table-header-row"
           highlight-current-row
+          v-bind="rowKeyBind"
+          v-loading="!skeleton && loading"
           @row-click="handleRowClick"
           @selection-change="handleSelectionChange"
-          v-bind="rowKeyBind"
-          v-loading="loading"
         >
         <template v-if="(!dataSource?.list || dataSource.list.length == 0) && !loading">
             <el-empty description="暂无数据" />
@@ -155,6 +172,14 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    skeleton: {
+        type: Boolean,
+        default: true,
+    },
+    skeletonRows: {
+        type: Number,
+        default: 8,
+    }
 });
 
 const layout = computed(() => {
@@ -270,5 +295,36 @@ const handlePageNoChange = (pageNo: number) => {
     background-color: var(--bg-hover);
     color: var(--text-main);
     font-weight: 600;
+}
+
+.skeleton-wrapper {
+    padding: 12px 0;
+    background: var(--bg-card);
+    border-radius: var(--border-radius-md);
+
+    .skeleton-header {
+        display: flex;
+        align-items: center;
+        padding: 12px 10px;
+        background: var(--bg-hover);
+        border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
+        margin-bottom: 8px;
+    }
+
+    .skeleton-row {
+        display: flex;
+        align-items: center;
+        padding: 14px 10px;
+        border-bottom: 1px solid var(--border-color);
+        transition: background 0.2s;
+
+        &:hover {
+            background: var(--bg-hover);
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
 }
 </style>

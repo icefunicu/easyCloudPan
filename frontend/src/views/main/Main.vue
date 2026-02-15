@@ -73,6 +73,7 @@
           :fetch="loadDataList"
           :init-fetch="false"
           :options="tableOptions"
+          :loading="isLoading"
           @row-selected="rowSelected"
         >
         <template #fileName="{ index, row }">
@@ -279,8 +280,10 @@ const tableOptions = ref({
 
 const fileNameFuzzy = ref();
 const showLoading = ref(true);
+const isLoading = ref(false);
 const category = ref();
 const loadDataList = async () => {
+    isLoading.value = true;
     const params = {
         pageNo: tableData.value.pageNo,
         pageSize: tableData.value.pageSize,
@@ -292,6 +295,7 @@ const loadDataList = async () => {
         delete params.filePid;
     }
     const result = await fileService.loadDataList(params, showLoading.value);
+    isLoading.value = false;
     if (!result) {
         return;
     }

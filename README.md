@@ -37,7 +37,7 @@ EasyCloudPan 是一个前后端分离的网盘系统，提供本地开发一键�
 - **数据库优化**：复合索引、游标分页、连接池优化
 
 ### 安全特性
-- **JWT 双 Token 机制**：Access Token (15分钟) + Refresh Token (7天)
+- **JWT 双 Token 机制**：默认 Access Token (7天) + Refresh Token (30天)，可通过 `jwt.expiration` / `jwt.refresh-expiration` 覆盖
 - **Token 黑名单**：登出后 Token 立即失效，Redis 存储黑名单
 - **文件访问控制**：基于 AOP 的权限验证，所有文件操作需验证所有权
 - **配置加密**：敏感配置 Jasypt 加密存储，支持环境变量覆盖
@@ -153,8 +153,8 @@ copy ops\docker\.env.example ops\docker\.env
 ### 本地配置文件
 
 - 路径：`ops/docker/.env`
-- 由 `ops/local/setup.bat` 根据模板自动生成
-- 后端启动时（`ops/local/startup.bat`）会自动加载此文件中的环境变量覆盖默认配置
+- 由 `ops/local/setup.ps1`（推荐）或 `ops/local/setup.bat` 根据模板自动生成
+- 后端启动时（`ops/local/startup.ps1`（推荐）或 `ops/local/startup.bat`）会自动加载此文件中的环境变量覆盖默认配置
 
 ### Docker 环境变量
 
@@ -188,6 +188,7 @@ easyCloudPan/
 ## 文档导航
 
 - 本地从 0 启动：`QUICK_START.md`
+- 简历版亮点与 STAR：`RESUME_EasyCloudPan.md`
 - Docker 部署教程：`docs/DOCKER_DEPLOY_GUIDE.md`
 - 数据库迁移说明：`database/README.md`
 - 运维目录说明：`ops/README.md`
@@ -265,7 +266,7 @@ docker compose ps
 
 ### 邮箱验证码不可用
 
-`ops\local\setup.bat` 生成的是占位配置。若要实际发信，请在 `ops/docker/.env` 中配置真实 `SPRING_MAIL_PASSWORD` 并重启后端。
+`ops\local\setup.ps1`/`ops\local\setup.bat` 生成的是占位配置。若要实际发信，请在 `ops/docker/.env` 中配置真实 `SPRING_MAIL_PASSWORD` 并重启后端。
 
 ### 性能问题排查
 

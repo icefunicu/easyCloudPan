@@ -466,16 +466,48 @@ const qqLogin = async () => {
 </script>
 
 <style lang="scss" scoped>
+
 .login-body {
   height: 100vh;
-  background-size: cover;
-  background: url('../assets/login_bg.jpg') no-repeat center center;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
 
+  /* New Gradient Background */
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(249, 115, 22, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+  
+  /* Abstract Shapes for "Geometric" feel */
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 0;
+  }
+  
+  &::before {
+    top: -10%;
+    right: -5%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+  }
+  
+  &::after {
+    bottom: -10%;
+    left: -5%;
+    width: 40vw;
+    height: 40vw;
+    background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, transparent 70%);
+  }
+
   .bg {
-    display: none; /* Removed the side SVG for cleaner look, or can be kept as background element */
+    display: none; 
   }
 
   .login-panel {
@@ -485,11 +517,13 @@ const qqLogin = async () => {
 
     .login-register {
       padding: 40px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(16px);
+      /* Glassmorphism */
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-radius: var(--border-radius-xl);
-      box-shadow: var(--shadow-hover);
-      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: var(--shadow-xl), var(--shadow-glow); /* Enhanced shadow */
+      border: 1px solid rgba(255, 255, 255, 0.6);
 
       .login-title {
         text-align: center;
@@ -499,6 +533,7 @@ const qqLogin = async () => {
         letter-spacing: 0.5px;
         margin-bottom: 30px;
         font-family: var(--font-heading);
+        text-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
       }
 
       .send-email-panel {
@@ -507,16 +542,8 @@ const qqLogin = async () => {
         gap: 10px;
 
         .send-mail-btn {
-          background: var(--primary);
-          border: none;
-          color: white;
-          border-radius: var(--border-radius-md);
-          padding: 0 15px;
-          transition: var(--transition-fast);
-
-          &:hover {
-            background: var(--primary-light);
-          }
+          /* Using global button styles, just ensuring layout */
+          white-space: nowrap;
         }
       }
 
@@ -535,7 +562,7 @@ const qqLogin = async () => {
 
       .op-btn {
         width: 100%;
-        background: var(--primary);
+        background: var(--primary-gradient); /* Use gradient */
         border: 0;
         color: #fff;
         font-size: 16px;
@@ -544,12 +571,17 @@ const qqLogin = async () => {
         margin-top: 10px;
         height: 44px;
         border-radius: var(--border-radius-md);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         transition: var(--transition-fast);
 
         &:hover {
-          background: var(--primary-light);
-          transform: translateY(-1px);
-          box-shadow: var(--shadow-md);
+          opacity: 0.95;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+        
+        &:active {
+            transform: translateY(0);
         }
       }
     }
@@ -569,51 +601,70 @@ const qqLogin = async () => {
       
       &:hover {
         transform: scale(1.05);
+        box-shadow: var(--shadow-sm);
       }
     }
   }
 
   .quick-login-panel {
-    margin-top: 20px;
+    margin-top: 24px;
     text-align: center;
 
     .quick-login-title {
       font-size: 13px;
       color: var(--text-light);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       display: block;
+      position: relative;
+      
+      &::before, &::after {
+          content: '';
+          position: absolute;
+          top: 50%;
+          width: 30px;
+          height: 1px;
+          background: var(--border-color);
+      }
+      &::before { right: 55%; }
+      &::after { left: 55%; }
     }
 
     .oauth-buttons {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 16px;
       flex-wrap: wrap;
     }
 
     .oauth-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 999px;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
       border: 1px solid var(--border-color);
-      background: #fff;
+      background: rgba(255, 255, 255, 0.8);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       box-shadow: var(--shadow-sm);
-      transition: var(--transition-fast);
+      transition: all 0.2s ease;
 
       &:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
         box-shadow: var(--shadow-md);
-        background: var(--bg-hover);
+        background: #fff;
+        border-color: var(--primary-light);
       }
 
       svg {
         width: 22px;
         height: 22px;
         display: block;
+        transition: transform 0.2s;
+      }
+      
+      &:hover svg {
+          transform: scale(1.1);
       }
     }
   }

@@ -138,7 +138,7 @@ services:
     volumes:
       - easypan_data:/data/easypan
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7090/actuator/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:7090/api/actuator/health" ]
       interval: 30s
       timeout: 10s
       retries: 3

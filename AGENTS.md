@@ -1,7 +1,7 @@
 # EasyCloudPan 协作与交付手册（AGENTS.md）
 
 > 文档版本：v3.0  
-> 最后更新：2026-02-13  
+> 最后更新：2026-02-15  
 > 适用对象：自动化 Agent、后端开发、前端开发、测试、运维、代码审查者  
 > 适用范围：仓库根目录 `easyCloudPan/` 下全部内容
 
@@ -41,7 +41,7 @@ easyCloudPan/
 ├── docs/                       # 部署文档
 ├── database/                   # 数据库迁移说明（Flyway 脚本在 backend）
 ├── scripts/                    # 验证/基线采集脚本
-└── .github/workflows/build.yml # CI
+└── agent_runs/                 # Agent 扫描与执行产物（本地可清理）
 ```
 
 ### 2.2 运行形态
@@ -116,7 +116,7 @@ easyCloudPan/
 | Redis Exporter | `oliver006/redis_exporter:latest` | Redis 指标 |
 | Postgres Exporter | `prometheuscommunity/postgres-exporter:latest` | PostgreSQL 指标 |
 | 容器编排 | Docker Compose V2 | 本地/测试部署 |
-| CI | GitHub Actions | `backend-build` + `frontend-build` |
+| CI | - | 参考 §12.1 的命令清单（可用于 GitHub Actions 等平台） |
 
 ---
 
@@ -608,6 +608,10 @@ shareId=SHARE_001&code=K3F8P
 - `V7__Performance_Optimization_Indexes.sql`
 - `V8__Add_Share_Access_Log.sql`
 - `V9__Add_Web_Vitals_Metrics_Table.sql`
+- `V10__Add_Share_File_Fields.sql`
+- `V11__Add_OAuth_Provider_Fields.sql`
+- `V12__Add_Folder_And_Recycle_Indexes.sql`
+- `V13__Add_User_File_Name_Index.sql`
 
 ## 9.2 表关系总览
 
@@ -941,8 +945,9 @@ shareId=SHARE_001&code=K3F8P
 
 ## 12. 质量门禁与验证命令
 
-## 12.1 CI 事实（`.github/workflows/build.yml`）
+## 12.1 CI / 构建基线（以命令为准）
 
+- 说明：当前仓库未包含仓库级 `.github/workflows/*.yml`；以下步骤可用于本地或任意 CI 平台（例如 GitHub Actions）。
 - `backend-build`：`mvn -DskipTests clean compile` + `mvn test`
 - `frontend-build`：`npm ci` + `npm run type-check` + `npm run build`
 
@@ -984,7 +989,7 @@ npx playwright test
 
 - 健康检查：`/api/actuator/health`
 - 指标列表：`/api/actuator/metrics`
-- Prometheus 拉取：`/actuator/prometheus`（容器内 `backend:7090`）
+- Prometheus 拉取：`/api/actuator/prometheus`（容器内 `backend:7090`）
 
 ## 13.2 监控配置文件
 
@@ -1054,7 +1059,6 @@ npx playwright test
 - `ops/local/startup.ps1`
 - `ops/docker/deploy_docker.ps1`
 - `ops/tools/health_check.ps1`
-- `.github/workflows/build.yml`
 - `backend/src/main/resources/application.properties`
 - `backend/src/main/resources/db/migration/*.sql`
 - `backend/src/main/java/com/easypan/controller/*.java`

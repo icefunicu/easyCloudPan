@@ -16,7 +16,7 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   - job_name: 'easypan-backend'
-    metrics_path: '/actuator/prometheus'
+    metrics_path: '/api/actuator/prometheus'
     static_configs:
       - targets: ['backend:7090']
     relabel_configs:
