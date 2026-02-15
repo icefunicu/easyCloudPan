@@ -1,22 +1,25 @@
 import { defineStore } from 'pinia'
-import VueCookies from 'vue-cookies'
+import type { SessionWebUserDto } from '@/types'
+
+export type StoredUserInfo = (SessionWebUserDto & { token?: string; refreshToken?: string }) | null
 
 export const useUserInfoStore = defineStore('userInfo', {
-    state: () => ({
-        // Provide a safe default shape to align with plan expectations
-        userInfo: (VueCookies as any).get('userInfo') || ({ admin: false } as any),
-    }),
-    actions: {
-        setUserInfo(info: any) {
-            this.userInfo = info;
-            (VueCookies as any).set('userInfo', info, 0);
-        },
-        clearUserInfo() {
-            this.userInfo = null;
-            (VueCookies as any).remove('userInfo');
-        },
-        getToken() {
-            return this.userInfo ? this.userInfo.token : null;
-        }
+  state: () => ({
+    userInfo: null as StoredUserInfo,
+  }),
+  actions: {
+    setUserInfo(info: Exclude<StoredUserInfo, null>) {
+      this.userInfo = info
     },
+    clearUserInfo() {
+      this.userInfo = null
+    },
+    getToken() {
+      return this.userInfo?.token ?? null
+    },
+  },
+  persist: {
+    storage: sessionStorage,
+    pick: ['userInfo'],
+  },
 })

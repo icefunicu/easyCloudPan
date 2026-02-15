@@ -117,6 +117,7 @@ public class AccountController extends ABaseController {
      */
     @RequestMapping("/sendEmailCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
+    @com.easypan.annotation.RateLimit(key = "email_code", time = 60, count = 1)
     @Operation(summary = "Send Email Code", description = "Send verification code to email")
     public ResponseVO<Void> sendEmailCode(HttpSession session,
             @VerifyParam(required = true, regex = VerifyRegexEnum.EMAIL, max = 150) String email,
@@ -481,5 +482,27 @@ public class AccountController extends ABaseController {
         result.put("callbackUrl", session.getAttribute(state));
         result.put("userInfo", sessionWebUserDto);
         return getSuccessResponseVO(result);
+    }
+
+    /**
+     * 更新昵称.
+     *
+     * @param session  HTTP 会话
+     * @param nickName 新昵称
+     * @return 响应对象
+     */
+    @RequestMapping("/updateNickName")
+    @GlobalInterceptor(checkParams = true)
+    @Operation(summary = "Update Nickname", description = "Change user nickname")
+    public ResponseVO<Void> updateNickName(HttpSession session,
+            @VerifyParam(required = true, max = 20) String nickName) {
+        SessionWebUserDto sessionWebUserDto = getUserInfoFromSession(session);
+        UserInfo userInfo = new UserInfo();
+        userInfo.setNickName(nickName);
+        userInfoService.updateUserInfoByUserId(userInfo, sessionWebUserDto.getUserId());
+
+        sessionWebUserDto.setNickName(nickName);
+        session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        return getSuccessResponseVO(null);
     }
 }

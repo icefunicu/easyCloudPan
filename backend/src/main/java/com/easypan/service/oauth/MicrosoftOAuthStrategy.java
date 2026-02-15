@@ -10,6 +10,9 @@ import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Microsoft OAuth 登录策略.
+ */
 @Component
 public class MicrosoftOAuthStrategy implements OAuthProviderStrategy {
 

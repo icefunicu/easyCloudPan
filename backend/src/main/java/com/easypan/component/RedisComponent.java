@@ -295,4 +295,36 @@ public class RedisComponent {
     public Object getOAuthTempUser(String key) {
         return redisUtils.get(key);
     }
+
+    /**
+     * 保存用户信息到缓存.
+     *
+     * @param userInfo 用户信息
+     */
+    public void saveUserInfo(UserInfo userInfo) {
+        if (userInfo == null) {
+            return;
+        }
+        redisUtils.setex(Constants.REDIS_KEY_USER_INFO + userInfo.getUserId(),
+                userInfo, Constants.REDIS_KEY_EXPIRES_ONE_HOUR);
+    }
+
+    /**
+     * 从缓存获取用户信息.
+     *
+     * @param userId 用户ID
+     * @return 用户信息
+     */
+    public UserInfo getUserInfo(String userId) {
+        return (UserInfo) redisUtils.get(Constants.REDIS_KEY_USER_INFO + userId);
+    }
+
+    /**
+     * 删除用户信息缓存.
+     *
+     * @param userId 用户ID
+     */
+    public void deleteUserInfo(String userId) {
+        redisUtils.delete(Constants.REDIS_KEY_USER_INFO + userId);
+    }
 }

@@ -62,7 +62,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Resource
     private PasswordEncoder passwordEncoder;
-    
+
     @Resource
     private com.easypan.service.TenantQuotaService tenantQuotaService;
 
@@ -116,14 +116,25 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public UserInfo getUserInfoByUserId(String userId) {
-        return this.userInfoMapper.selectOneByQuery(
-                QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
+        UserInfo userInfo = redisComponent.getUserInfo(userId);
+        if (userInfo == null) {
+            userInfo = this.userInfoMapper.selectOneByQuery(
+                    QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
+            if (userInfo != null) {
+                redisComponent.saveUserInfo(userInfo);
+            }
+        }
+        return userInfo;
     }
 
     @Override
     public Integer updateUserInfoByUserId(UserInfo bean, String userId) {
-        return this.userInfoMapper.updateByQuery(bean, 
+        Integer count = this.userInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
+        if (count > 0) {
+            redisComponent.deleteUserInfo(userId);
+        }
+        return count;
     }
 
     @Override
@@ -140,7 +151,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public Integer updateUserInfoByEmail(UserInfo bean, String email) {
-        return this.userInfoMapper.updateByQuery(bean, 
+        return this.userInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(USER_INFO.EMAIL.eq(email)));
     }
 
@@ -158,7 +169,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public Integer updateUserInfoByNickName(UserInfo bean, String nickName) {
-        return this.userInfoMapper.updateByQuery(bean, 
+        return this.userInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(USER_INFO.NICK_NAME.eq(nickName)));
     }
 
@@ -176,7 +187,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
     @Override
     public Integer updateUserInfoByQqOpenId(UserInfo bean, String qqOpenId) {
-        return this.userInfoMapper.updateByQuery(bean, 
+        return this.userInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(USER_INFO.QQ_OPEN_ID.eq(qqOpenId)));
     }
 
@@ -235,14 +246,15 @@ public class UserInfoServiceImpl implements UserInfoService {
             userInfo.setTotalSpace(totalSpace);
         }
 
-        this.userInfoMapper.updateByQuery(updateInfo, 
+        this.userInfoMapper.updateByQuery(updateInfo,
                 QueryWrapper.create().where(USER_INFO.USER_ID.eq(userInfo.getUserId())));
         SessionWebUserDto sessionWebUserDto = new SessionWebUserDto();
         sessionWebUserDto.setNickName(userInfo.getNickName());
         sessionWebUserDto.setUserId(userInfo.getUserId());
         // 提供头像信息以便前端立即显示
         sessionWebUserDto.setAvatar(userInfo.getAvatar());
-        if ((userInfo.getIsAdmin() != null && userInfo.getIsAdmin()) || ArrayUtils.contains(appConfig.getAdminEmails().split(","), email)) {
+        if ((userInfo.getIsAdmin() != null && userInfo.getIsAdmin())
+                || ArrayUtils.contains(appConfig.getAdminEmails().split(","), email)) {
             sessionWebUserDto.setAdmin(true);
         } else {
             sessionWebUserDto.setAdmin(false);
@@ -251,6 +263,8 @@ public class UserInfoServiceImpl implements UserInfoService {
         userSpaceDto.setUseSpace(fileInfoService.getUserUseSpace(userInfo.getUserId()));
         userSpaceDto.setTotalSpace(userInfo.getTotalSpace());
         redisComponent.saveUserSpaceUse(userInfo.getUserId(), userSpaceDto);
+        // Force refresh user info in cache (or delete to lazy load)
+        redisComponent.deleteUserInfo(userInfo.getUserId());
         return sessionWebUserDto;
     }
 
@@ -295,7 +309,7 @@ public class UserInfoServiceImpl implements UserInfoService {
 
         UserInfo updateInfo = new UserInfo();
         updateInfo.setPassword(passwordEncoder.encode(password));
-        this.userInfoMapper.updateByQuery(updateInfo, 
+        this.userInfoMapper.updateByQuery(updateInfo,
                 QueryWrapper.create().where(USER_INFO.EMAIL.eq(email)));
     }
 
@@ -308,8 +322,9 @@ public class UserInfoServiceImpl implements UserInfoService {
             userInfo.setUseSpace(0L);
             fileInfoService.deleteFileByUserId(userId);
         }
-        userInfoMapper.updateByQuery(userInfo, 
+        userInfoMapper.updateByQuery(userInfo,
                 QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
+        redisComponent.deleteUserInfo(userId);
     }
 
     @Override
@@ -345,8 +360,11 @@ public class UserInfoServiceImpl implements UserInfoService {
             UserInfo updateInfo = new UserInfo();
             updateInfo.setLastLoginTime(new Date());
             avatar = user.getQqAvatar();
-            this.userInfoMapper.updateByQuery(updateInfo, 
+            this.userInfoMapper.updateByQuery(updateInfo,
                     QueryWrapper.create().where(USER_INFO.QQ_OPEN_ID.eq(openId)));
+            // user object here is stale, but we need userId to clear cache.
+            // user was fetched at line 319.
+            redisComponent.deleteUserInfo(user.getUserId());
         }
         if (UserStatusEnum.DISABLE.getStatus().equals(user.getStatus())) {
             throw new BusinessException("账号被禁用无法登录");
@@ -355,8 +373,9 @@ public class UserInfoServiceImpl implements UserInfoService {
         sessionWebUserDto.setUserId(user.getUserId());
         sessionWebUserDto.setNickName(user.getNickName());
         sessionWebUserDto.setAvatar(avatar);
-        if ((user.getIsAdmin() != null && user.getIsAdmin()) || ArrayUtils.contains(appConfig.getAdminEmails().split(","),
-                user.getEmail() == null ? "" : user.getEmail())) {
+        if ((user.getIsAdmin() != null && user.getIsAdmin())
+                || ArrayUtils.contains(appConfig.getAdminEmails().split(","),
+                        user.getEmail() == null ? "" : user.getEmail())) {
             sessionWebUserDto.setAdmin(true);
         } else {
             sessionWebUserDto.setAdmin(false);
@@ -452,15 +471,16 @@ public class UserInfoServiceImpl implements UserInfoService {
             }
             currentTotalSpace = initMb * Constants.MB;
         }
-        
+
         Long deltaSpace = changeSpace * Constants.MB;
         Long newTotalSpace = currentTotalSpace + deltaSpace;
-        
+
         if (newTotalSpace < 0) {
             newTotalSpace = 0L;
         }
-        
+
         this.userInfoMapper.updateTotalSpace(userId, newTotalSpace);
         redisComponent.resetUserSpaceUse(userId);
+        redisComponent.deleteUserInfo(userId);
     }
 }

@@ -10,16 +10,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
 
 /**
  * 分片上传服务.
  *
- * <p>实现分片上传并发控制，限制同一文件最大并发数为 5
+ *<p>实现分片上传并发控制，限制同一文件最大并发数为 5
  *
- * <p>需求：2.3.1
+ *<p>需求：2.3.1
  */
 @Service
 @Slf4j
@@ -30,6 +36,10 @@ public class ChunkUploadService {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Resource
+    @Qualifier("virtualThreadExecutor")
+    private AsyncTaskExecutor virtualThreadExecutor;
 
     /**
      * 同一文件最大并发上传分片数.
@@ -44,11 +54,11 @@ public class ChunkUploadService {
     /**
      * 分片上传（带并发控制）.
      *
-     * @param userId 用户ID
-     * @param fileMd5 文件MD5值
-     * @param chunkIndex 分片索引
+     * @param userId      用户ID
+     * @param fileMd5     文件MD5值
+     * @param chunkIndex  分片索引
      * @param totalChunks 总分片数
-     * @param chunkFile 分片文件
+     * @param chunkFile   分片文件
      * @return 上传结果
      * @throws IOException IO异常
      */
@@ -99,7 +109,7 @@ public class ChunkUploadService {
     /**
      * 获取已上传的分片数量.
      *
-     * @param userId 用户ID
+     * @param userId  用户ID
      * @param fileMd5 文件MD5值
      * @return 已上传分片数
      */
@@ -112,8 +122,8 @@ public class ChunkUploadService {
     /**
      * 检查分片是否已上传.
      *
-     * @param userId 用户ID
-     * @param fileMd5 文件MD5值
+     * @param userId     用户ID
+     * @param fileMd5    文件MD5值
      * @param chunkIndex 分片索引
      * @return 是否已上传
      */
@@ -126,7 +136,7 @@ public class ChunkUploadService {
     /**
      * 清理上传进度记录.
      *
-     * @param userId 用户ID
+     * @param userId  用户ID
      * @param fileMd5 文件MD5值
      */
     public void clearUploadProgress(String userId, String fileMd5) {
@@ -139,10 +149,10 @@ public class ChunkUploadService {
     /**
      * 合并分片文件.
      *
-     * <p>使用虚拟线程异步合并，合并完成后清理分片文件
+     *<p>使用虚拟线程异步合并，合并完成后清理分片文件
      *
-     * @param userId 用户ID
-     * @param fileMd5 文件MD5值
+     * @param userId      用户ID
+     * @param fileMd5     文件MD5值
      * @param totalChunks 总分片数
      * @return 合并结果
      */
@@ -150,35 +160,33 @@ public class ChunkUploadService {
         log.info("开始合并分片: userId={}, fileMd5={}, totalChunks={}", userId, fileMd5, totalChunks);
 
         CompletableFuture.runAsync(() -> {
+            String finalPath = String.format("files/%s/%s", userId, fileMd5);
+            String uploadId = null;
             try {
-                java.io.ByteArrayOutputStream mergedStream = new java.io.ByteArrayOutputStream();
+                // 1. 初始化分片上传
+                uploadId = s3Component.createMultipartUpload(finalPath);
+                List<CompletedPart> completedParts = new ArrayList<>();
 
+                // 2. 遍历分片并执行服务端复制
                 for (int i = 0; i < totalChunks; i++) {
                     String chunkPath = String.format("chunks/%s/%s/%d", userId, fileMd5, i);
 
-                    try (java.io.InputStream chunkStream = s3Component.getInputStream(chunkPath)) {
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = chunkStream.read(buffer)) != -1) {
-                            mergedStream.write(buffer, 0, bytesRead);
-                        }
-                        log.debug("分片 {} 读取完成", i);
-                    } catch (Exception e) {
-                        log.error("读取分片失败: chunkPath={}", chunkPath, e);
-                        throw new RuntimeException("读取分片失败: " + chunkPath, e);
-                    }
+                    // partNumber 从 1 开始
+                    CompletedPart part = s3Component.uploadPartCopy(chunkPath, finalPath, uploadId, i + 1);
+                    completedParts.add(part);
+
+                    // log.debug("分片 {} 复制完成", i);
                 }
 
-                String finalPath = String.format("files/%s/%s", userId, fileMd5);
-                byte[] mergedData = mergedStream.toByteArray();
-                s3Component.uploadBytes(finalPath, mergedData);
-                log.info("合并文件上传成功: {}, size={} bytes", finalPath, mergedData.length);
+                // 3. 完成分片上传
+                s3Component.completeMultipartUpload(finalPath, uploadId, completedParts);
+                log.info("文件合并完成 (S3 Multipart): {}", finalPath);
 
+                // 4. 清理分片
                 for (int i = 0; i < totalChunks; i++) {
                     String chunkPath = String.format("chunks/%s/%s/%d", userId, fileMd5, i);
                     try {
-                        s3Component.deleteFile(chunkPath);
-                        log.debug("分片 {} 清理完成", i);
+                        s3Component.deleteFileAsync(chunkPath);
                     } catch (Exception e) {
                         log.warn("清理分片失败: chunkPath={}", chunkPath, e);
                     }
@@ -186,13 +194,18 @@ public class ChunkUploadService {
 
                 clearUploadProgress(userId, fileMd5);
 
-                log.info("文件合并完成: userId={}, fileMd5={}", userId, fileMd5);
-
-            } catch (RuntimeException e) {
+            } catch (Exception e) {
                 log.error("文件合并失败: userId={}, fileMd5={}", userId, fileMd5, e);
+                if (uploadId != null) {
+                    try {
+                        s3Component.abortMultipartUpload(finalPath, uploadId);
+                    } catch (Exception abortEx) {
+                        log.error("中止分片上传失败", abortEx);
+                    }
+                }
                 clearUploadProgress(userId, fileMd5);
             }
-        }, Executors.newVirtualThreadPerTaskExecutor());
+        }, virtualThreadExecutor);
 
         return new UploadResultDto(fileMd5, "merging");
     }

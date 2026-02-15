@@ -4,21 +4,8 @@
       <span>上传任务</span>
       <span class="tips">（仅展示本次上传任务）</span>
       <div class="title-actions">
-        <el-button 
-          v-if="hasFailedTasks" 
-          size="small" 
-          type="warning" 
-          @click="retryAllFailed"
-        >
-          重试全部失败
-        </el-button>
-        <el-button 
-          v-if="hasCompletedTasks" 
-          size="small" 
-          @click="clearCompleted"
-        >
-          清除已完成
-        </el-button>
+        <el-button v-if="hasFailedTasks" size="small" type="warning" @click="retryAllFailed">重试全部失败</el-button>
+        <el-button v-if="hasCompletedTasks" size="small" @click="clearCompleted">清除已完成</el-button>
       </div>
     </div>
     <div class="file-list">
@@ -27,7 +14,11 @@
           <div class="file-name">{{ item.fileName }}</div>
           <div class="progress">
             <el-progress
-              v-if="item.status == STATUS.uploading.value || item.status == STATUS.upload_seconds.value || item.status == STATUS.upload_finish.value"
+              v-if="
+                item.status == STATUS.uploading.value ||
+                item.status == STATUS.upload_seconds.value ||
+                item.status == STATUS.upload_finish.value
+              "
               :percentage="item.uploadProgress"
             />
           </div>
@@ -40,9 +31,7 @@
               <span v-if="item.status === 'transferring'" class="loading-spinner"></span>
               {{ item.status == 'fail' ? item.errorMsg : STATUS[item.status].desc }}
             </span>
-            <span v-if="item.status == STATUS.uploading.value && item.isResume" class="resume-badge">
-              续传
-            </span>
+            <span v-if="item.status == STATUS.uploading.value && item.isResume" class="resume-badge">续传</span>
             <span v-if="item.status == STATUS.uploading.value" class="upload-info">
               {{ proxy.Utils.size2Str(item.uploadSize) }} / {{ proxy.Utils.size2Str(item.totalSize) }}
             </span>
@@ -75,7 +64,11 @@
               ></Icon>
             </span>
             <Icon
-              v-if="item.status != STATUS.init.value && item.status != STATUS.upload_finish.value && item.status != STATUS.upload_seconds.value"
+              v-if="
+                item.status != STATUS.init.value &&
+                item.status != STATUS.upload_finish.value &&
+                item.status != STATUS.upload_seconds.value
+              "
               :width="28"
               class="del btn-item"
               icon-name="del"
@@ -101,239 +94,240 @@
 </template>
 
 <script setup>
-import { ref, getCurrentInstance, onUnmounted, computed, watch } from "vue";
+import { ref, getCurrentInstance, onUnmounted, computed, watch } from 'vue'
+import { getUploadedChunks, getTransferStatus, uploadFileWithError } from '@/services'
+import EventBus from '@/utils/EventBus'
 
-const { proxy } = getCurrentInstance();
-
-const api = {
-  upload: "/file/uploadFile",
-  uploadedChunks: "/file/uploadedChunks",
-  transferStatus: "/file/transferStatus",
-};
+const { proxy } = getCurrentInstance()
 
 const STATUS = {
   emptyfile: {
-    value: "emptyfile",
-    desc: "文件为空",
-    color: "#F75000",
-    icon: "close",
+    value: 'emptyfile',
+    desc: '文件为空',
+    color: '#F75000',
+    icon: 'close',
   },
   fail: {
-    value: "fail",
-    desc: "上传失败",
-    color: "#F75000",
-    icon: "close",
+    value: 'fail',
+    desc: '上传失败',
+    color: '#F75000',
+    icon: 'close',
   },
   init: {
-    value: "init",
-    desc: "解析中",
-    color: "#e6a23c",
-    icon: "clock",
+    value: 'init',
+    desc: '解析中',
+    color: '#e6a23c',
+    icon: 'clock',
   },
   uploading: {
-    value: "uploading",
-    desc: "上传中",
-    color: "#409eff",
-    icon: "upload",
+    value: 'uploading',
+    desc: '上传中',
+    color: '#409eff',
+    icon: 'upload',
   },
   upload_finish: {
-    value: "upload_finish",
-    desc: "上传完成",
-    color: "#67c23a",
-    icon: "ok",
+    value: 'upload_finish',
+    desc: '上传完成',
+    color: '#67c23a',
+    icon: 'ok',
   },
   upload_seconds: {
-    value: "upload_seconds",
-    desc: "秒传",
-    color: "#67c23a",
-    icon: "ok",
+    value: 'upload_seconds',
+    desc: '秒传',
+    color: '#67c23a',
+    icon: 'ok',
   },
   retrying: {
-    value: "retrying",
-    desc: "重试中",
-    color: "#409eff",
-    icon: "upload",
+    value: 'retrying',
+    desc: '重试中',
+    color: '#409eff',
+    icon: 'upload',
   },
   network_error: {
-    value: "network_error",
-    desc: "网络错误",
-    color: "#F75000",
-    icon: "close",
+    value: 'network_error',
+    desc: '网络错误',
+    color: '#F75000',
+    icon: 'close',
   },
   auth_error: {
-    value: "auth_error",
-    desc: "鉴权失败",
-    color: "#F75000",
-    icon: "close",
+    value: 'auth_error',
+    desc: '鉴权失败',
+    color: '#F75000',
+    icon: 'close',
   },
   server_error: {
-    value: "server_error",
-    desc: "服务器错误",
-    color: "#F75000",
-    icon: "close",
+    value: 'server_error',
+    desc: '服务器错误',
+    color: '#F75000',
+    icon: 'close',
   },
   transferring: {
-    value: "transferring",
-    desc: "转码中",
-    color: "#e6a23c",
-    icon: "clock",
+    value: 'transferring',
+    desc: '转码中',
+    color: '#e6a23c',
+    icon: 'clock',
   },
   transfer_done: {
-    value: "transfer_done",
-    desc: "转码完成",
-    color: "#67c23a",
-    icon: "ok",
+    value: 'transfer_done',
+    desc: '转码完成',
+    color: '#67c23a',
+    icon: 'ok',
   },
   transfer_fail: {
-    value: "transfer_fail",
-    desc: "转码失败",
-    color: "#F75000",
-    icon: "close",
+    value: 'transfer_fail',
+    desc: '转码失败',
+    color: '#F75000',
+    icon: 'close',
   },
-};
+}
 
-const chunkSize = 1024 * 1024 * 5;
-const uploadWindowSize = 3;
-const fileList = ref([]);
-const delList = ref([]);
+const chunkSize = 1024 * 1024 * 5
+const uploadWindowSize = 3
+const fileList = ref([])
+const delList = ref([])
 
 // 计算属性：是否有失败的任务
 const hasFailedTasks = computed(() => {
-  return fileList.value.some(item => 
-    item.status === STATUS.fail.value || 
-    item.status === STATUS.network_error.value ||
-    item.status === STATUS.auth_error.value ||
-    item.status === STATUS.server_error.value
-  );
-});
+  return fileList.value.some(
+    item =>
+      item.status === STATUS.fail.value ||
+      item.status === STATUS.network_error.value ||
+      item.status === STATUS.auth_error.value ||
+      item.status === STATUS.server_error.value
+  )
+})
 
 // 计算属性：是否有已完成的任务
 const hasCompletedTasks = computed(() => {
-  return fileList.value.some(item => 
-    item.status === STATUS.upload_finish.value || 
-    item.status === STATUS.upload_seconds.value ||
-    item.status === STATUS.transfer_done.value
-  );
-});
+  return fileList.value.some(
+    item =>
+      item.status === STATUS.upload_finish.value ||
+      item.status === STATUS.upload_seconds.value ||
+      item.status === STATUS.transfer_done.value
+  )
+})
 
 // 计算属性：活跃任务数（上传中+转码中）
 const activeTaskCount = computed(() => {
-  return fileList.value.filter(item => 
-    item.status === STATUS.uploading.value || 
-    item.status === STATUS.init.value ||
-    item.status === STATUS.transferring.value
-  ).length;
-});
+  return fileList.value.filter(
+    item =>
+      item.status === STATUS.uploading.value ||
+      item.status === STATUS.init.value ||
+      item.status === STATUS.transferring.value
+  ).length
+})
 
 // 重试所有失败的任务
 const retryAllFailed = () => {
   fileList.value.forEach(item => {
-    if (item.status === STATUS.fail.value || 
-        item.status === STATUS.network_error.value ||
-        item.status === STATUS.auth_error.value ||
-        item.status === STATUS.server_error.value) {
-      item.status = STATUS.uploading.value;
-      item.pause = false;
-      item.errorMsg = null;
-      uploadFile(item.uid, item.chunkIndex);
+    if (
+      item.status === STATUS.fail.value ||
+      item.status === STATUS.network_error.value ||
+      item.status === STATUS.auth_error.value ||
+      item.status === STATUS.server_error.value
+    ) {
+      item.status = STATUS.uploading.value
+      item.pause = false
+      item.errorMsg = null
+      uploadFile(item.uid, item.chunkIndex)
     }
-  });
-};
+  })
+}
 
 // 清除已完成的任务
 const clearCompleted = () => {
   for (let i = fileList.value.length - 1; i >= 0; i--) {
-    const item = fileList.value[i];
-    if (item.status === STATUS.upload_finish.value || 
-        item.status === STATUS.upload_seconds.value) {
-      clearMd5Worker(item);
-      fileList.value.splice(i, 1);
+    const item = fileList.value[i]
+    if (item.status === STATUS.upload_finish.value || item.status === STATUS.upload_seconds.value) {
+      clearMd5Worker(item)
+      fileList.value.splice(i, 1)
     }
   }
-};
+}
 
 const createMd5Worker = () => {
-  return new Worker(new URL("../../workers/md5.worker.js", import.meta.url), {
-    type: "module",
-  });
-};
+  return new Worker(new URL('../../workers/md5.worker.js', import.meta.url), {
+    type: 'module',
+  })
+}
 
 const createUploadFileId = () => {
-  const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let id = "";
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  let id = ''
   for (let i = 0; i < 10; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
+    id += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-  return id;
-};
+  return id
+}
 
-const getFileByUid = (uid) => {
-  return fileList.value.find((item) => item.file.uid === uid);
-};
+const getFileByUid = uid => {
+  return fileList.value.find(item => item.file.uid === uid)
+}
 
-const clearMd5Worker = (fileItem) => {
+const clearMd5Worker = fileItem => {
   if (!fileItem || !fileItem.md5Worker) {
-    return;
+    return
   }
-  fileItem.md5Worker.terminate();
-  fileItem.md5Worker = null;
-};
+  fileItem.md5Worker.terminate()
+  fileItem.md5Worker = null
+}
 
-const clearDeletedMark = (uid) => {
-  const delIndex = delList.value.indexOf(uid);
+const clearDeletedMark = uid => {
+  const delIndex = delList.value.indexOf(uid)
   if (delIndex !== -1) {
-    delList.value.splice(delIndex, 1);
+    delList.value.splice(delIndex, 1)
   }
-};
+}
 
-const isFileDeleted = (uid) => {
-  return delList.value.includes(uid) || !getFileByUid(uid);
-};
+const isFileDeleted = uid => {
+  return delList.value.includes(uid) || !getFileByUid(uid)
+}
 
-const syncUploadProgress = (currentFile) => {
+const syncUploadProgress = currentFile => {
   if (!currentFile || !currentFile.chunkLoadedMap) {
-    return;
+    return
   }
-  const loaded = Object.values(currentFile.chunkLoadedMap).reduce((sum, value) => sum + Number(value || 0), 0);
-  currentFile.uploadSize = Math.min(loaded, currentFile.totalSize);
-  currentFile.uploadProgress = Math.floor((currentFile.uploadSize / currentFile.totalSize) * 100);
-};
+  const loaded = Object.values(currentFile.chunkLoadedMap).reduce((sum, value) => sum + Number(value || 0), 0)
+  currentFile.uploadSize = Math.min(loaded, currentFile.totalSize)
+  currentFile.uploadProgress = Math.floor((currentFile.uploadSize / currentFile.totalSize) * 100)
+}
 
-const isTerminalUploadStatus = (statusCode) => {
-  return statusCode === STATUS.upload_seconds.value || statusCode === STATUS.upload_finish.value;
-};
+const isTerminalUploadStatus = statusCode => {
+  return statusCode === STATUS.upload_seconds.value || statusCode === STATUS.upload_finish.value
+}
 
-const emit = defineEmits(["uploadCallback", "update:activeTaskCount"]);
+const emit = defineEmits(['uploadCallback', 'update:activeTaskCount'])
 
-watch(activeTaskCount, (newVal) => {
-  emit("update:activeTaskCount", newVal);
-});
+watch(activeTaskCount, newVal => {
+  emit('update:activeTaskCount', newVal)
+})
 
-const handleTerminalStatus = (uid, uploadResult) => {
-  if (!uploadResult || !uploadResult.data) {
-    return false;
+const handleTerminalStatus = (uid, uploadData) => {
+  if (!uploadData) {
+    return false
   }
-  const statusCode = uploadResult.data.status;
+  const statusCode = uploadData.status
   if (!isTerminalUploadStatus(statusCode)) {
-    return false;
+    return false
   }
-  const currentFile = getFileByUid(uid);
+  const currentFile = getFileByUid(uid)
   if (!currentFile) {
-    return true;
+    return true
   }
-  currentFile.uploadSize = currentFile.totalSize;
-  currentFile.uploadProgress = 100;
-  currentFile.chunkIndex = Math.ceil(currentFile.totalSize / chunkSize);
-  
+  currentFile.uploadSize = currentFile.totalSize
+  currentFile.uploadProgress = 100
+  currentFile.chunkIndex = Math.ceil(currentFile.totalSize / chunkSize)
+
   if (statusCode === STATUS.upload_finish.value) {
     // Start polling for transfer status
-    startTransferPolling(uid);
+    startTransferPolling(uid)
   } else {
     // UPLOAD_SECONDS or other done states
-    emit("uploadCallback");
+    emit('uploadCallback')
+    EventBus.emit('reload_data')
   }
-  return true;
-};
+  return true
+}
 
 const addFile = async (file, filePid) => {
   const fileItem = {
@@ -356,256 +350,237 @@ const addFile = async (file, filePid) => {
     md5Worker: null,
     isResume: false,
     uploadedChunks: [],
-  };
+  }
 
-  fileList.value.unshift(fileItem);
+  fileList.value.unshift(fileItem)
   if (fileItem.totalSize === 0) {
-    fileItem.status = STATUS.emptyfile.value;
-    return;
+    fileItem.status = STATUS.emptyfile.value
+    return
   }
 
-  const md5FileUid = await computeMd5(fileItem);
+  const md5FileUid = await computeMd5(fileItem)
   if (md5FileUid == null) {
-    return;
+    return
   }
-  
-  await checkUploadedChunks(md5FileUid);
-  uploadFile(md5FileUid);
-};
 
-const checkUploadedChunks = async (uid) => {
-  const currentFile = getFileByUid(uid);
+  await checkUploadedChunks(md5FileUid)
+  uploadFile(md5FileUid)
+}
+
+const checkUploadedChunks = async uid => {
+  const currentFile = getFileByUid(uid)
   if (!currentFile) {
-    return;
+    return
   }
-  
+
   try {
-    const result = await proxy.Request({
-      url: api.uploadedChunks,
-      showLoading: false,
-      params: {
-        fileId: currentFile.fileId,
-        filePid: currentFile.filePid,
-      },
-    });
-    
-    if (!result || !result.data) {
-      return;
+    const uploadedChunks = await getUploadedChunks({
+      fileId: currentFile.fileId,
+      filePid: currentFile.filePid,
+    })
+
+    if (!uploadedChunks || uploadedChunks.length === 0) {
+      return
     }
-    
-    const uploadedChunks = result.data || [];
-    if (uploadedChunks.length > 0) {
-      currentFile.isResume = true;
-      currentFile.uploadedChunks = uploadedChunks;
-      
-      const chunks = Math.ceil(currentFile.totalSize / chunkSize);
-      uploadedChunks.forEach(chunkIndex => {
-        if (chunkIndex >= 0 && chunkIndex < chunks) {
-          const start = chunkIndex * chunkSize;
-          const end = Math.min(start + chunkSize, currentFile.totalSize);
-          currentFile.chunkLoadedMap[chunkIndex] = end - start;
-        }
-      });
-      
-      syncUploadProgress(currentFile);
-      
-      const maxUploadedIndex = Math.max(...uploadedChunks, -1);
-      currentFile.chunkIndex = maxUploadedIndex + 1;
-    }
+
+    currentFile.isResume = true
+    currentFile.uploadedChunks = uploadedChunks
+
+    const chunks = Math.ceil(currentFile.totalSize / chunkSize)
+    uploadedChunks.forEach(chunkIndex => {
+      if (chunkIndex >= 0 && chunkIndex < chunks) {
+        const start = chunkIndex * chunkSize
+        const end = Math.min(start + chunkSize, currentFile.totalSize)
+        currentFile.chunkLoadedMap[chunkIndex] = end - start
+      }
+    })
+
+    syncUploadProgress(currentFile)
+
+    const maxUploadedIndex = Math.max(...uploadedChunks, -1)
+    currentFile.chunkIndex = maxUploadedIndex + 1
   } catch (error) {
-    console.warn('Failed to check uploaded chunks:', error);
+    console.warn('Failed to check uploaded chunks:', error)
   }
-};
+}
 
 // 轮询转码状态
-const startTransferPolling = (uid) => {
-  const currentFile = getFileByUid(uid);
-  if (!currentFile) return;
+const startTransferPolling = uid => {
+  const currentFile = getFileByUid(uid)
+  if (!currentFile) return
 
-  currentFile.status = STATUS.transferring.value;
-  let pollCount = 0;
-  const maxPolls = 60; // 3 minutes timeout
+  currentFile.status = STATUS.transferring.value
+  let pollCount = 0
+  const maxPolls = 60 // 3 minutes timeout
 
   const poll = async () => {
     if (pollCount >= maxPolls) {
       // Timeout, but don't mark as fail, just stop polling
-      return; 
+      return
     }
-    
+
     // Check if component unmounted or file removed
-    const latestFile = getFileByUid(uid);
+    const latestFile = getFileByUid(uid)
     if (!latestFile || latestFile.status !== STATUS.transferring.value) {
-      return;
+      return
     }
 
     try {
-      const result = await proxy.Request({
-        url: api.transferStatus,
-        showLoading: false,
-        params: {
-          fileId: latestFile.fileId,
-        },
-      });
-
-      if (result && result.data) {
-        const status = result.data.status;
-        // FileStatusEnums: USING(2), TRANSFER_FAIL(1)
-        if (status === 2) {
-          latestFile.status = STATUS.transfer_done.value;
-          emit("uploadCallback");
-          return;
-        } else if (status === 1) {
-          latestFile.status = STATUS.transfer_fail.value;
-          return;
-        }
+      const status = await getTransferStatus(latestFile.fileId)
+      // FileStatusEnums: USING(2), TRANSFER_FAIL(1)
+      if (status === 2) {
+        latestFile.status = STATUS.transfer_done.value
+        emit('uploadCallback')
+        EventBus.emit('reload_data')
+        return
+      } else if (status === 1) {
+        latestFile.status = STATUS.transfer_fail.value
+        return
       }
     } catch (e) {
-      console.error("Poll transfer status failed", e);
+      console.error('Poll transfer status failed', e)
     }
-    
-    pollCount++;
-    latestFile.transferTimer = setTimeout(poll, 3000);
-  };
 
-  poll();
-};
+    pollCount++
+    latestFile.transferTimer = setTimeout(poll, 3000)
+  }
 
-const stopTransferPolling = (uid) => {
-  const currentFile = getFileByUid(uid);
+  poll()
+}
+
+const stopTransferPolling = uid => {
+  const currentFile = getFileByUid(uid)
   if (currentFile && currentFile.transferTimer) {
-    clearTimeout(currentFile.transferTimer);
-    currentFile.transferTimer = null;
+    clearTimeout(currentFile.transferTimer)
+    currentFile.transferTimer = null
   }
-};
+}
 
-defineExpose({ addFile, activeTaskCount });
+defineExpose({ addFile, activeTaskCount })
 
-const startUpload = (uid) => {
-  const currentFile = getFileByUid(uid);
+const startUpload = uid => {
+  const currentFile = getFileByUid(uid)
   if (!currentFile) {
-    return;
+    return
   }
-  currentFile.pause = false;
-  uploadFile(uid, currentFile.chunkIndex);
-};
+  currentFile.pause = false
+  uploadFile(uid, currentFile.chunkIndex)
+}
 
-const pauseUpload = (uid) => {
-  const currentFile = getFileByUid(uid);
+const pauseUpload = uid => {
+  const currentFile = getFileByUid(uid)
   if (!currentFile) {
-    return;
+    return
   }
-  currentFile.pause = true;
-};
+  currentFile.pause = true
+}
 
 const delUpload = (uid, index) => {
-  const currentFile = getFileByUid(uid);
-  clearMd5Worker(currentFile);
+  const currentFile = getFileByUid(uid)
+  clearMd5Worker(currentFile)
   if (!delList.value.includes(uid)) {
-    delList.value.push(uid);
+    delList.value.push(uid)
   }
-  fileList.value.splice(index, 1);
-};
+  fileList.value.splice(index, 1)
+}
 
 onUnmounted(() => {
-  fileList.value.forEach((item) => {
-    clearMd5Worker(item);
-    stopTransferPolling(item.uid);
-  });
-});
+  fileList.value.forEach(item => {
+    clearMd5Worker(item)
+    stopTransferPolling(item.uid)
+  })
+})
 
-const computeMd5 = (fileItem) => {
-  return new Promise((resolve) => {
-    const worker = createMd5Worker();
-    fileItem.md5Worker = worker;
+const computeMd5 = fileItem => {
+  return new Promise(resolve => {
+    const worker = createMd5Worker()
+    fileItem.md5Worker = worker
 
-    const finish = (result) => {
-      clearMd5Worker(fileItem);
-      resolve(result);
-    };
+    const finish = result => {
+      clearMd5Worker(fileItem)
+      resolve(result)
+    }
 
-    worker.onmessage = (event) => {
-      const data = event.data || {};
+    worker.onmessage = event => {
+      const data = event.data || {}
       if (data.uid !== fileItem.uid) {
-        return;
+        return
       }
 
-      const latestFile = getFileByUid(fileItem.uid);
+      const latestFile = getFileByUid(fileItem.uid)
       if (!latestFile) {
-        finish(null);
-        return;
+        finish(null)
+        return
       }
 
-      if (data.type === "progress") {
-        latestFile.md5Progress = data.progress;
-        return;
+      if (data.type === 'progress') {
+        latestFile.md5Progress = data.progress
+        return
       }
 
-      if (data.type === "done") {
-        latestFile.md5Progress = 100;
-        latestFile.status = STATUS.uploading.value;
-        latestFile.md5 = data.md5;
-        finish(fileItem.uid);
-        return;
+      if (data.type === 'done') {
+        latestFile.md5Progress = 100
+        latestFile.status = STATUS.uploading.value
+        latestFile.md5 = data.md5
+        finish(fileItem.uid)
+        return
       }
 
-      if (data.type === "cancelled") {
-        finish(null);
-        return;
+      if (data.type === 'cancelled') {
+        finish(null)
+        return
       }
 
-      latestFile.md5Progress = -1;
-      latestFile.status = STATUS.fail.value;
-      latestFile.errorMsg = data.errorMsg || "MD5 计算失败";
-      finish(null);
-    };
+      latestFile.md5Progress = -1
+      latestFile.status = STATUS.fail.value
+      latestFile.errorMsg = data.errorMsg || 'MD5 计算失败'
+      finish(null)
+    }
 
     worker.onerror = () => {
-      const latestFile = getFileByUid(fileItem.uid);
+      const latestFile = getFileByUid(fileItem.uid)
       if (latestFile) {
-        latestFile.md5Progress = -1;
-        latestFile.status = STATUS.fail.value;
-        latestFile.errorMsg = "MD5 计算失败";
+        latestFile.md5Progress = -1
+        latestFile.status = STATUS.fail.value
+        latestFile.errorMsg = 'MD5 计算失败'
       }
-      finish(null);
-    };
+      finish(null)
+    }
 
     worker.postMessage({
-      type: "compute",
+      type: 'compute',
       uid: fileItem.uid,
       file: fileItem.file,
       chunkSize,
-    });
-  });
-};
+    })
+  })
+}
 
 const uploadSingleChunk = async (uid, chunkIndex, chunks) => {
-  let currentFile = getFileByUid(uid);
+  let currentFile = getFileByUid(uid)
   if (!currentFile || currentFile.pause || isFileDeleted(uid)) {
-    return null;
+    return null
   }
 
-  const file = currentFile.file;
-  const fileSize = currentFile.totalSize;
-  const start = chunkIndex * chunkSize;
-  const end = start + chunkSize >= fileSize ? fileSize : start + chunkSize;
-  const chunkFile = file.slice(start, end);
-  const chunkRealSize = end - start;
+  const file = currentFile.file
+  const fileSize = currentFile.totalSize
+  const start = chunkIndex * chunkSize
+  const end = start + chunkSize >= fileSize ? fileSize : start + chunkSize
+  const chunkFile = file.slice(start, end)
+  const chunkRealSize = end - start
 
-  currentFile.chunkLoadedMap[chunkIndex] = currentFile.chunkLoadedMap[chunkIndex] || 0;
-  syncUploadProgress(currentFile);
+  currentFile.chunkLoadedMap[chunkIndex] = currentFile.chunkLoadedMap[chunkIndex] || 0
+  syncUploadProgress(currentFile)
 
   // 重试逻辑：最多重试 3 次
-  const maxRetries = 3;
-  let retryCount = 0;
-  let lastError = null;
+  const maxRetries = 3
+  let retryCount = 0
+  let lastError = null
 
   while (retryCount <= maxRetries) {
     try {
-      const uploadResult = await proxy.Request({
-        url: api.upload,
-        showLoading: false,
-        dataType: "file",
-        params: {
+      const { data, errorMsg } = await uploadFileWithError(
+        {
           file: chunkFile,
           fileName: file.name,
           fileMd5: currentFile.md5,
@@ -614,203 +589,215 @@ const uploadSingleChunk = async (uid, chunkIndex, chunks) => {
           fileId: currentFile.fileId,
           filePid: currentFile.filePid,
         },
-        showError: false,
-        errorCallback: (errorMsg) => {
-          lastError = errorMsg;
-          const latestFile = getFileByUid(uid);
+        event => {
+          const latestFile = getFileByUid(uid)
           if (!latestFile) {
-            return;
+            return
           }
-          
-          // 错误分类
-          if (errorMsg.includes("网络") || errorMsg.includes("timeout") || errorMsg.includes("Network")) {
-            latestFile.status = STATUS.network_error.value;
-            latestFile.errorMsg = "网络连接失败，请检查网络后重试";
-          } else if (errorMsg.includes("401") || errorMsg.includes("403") || errorMsg.includes("鉴权")) {
-            latestFile.status = STATUS.auth_error.value;
-            latestFile.errorMsg = "登录已过期，请重新登录";
-          } else if (errorMsg.includes("500") || errorMsg.includes("服务器")) {
-            latestFile.status = STATUS.server_error.value;
-            latestFile.errorMsg = "服务器错误，请稍后重试";
-          } else {
-            latestFile.status = STATUS.fail.value;
-            latestFile.errorMsg = errorMsg;
-          }
-        },
-        uploadProgressCallback: (event) => {
-          const latestFile = getFileByUid(uid);
-          if (!latestFile) {
-            return;
-          }
-          let loaded = event.loaded;
+          let loaded = event.loaded
           if (loaded > chunkRealSize) {
-            loaded = chunkRealSize;
+            loaded = chunkRealSize
           }
-          latestFile.chunkLoadedMap[chunkIndex] = loaded;
-          syncUploadProgress(latestFile);
-        },
-      });
+          latestFile.chunkLoadedMap[chunkIndex] = loaded
+          syncUploadProgress(latestFile)
+        }
+      )
 
-      if (!uploadResult) {
-        // 如果是网络错误且还有重试次数，则重试
-        if (retryCount < maxRetries && lastError && 
-            (lastError.includes("网络") || lastError.includes("timeout") || lastError.includes("Network"))) {
-          retryCount++;
-          const latestFile = getFileByUid(uid);
+      if (!data) {
+        lastError = errorMsg || '网络异常'
+
+        const isRateLimit =
+          !!errorMsg &&
+          (errorMsg.includes('访问过于频繁') || errorMsg.includes('请稍后再试') || errorMsg.includes('频繁'))
+        const isNetwork =
+          !errorMsg || errorMsg.includes('网络') || errorMsg.includes('timeout') || errorMsg.includes('Network')
+        const isRetryable = isNetwork || isRateLimit
+
+        if (retryCount < maxRetries && isRetryable) {
+          retryCount++
+          const latestFile = getFileByUid(uid)
           if (latestFile) {
-            latestFile.status = STATUS.retrying.value;
-            latestFile.errorMsg = `网络错误，正在重试 (${retryCount}/${maxRetries})`;
+            latestFile.status = STATUS.retrying.value
+            latestFile.errorMsg = `上传失败，正在重试 (${retryCount}/${maxRetries})`
           }
           // 指数退避：1s, 2s, 4s
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000));
-          continue;
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000))
+          continue
         }
-        return null;
-      }
 
-      currentFile = getFileByUid(uid);
-      if (!currentFile || isFileDeleted(uid)) {
-        return null;
-      }
-
-      currentFile.fileId = uploadResult.data.fileId || currentFile.fileId;
-      currentFile.chunkLoadedMap[chunkIndex] = chunkRealSize;
-      syncUploadProgress(currentFile);
-      if (STATUS[uploadResult.data.status]) {
-        currentFile.status = STATUS[uploadResult.data.status].value;
-      }
-      currentFile.chunkIndex = Math.max(currentFile.chunkIndex, chunkIndex + 1);
-      return uploadResult;
-    } catch (error) {
-      lastError = error.message || "未知错误";
-      if (retryCount < maxRetries) {
-        retryCount++;
-        const latestFile = getFileByUid(uid);
+        const latestFile = getFileByUid(uid)
         if (latestFile) {
-          latestFile.status = STATUS.retrying.value;
-          latestFile.errorMsg = `上传失败，正在重试 (${retryCount}/${maxRetries})`;
+          if (isRateLimit) {
+            latestFile.status = STATUS.network_error.value
+            latestFile.errorMsg = '访问频繁，请稍后重试'
+          } else if (isNetwork) {
+            latestFile.status = STATUS.network_error.value
+            latestFile.errorMsg = '网络连接失败，请检查网络后重试'
+          } else if (
+            errorMsg &&
+            (errorMsg.includes('401') ||
+              errorMsg.includes('403') ||
+              errorMsg.includes('鉴权') ||
+              errorMsg.includes('登录'))
+          ) {
+            latestFile.status = STATUS.auth_error.value
+            latestFile.errorMsg = '登录已过期，请重新登录'
+          } else if (errorMsg && (errorMsg.includes('500') || errorMsg.includes('服务器'))) {
+            latestFile.status = STATUS.server_error.value
+            latestFile.errorMsg = '服务器错误，请稍后重试'
+          } else {
+            latestFile.status = STATUS.fail.value
+            latestFile.errorMsg = errorMsg || '上传失败'
+          }
         }
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000));
-        continue;
+
+        return null
       }
-      
-      const latestFile = getFileByUid(uid);
+
+      currentFile = getFileByUid(uid)
+      if (!currentFile || isFileDeleted(uid)) {
+        return null
+      }
+
+      currentFile.fileId = data.fileId || currentFile.fileId
+      currentFile.chunkLoadedMap[chunkIndex] = chunkRealSize
+      syncUploadProgress(currentFile)
+      if (STATUS[data.status]) {
+        currentFile.status = STATUS[data.status].value
+      }
+      currentFile.chunkIndex = Math.max(currentFile.chunkIndex, chunkIndex + 1)
+      currentFile.errorMsg = null
+      return data
+    } catch (error) {
+      lastError = error.message || '未知错误'
+      if (retryCount < maxRetries) {
+        retryCount++
+        const latestFile = getFileByUid(uid)
+        if (latestFile) {
+          latestFile.status = STATUS.retrying.value
+          latestFile.errorMsg = `上传失败，正在重试 (${retryCount}/${maxRetries})`
+        }
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 1000))
+        continue
+      }
+
+      const latestFile = getFileByUid(uid)
       if (latestFile) {
-        latestFile.status = STATUS.fail.value;
-        latestFile.errorMsg = lastError;
+        latestFile.status = STATUS.fail.value
+        latestFile.errorMsg = lastError
       }
-      return null;
+      return null
     }
   }
 
-  return null;
-};
+  return null
+}
 
 const uploadChunksWithWindow = async (uid, startChunkIndex, endChunkIndex, chunks) => {
-  let nextChunkIndex = startChunkIndex;
-  const running = new Set();
+  let nextChunkIndex = startChunkIndex
+  const running = new Set()
 
-  const launchOne = (chunkIndex) => {
-    const promise = uploadSingleChunk(uid, chunkIndex, chunks).then((uploadResult) => ({
+  const launchOne = chunkIndex => {
+    const promise = uploadSingleChunk(uid, chunkIndex, chunks).then(uploadResult => ({
       chunkIndex,
       uploadResult,
-    }));
-    running.add(promise);
+    }))
+    running.add(promise)
     promise.finally(() => {
-      running.delete(promise);
-    });
-  };
+      running.delete(promise)
+    })
+  }
 
   while (nextChunkIndex <= endChunkIndex && running.size < uploadWindowSize) {
-    launchOne(nextChunkIndex);
-    nextChunkIndex++;
+    launchOne(nextChunkIndex)
+    nextChunkIndex++
   }
 
   while (running.size > 0) {
-    const { uploadResult } = await Promise.race(running);
+    const { uploadResult } = await Promise.race(running)
     if (!uploadResult) {
-      return;
+      return
     }
     if (handleTerminalStatus(uid, uploadResult)) {
-      return;
+      return
     }
 
-    const currentFile = getFileByUid(uid);
+    const currentFile = getFileByUid(uid)
     if (!currentFile || currentFile.pause || currentFile.status === STATUS.fail.value || isFileDeleted(uid)) {
-      return;
+      return
     }
 
     while (nextChunkIndex <= endChunkIndex && running.size < uploadWindowSize) {
-      launchOne(nextChunkIndex);
-      nextChunkIndex++;
+      launchOne(nextChunkIndex)
+      nextChunkIndex++
     }
   }
-};
+}
 
 const uploadFile = async (uid, chunkIndex) => {
-  const hasChunkIndex = typeof chunkIndex === "number" && !Number.isNaN(chunkIndex);
-  const startChunkIndex = hasChunkIndex ? chunkIndex : 0;
+  const hasChunkIndex = typeof chunkIndex === 'number' && !Number.isNaN(chunkIndex)
+  const startChunkIndex = hasChunkIndex ? chunkIndex : 0
 
-  let currentFile = getFileByUid(uid);
+  let currentFile = getFileByUid(uid)
   if (!currentFile || currentFile.uploading) {
-    return;
+    return
   }
-  currentFile.uploading = true;
+  currentFile.uploading = true
 
   try {
-    const fileSize = currentFile.totalSize;
-    const chunks = Math.ceil(fileSize / chunkSize);
-    let nextChunkIndex = Math.max(startChunkIndex, currentFile.chunkIndex || 0);
+    const fileSize = currentFile.totalSize
+    const chunks = Math.ceil(fileSize / chunkSize)
+    let nextChunkIndex = Math.max(startChunkIndex, currentFile.chunkIndex || 0)
 
     if (nextChunkIndex >= chunks) {
-      return;
+      return
     }
 
     if (chunks > 1 && nextChunkIndex === 0) {
-      const firstResult = await uploadSingleChunk(uid, 0, chunks);
+      const firstResult = await uploadSingleChunk(uid, 0, chunks)
       if (!firstResult || handleTerminalStatus(uid, firstResult)) {
-        return;
+        return
       }
-      nextChunkIndex = 1;
+      nextChunkIndex = 1
     }
 
-    currentFile = getFileByUid(uid);
+    currentFile = getFileByUid(uid)
     if (!currentFile || currentFile.pause || currentFile.status === STATUS.fail.value || isFileDeleted(uid)) {
-      return;
+      return
     }
 
     if (chunks === 1) {
-      const singleResult = await uploadSingleChunk(uid, 0, 1);
+      const singleResult = await uploadSingleChunk(uid, 0, 1)
       if (singleResult) {
-        handleTerminalStatus(uid, singleResult);
+        handleTerminalStatus(uid, singleResult)
       }
-      return;
+      return
     }
 
-    const lastChunkIndex = chunks - 1;
+    const lastChunkIndex = chunks - 1
     if (nextChunkIndex < lastChunkIndex) {
-      await uploadChunksWithWindow(uid, nextChunkIndex, lastChunkIndex - 1, chunks);
+      await uploadChunksWithWindow(uid, nextChunkIndex, lastChunkIndex - 1, chunks)
     }
 
-    currentFile = getFileByUid(uid);
+    currentFile = getFileByUid(uid)
     if (!currentFile || currentFile.pause || currentFile.status === STATUS.fail.value || isFileDeleted(uid)) {
-      return;
+      return
     }
 
     if (currentFile.chunkIndex <= lastChunkIndex) {
-      const lastResult = await uploadSingleChunk(uid, lastChunkIndex, chunks);
+      const lastResult = await uploadSingleChunk(uid, lastChunkIndex, chunks)
       if (lastResult) {
-        handleTerminalStatus(uid, lastResult);
+        handleTerminalStatus(uid, lastResult)
       }
     }
   } finally {
-    const latestFile = getFileByUid(uid);
+    const latestFile = getFileByUid(uid)
     if (latestFile) {
-      latestFile.uploading = false;
+      latestFile.uploading = false
     }
-    clearDeletedMark(uid);
+    clearDeletedMark(uid)
   }
-};
+}
 </script>
 
 <style lang="scss" scoped>

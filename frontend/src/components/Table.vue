@@ -11,7 +11,11 @@
           @row-click="handleRowClick"
           @selection-change="handleSelectionChange"
           v-bind="rowKeyBind"
+          v-loading="loading"
         >
+        <template v-if="(!dataSource?.list || dataSource.list.length == 0) && !loading">
+            <el-empty description="暂无数据" />
+        </template>
           <!-- selection选择框 -->
           <el-table-column
             v-if="options.selectType && options.selectType == 'checkbox'"
@@ -90,21 +94,23 @@ interface TableColumn {
     scopedSlots?: string;
 }
 
-interface DataSource {
-    list: Record<string, unknown>[];
-    totalCount?: number;
-    pageNo: number;
-    pageSize: number;
-}
-
 interface TableOptions {
     extHeight?: number;
     showIndex?: boolean;
     stripe?: boolean;
     border?: boolean;
     selectType?: string;
-    tableHeight?: number;
+    tableHeight?: number | string;
     rowKey?: string;
+}
+
+interface DataSource {
+    list: Record<string, unknown>[];
+    totalCount?: number;
+    pageNo?: number;
+    pageSize?: number;
+    cursor?: string;
+    nextCursor?: string;
 }
 
 const emit = defineEmits<{
@@ -145,6 +151,10 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    loading: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const layout = computed(() => {
@@ -167,8 +177,11 @@ const tableHeight = ref(
 
 const updateTableHeight = () => {
     if (props.options.tableHeight) {
-        tableHeight.value = props.options.tableHeight;
-        return;
+         tableHeight.value = props.options.tableHeight;
+         // If it's a string (e.g. "100%"), we don't need to recalculate on window resize usually, 
+         // but if the parent container resizes, it might depend on CSS. 
+         // However, element-plus table height string/number support handles it.
+         return;
     }
     tableHeight.value = window.innerHeight - topHeight - (props.options.extHeight || 0);
 };

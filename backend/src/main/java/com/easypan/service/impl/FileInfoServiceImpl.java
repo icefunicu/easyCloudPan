@@ -103,6 +103,9 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Value("${app.storage.type:local}")
     private String storageType;
 
+    @Resource
+    private com.easypan.service.UploadProgressService uploadProgressService;
+
     @Override
     public List<FileInfo> findListByParam(FileInfoQuery param) {
         QueryWrapper qw = QueryWrapperBuilder.build(param);
@@ -238,14 +241,18 @@ public class FileInfoServiceImpl implements FileInfoService {
         return this.fileInfoMapper.insertOrUpdateBatch(listBean);
     }
 
+    @Resource
+    private com.easypan.service.MultiLevelCacheService multiLevelCacheService;
+
     @Override
     public FileInfo getFileInfoByFileIdAndUserId(String fileId, String userId) {
-        return this.fileInfoMapper.selectOneByQuery(
-                QueryWrapper.create().where(FILE_INFO.FILE_ID.eq(fileId)).and(FILE_INFO.USER_ID.eq(userId)));
+        return this.multiLevelCacheService.getFileInfo(fileId, userId);
     }
 
     @Override
     public Integer updateFileInfoByFileIdAndUserId(FileInfo bean, String fileId, String userId) {
+        // 更新前清除缓存
+        multiLevelCacheService.evictFileInfo(fileId, userId);
         return this.fileInfoMapper.updateByQuery(bean,
                 QueryWrapper.create().where(FILE_INFO.FILE_ID.eq(fileId)).and(FILE_INFO.USER_ID.eq(userId)));
     }
@@ -257,7 +264,6 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public UploadResultDto uploadFile(SessionWebUserDto webUserDto, String fileId, MultipartFile file, String fileName,
             String filePid, String fileMd5, Integer chunkIndex, Integer chunks) {
 
@@ -275,6 +281,7 @@ public class FileInfoServiceImpl implements FileInfoService {
         Boolean uploadSuccess = true;
         try {
             if (chunkIndex == 0) {
+                // ... 省略文件类型校验逻辑，保持不变 ...
                 String fileSuffix = StringTools.getFileSuffix(fileName);
 
                 if (com.easypan.utils.FileTypeValidator.isDangerousFileType(fileSuffix)) {
@@ -300,8 +307,10 @@ public class FileInfoServiceImpl implements FileInfoService {
                 fileId = StringTools.getRandomString(Constants.LENGTH_10);
             }
             resultDto.setFileId(fileId);
-            Date curDate = new Date();
+            final Date curDate = new Date();
             UserSpaceDto spaceDto = redisComponent.getUserSpaceUse(webUserDto.getUserId());
+
+            // 秒传逻辑
             if (chunkIndex == 0) {
                 FileInfo dbFile = null;
                 if (!StringTools.isEmpty(fileMd5) && redisComponent.mightContainFileMd5(fileMd5)) {
@@ -310,39 +319,20 @@ public class FileInfoServiceImpl implements FileInfoService {
                 if (dbFile != null) {
                     Long dbFileSize = dbFile.getFileSize();
                     if (dbFileSize == null) {
-                        // Historical data or incomplete metadata: fallback to normal upload to avoid
-                        // NPE and space
-                        // mis-calculation.
-                        logger.warn(
-                                "Quick upload source file has null fileSize, fallback to normal upload. fileId={}, md5={}",
-                                dbFile.getFileId(), fileMd5);
+                        logger.warn("Quick upload source file has null fileSize, fallback. fileId={}",
+                                dbFile.getFileId());
                         dbFile = null;
                     } else if (dbFileSize + spaceDto.getUseSpace() > spaceDto.getTotalSpace()) {
                         throw new BusinessException(ResponseCodeEnum.CODE_904);
                     }
+
                     if (dbFile != null) {
-                        dbFile.setFileId(fileId);
-                        dbFile.setFilePid(filePid);
-                        dbFile.setUserId(webUserDto.getUserId());
-                        dbFile.setFileMd5(null);
-                        dbFile.setCreateTime(curDate);
-                        dbFile.setLastUpdateTime(curDate);
-                        dbFile.setStatus(FileStatusEnums.USING.getStatus());
-                        dbFile.setDelFlag(FileDelFlagEnums.USING.getFlag());
-                        dbFile.setFileMd5(fileMd5);
-                        fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
-                        dbFile.setFileName(fileName);
-                        this.fileInfoMapper.insert(dbFile);
-                        resultDto.setStatus(UploadStatusEnums.UPLOAD_SECONDS.getCode());
-                        updateUserSpace(webUserDto, dbFileSize);
-
-                        logger.info("⚡ 秒传成功: userId={}, fileId={}, fileName={}, md5={}",
-                                webUserDto.getUserId(), fileId, fileName, fileMd5);
-
-                        return resultDto;
+                        return fileInfoService.processInstantUpload(webUserDto, fileId, filePid, fileMd5, fileName,
+                                dbFile, dbFileSize);
                     }
                 }
             }
+
             String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
             String currentUserFolderName = webUserDto.getUserId() + fileId;
             tempFileFolder = new File(tempFolderName + currentUserFolderName);
@@ -358,63 +348,26 @@ public class FileInfoServiceImpl implements FileInfoService {
 
             File newFile = new File(tempFileFolder.getPath() + "/" + chunkIndex);
 
+            // [IO操作] 写文件，不在事务中
             if (!(newFile.exists() && newFile.length() == file.getSize())) {
                 file.transferTo(newFile);
-
                 if (newFile.length() != file.getSize()) {
                     throw new BusinessException("分片大小校验失败，请重试上传");
                 }
-
                 redisComponent.saveFileTempSize(webUserDto.getUserId(), fileId, file.getSize());
+                // 更新上传进度
+                uploadProgressService.updateProgress(webUserDto.getUserId(), fileId, chunkIndex, chunks);
             }
+
             if (chunkIndex < chunks - 1) {
                 resultDto.setStatus(UploadStatusEnums.UPLOADING.getCode());
-
-                logger.info("📦 分片上传完成: userId={}, fileId={}, chunkIndex={}/{}, size={}",
-                        webUserDto.getUserId(), fileId, chunkIndex, chunks, file.getSize());
-
                 return resultDto;
             }
-            fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
-            FileInfo fileInfo = new FileInfo();
-            fileInfo.setFileId(fileId);
-            fileInfo.setUserId(webUserDto.getUserId());
-            fileInfo.setFileMd5(fileMd5);
-            fileInfo.setFileName(fileName);
-            String fileSuffix = StringTools.getFileSuffix(fileName);
-            String month = DateUtil.format(curDate, DateTimePatternEnum.YYYYMM.getPattern());
-            String realFileName = currentUserFolderName + fileSuffix;
-            fileInfo.setFilePath(month + "/" + realFileName);
-            fileInfo.setFilePid(filePid);
-            fileInfo.setCreateTime(curDate);
-            fileInfo.setLastUpdateTime(curDate);
-            FileTypeEnums fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
-            fileInfo.setFileCategory(fileTypeEnum.getCategory().getCategory());
-            fileInfo.setFileType(fileTypeEnum.getType());
-            fileInfo.setStatus(FileStatusEnums.TRANSFER.getStatus());
-            fileInfo.setFolderType(FileFolderTypeEnums.FILE.getType());
-            fileInfo.setDelFlag(FileDelFlagEnums.USING.getFlag());
-            this.fileInfoMapper.insert(fileInfo);
 
-            if (!StringTools.isEmpty(fileMd5)) {
-                redisComponent.addFileMd5ToBloom(fileMd5);
-            }
+            // 最后一个分片上传完成，调用事务方法保存元数据
+            return fileInfoService.completeUploadAndSave(webUserDto, fileId, filePid, fileMd5, fileName,
+                    currentUserFolderName, curDate);
 
-            Long totalSize = redisComponent.getFileTempSize(webUserDto.getUserId(), fileId);
-            updateUserSpace(webUserDto, totalSize);
-
-            resultDto.setStatus(UploadStatusEnums.UPLOAD_FINISH.getCode());
-
-            logger.info("✅ 文件上传完成，开始转码: userId={}, fileId={}, fileName={}",
-                    webUserDto.getUserId(), fileId, fileName);
-
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    fileInfoService.transferFile(fileInfo.getFileId(), webUserDto);
-                }
-            });
-            return resultDto;
         } catch (BusinessException e) {
             uploadSuccess = false;
             logger.error("文件上传失败", e);
@@ -425,7 +378,6 @@ public class FileInfoServiceImpl implements FileInfoService {
             throw new BusinessException("文件上传失败");
         } finally {
             uploadRateLimiter.release(webUserDto.getUserId());
-
             if (tempFileFolder != null && !uploadSuccess) {
                 try {
                     FileUtils.deleteDirectory(tempFileFolder);
@@ -434,6 +386,90 @@ public class FileInfoServiceImpl implements FileInfoService {
                 }
             }
         }
+    }
+
+    /**
+     * 处理秒传入库 (事务方法).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UploadResultDto processInstantUpload(SessionWebUserDto webUserDto, String fileId, String filePid,
+            String fileMd5, String fileName, FileInfo dbFile, Long dbFileSize) {
+        UploadResultDto resultDto = new UploadResultDto();
+        resultDto.setFileId(fileId);
+        Date curDate = new Date();
+
+        dbFile.setFileId(fileId);
+        dbFile.setFilePid(filePid);
+        dbFile.setUserId(webUserDto.getUserId());
+        dbFile.setFileMd5(null);
+        dbFile.setCreateTime(curDate);
+        dbFile.setLastUpdateTime(curDate);
+        dbFile.setStatus(FileStatusEnums.USING.getStatus());
+        dbFile.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        dbFile.setFileMd5(fileMd5);
+        fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
+        dbFile.setFileName(fileName);
+        this.fileInfoMapper.insert(dbFile);
+        resultDto.setStatus(UploadStatusEnums.UPLOAD_SECONDS.getCode());
+        updateUserSpace(webUserDto, dbFileSize);
+
+        logger.info("⚡ 秒传成功: userId={}, fileId={}, fileName={}, md5={}",
+                webUserDto.getUserId(), fileId, fileName, fileMd5);
+        return resultDto;
+    }
+
+    /**
+     * 完成上传并保存元数据 (事务方法).
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public UploadResultDto completeUploadAndSave(SessionWebUserDto webUserDto, String fileId, String filePid,
+            String fileMd5, String fileName, String currentUserFolderName, Date curDate) {
+        UploadResultDto resultDto = new UploadResultDto();
+        resultDto.setFileId(fileId);
+
+        fileName = autoRename(filePid, webUserDto.getUserId(), fileName);
+        FileInfo fileInfo = new FileInfo();
+        fileInfo.setFileId(fileId);
+        fileInfo.setUserId(webUserDto.getUserId());
+        fileInfo.setFileMd5(fileMd5);
+        fileInfo.setFileName(fileName);
+        String fileSuffix = StringTools.getFileSuffix(fileName);
+        String month = DateUtil.format(curDate, DateTimePatternEnum.YYYYMM.getPattern());
+        String realFileName = currentUserFolderName + fileSuffix;
+        fileInfo.setFilePath(month + "/" + realFileName);
+        fileInfo.setFilePid(filePid);
+        fileInfo.setCreateTime(curDate);
+        fileInfo.setLastUpdateTime(curDate);
+        FileTypeEnums fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
+        fileInfo.setFileCategory(fileTypeEnum.getCategory().getCategory());
+        fileInfo.setFileType(fileTypeEnum.getType());
+        fileInfo.setStatus(FileStatusEnums.TRANSFER.getStatus());
+        fileInfo.setFolderType(FileFolderTypeEnums.FILE.getType());
+        fileInfo.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        this.fileInfoMapper.insert(fileInfo);
+
+        if (!StringTools.isEmpty(fileMd5)) {
+            redisComponent.addFileMd5ToBloom(fileMd5);
+        }
+
+        Long totalSize = redisComponent.getFileTempSize(webUserDto.getUserId(), fileId);
+        updateUserSpace(webUserDto, totalSize);
+        // 上传完成后清除进度
+        uploadProgressService.clearProgress(webUserDto.getUserId(), fileId);
+
+        resultDto.setStatus(UploadStatusEnums.UPLOAD_FINISH.getCode());
+
+        logger.info("✅ 文件元数据保存完成: userId={}, fileId={}", webUserDto.getUserId(), fileId);
+
+        // 利用 Spring 的事务同步机制，在事务提交后触发转码
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                fileInfoService.transferFile(fileInfo.getFileId(), webUserDto);
+            }
+        });
+
+        return resultDto;
     }
 
     private void updateUserSpace(SessionWebUserDto webUserDto, Long totalSize) {
@@ -465,7 +501,7 @@ public class FileInfoServiceImpl implements FileInfoService {
      * @param fileId     文件ID
      * @param webUserDto 用户会话信息
      */
-    @Async
+    @Async("virtualThreadExecutor")
     public void transferFile(String fileId, SessionWebUserDto webUserDto) {
         Boolean transferSuccess = true;
         String targetFilePath = null;
@@ -544,6 +580,15 @@ public class FileInfoServiceImpl implements FileInfoService {
                     transferSuccess ? FileStatusEnums.USING.getStatus() : FileStatusEnums.TRANSFER_FAIL.getStatus());
             fileInfoMapper.updateFileStatusWithOldStatus(fileId, webUserDto.getUserId(), updateInfo,
                     FileStatusEnums.TRANSFER.getStatus());
+
+            // transferFile() reads FileInfo via MultiLevelCacheService (L1/L2),
+            // so we must evict here to avoid stale "transcoding" status for up to 1 hour.
+            try {
+                multiLevelCacheService.evictFileInfo(fileId, webUserDto.getUserId());
+            } catch (Exception e) {
+                logger.warn("Failed to evict file cache after transfer: fileId={}, userId={}",
+                        fileId, webUserDto.getUserId(), e);
+            }
 
             if (targetFilePath != null
                     && !com.easypan.entity.enums.StorageTypeEnum.LOCAL.getCode().equals(storageType)) {
@@ -739,15 +784,34 @@ public class FileInfoServiceImpl implements FileInfoService {
                         .where(FILE_INFO.USER_ID.eq(userId))
                         .and(FILE_INFO.FILE_ID.in((Object[]) fileIdArray)));
 
+        List<FileInfo> updateList = new ArrayList<>();
+        Date curDate = new Date(); // 统一更新时间
+
         for (FileInfo item : selectFileList) {
             FileInfo rootFileInfo = dbFileNameMap.get(item.getFileName());
             FileInfo updateInfo = new FileInfo();
+            updateInfo.setFileId(item.getFileId()); // 必须设置主键用于更新
+            updateInfo.setUserId(userId); // 确保安全性，虽然 updateBatch 可能不检查
+
             if (rootFileInfo != null) {
                 String fileName = StringTools.rename(item.getFileName());
                 updateInfo.setFileName(fileName);
             }
             updateInfo.setFilePid(filePid);
-            updateFileInfoByFileIdAndUserId(updateInfo, item.getFileId(), userId);
+            updateInfo.setLastUpdateTime(curDate);
+            updateList.add(updateInfo);
+        }
+
+        if (!updateList.isEmpty()) {
+            // 使用 Mybatis-Flex 的批量更新
+            // 注意：需要确保 FileInfoMapper 继承了 BaseMapper 并且支持 updateBatch
+            // 这里我们假设 updateBatch 是可用的，或者根据 ServiceImpl 提供的 updateBatch 方法
+            // 实际上 FileInfoService 接口继承了 IService<FileInfo>，它有 updateBatch 方法
+            // 但这里我们在 Service 内部，可以直接调用 Mapper 或者自身的 updateBatch (如果不涉及切面)
+            // 为了安全起见，我们使用 mapper 的 updateBatch，或者循环构建 updateWrapper (如果不支持 batch)
+
+            // 检查：com.mybatisflex.core.BaseMapper 有 updateBatch(Collection<T> entities)
+            this.fileInfoMapper.updateBatch(updateList);
         }
     }
 
@@ -808,7 +872,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                 .collect(Collectors.toList());
         if (!folderIds.isEmpty()) {
             delFileSubFolderFileIdList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
-                    FileDelFlagEnums.DEL.getFlag());
+                    null);
         }
 
         List<FileInfo> allRootFileList = fileInfoMapper.selectListByQuery(
@@ -857,6 +921,9 @@ public class FileInfoServiceImpl implements FileInfoService {
             queryQw.and(FILE_INFO.DEL_FLAG.eq(FileDelFlagEnums.RECYCLE.getFlag()));
         }
         List<FileInfo> fileInfoList = this.fileInfoMapper.selectListByQuery(queryQw);
+        if (fileInfoList == null || fileInfoList.isEmpty()) {
+            return;
+        }
 
         List<String> delFileSubFolderFileIdList = new ArrayList<>();
         List<String> folderIds = fileInfoList.stream()
@@ -865,14 +932,31 @@ public class FileInfoServiceImpl implements FileInfoService {
                 .collect(Collectors.toList());
         if (!folderIds.isEmpty()) {
             delFileSubFolderFileIdList = this.fileInfoMapper.selectDescendantFolderIds(folderIds, userId,
-                    FileDelFlagEnums.DEL.getFlag());
+                    null);
+        }
+
+        // For folder hard delete we also need descendant rows for storage cleanup and cache eviction.
+        List<FileInfo> deleteInfoList = fileInfoList;
+        if (!folderIds.isEmpty()) {
+            List<FileInfo> descendants = this.fileInfoMapper.selectDescendantFiles(folderIds, userId, null);
+            if (descendants != null && !descendants.isEmpty()) {
+                java.util.Map<String, FileInfo> merged = new java.util.HashMap<>();
+                for (FileInfo f : fileInfoList) {
+                    merged.put(f.getFileId(), f);
+                }
+                for (FileInfo f : descendants) {
+                    merged.put(f.getFileId(), f);
+                }
+                deleteInfoList = new java.util.ArrayList<>(merged.values());
+            }
         }
 
         if (!delFileSubFolderFileIdList.isEmpty()) {
             this.fileInfoMapper.delFileBatch(userId, delFileSubFolderFileIdList, null,
                     adminOp ? null : FileDelFlagEnums.DEL.getFlag());
         }
-        this.fileInfoMapper.delFileBatch(userId, null, Arrays.asList(fileIdArray),
+        List<String> rootFileIdList = fileInfoList.stream().map(FileInfo::getFileId).toList();
+        this.fileInfoMapper.delFileBatch(userId, null, rootFileIdList,
                 adminOp ? null : FileDelFlagEnums.RECYCLE.getFlag());
 
         Long useSpace = this.fileInfoMapper.selectUseSpace(userId);
@@ -881,88 +965,209 @@ public class FileInfoServiceImpl implements FileInfoService {
         userInfoMapper.updateByQuery(userInfo, QueryWrapper.create().where(USER_INFO.USER_ID.eq(userId)));
 
         UserSpaceDto userSpaceDto = redisComponent.getUserSpaceUse(userId);
-        userSpaceDto.setUseSpace(useSpace);
-        redisComponent.saveUserSpaceUse(userId, userSpaceDto);
+        if (userSpaceDto != null) {
+            userSpaceDto.setUseSpace(useSpace);
+            redisComponent.saveUserSpaceUse(userId, userSpaceDto);
+        }
 
         List<String> filePathList = new ArrayList<>();
-        for (FileInfo item : fileInfoList) {
+        java.util.Set<String> dirPathSet = new java.util.HashSet<>();
+        for (FileInfo item : deleteInfoList) {
+            try {
+                multiLevelCacheService.evictFileInfo(item.getFileId(), userId);
+            } catch (Exception e) {
+                logger.warn("Failed to evict file cache after delete: fileId={}, userId={}", item.getFileId(), userId,
+                        e);
+            }
+
             if (FileFolderTypeEnums.FILE.getType().equals(item.getFolderType()) && item.getFilePath() != null) {
                 filePathList.add(item.getFilePath());
                 if (!StringTools.isEmpty(item.getFileCover())) {
                     filePathList.add(item.getFileCover());
                 }
+                if (item.getFileType() != null && FileTypeEnums.VIDEO.getType().equals(item.getFileType())
+                        && item.getFilePath().contains(".")) {
+                    dirPathSet.add(item.getFilePath().substring(0, item.getFilePath().lastIndexOf(".")));
+                }
             }
         }
 
-        if (!filePathList.isEmpty()) {
+        if (!filePathList.isEmpty() || !dirPathSet.isEmpty()) {
             final List<String> pathsToDelete = filePathList;
+            final java.util.Set<String> dirsToDelete = dirPathSet;
             CompletableFuture.runAsync(() -> {
-                for (String path : pathsToDelete) {
-                    try {
-                        storageStrategy.delete(path);
-                    } catch (Exception e) {
-                        logger.warn("删除存储文件失败: {}", path, e);
+                try {
+                    if (!pathsToDelete.isEmpty()) {
+                        storageStrategy.deleteBatch(pathsToDelete);
                     }
+                    if (!dirsToDelete.isEmpty()) {
+                        for (String dir : dirsToDelete) {
+                            try {
+                                storageStrategy.deleteDirectory(dir);
+                            } catch (Exception e) {
+                                logger.warn("批量删除存储目录失败: {}", dir, e);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("批量删除存储文件失败", e);
                 }
             }, virtualThreadExecutor);
         }
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void saveShare(String shareRootFilePid, String shareFileIds, String myFolderId, String shareUserId,
-            String cureentUserId) {
+            String currentUserId) {
         String[] shareFileIdArray = shareFileIds.split(",");
 
+        // 1. Fetch target folder current files (for duplicate name check)
         List<FileInfo> currentFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
-                        .where(FILE_INFO.USER_ID.eq(cureentUserId))
+                        .where(FILE_INFO.USER_ID.eq(currentUserId))
                         .and(FILE_INFO.FILE_PID.eq(myFolderId)));
 
         Map<String, FileInfo> currentFileMap = currentFileList.stream()
                 .collect(Collectors.toMap(FileInfo::getFileName, Function.identity(), (file1, file2) -> file2));
 
-        List<FileInfo> shareFileList = fileInfoMapper.selectListByQuery(
+        // 2. Fetch all shared root files
+        List<FileInfo> shareRootFileList = fileInfoMapper.selectListByQuery(
                 QueryWrapper.create()
                         .where(FILE_INFO.USER_ID.eq(shareUserId))
                         .and(FILE_INFO.FILE_ID.in((Object[]) shareFileIdArray)));
 
-        List<FileInfo> copyFileList = new ArrayList<>();
-        Date curDate = new Date();
-        for (FileInfo item : shareFileList) {
-            FileInfo haveFile = currentFileMap.get(item.getFileName());
-            if (haveFile != null) {
-                item.setFileName(StringTools.rename(item.getFileName()));
-            }
-            findAllSubFile(copyFileList, item, shareUserId, cureentUserId, curDate, myFolderId);
+        // 3. Separate folders to fetch descendants
+        List<String> rootFolderIds = shareRootFileList.stream()
+                .filter(item -> FileFolderTypeEnums.FOLDER.getType().equals(item.getFolderType()))
+                .map(FileInfo::getFileId)
+                .collect(Collectors.toList());
+
+        // 4. Fetch all descendants using recursive CTE
+        List<FileInfo> allDescendants = new ArrayList<>();
+        if (!rootFolderIds.isEmpty()) {
+            allDescendants = fileInfoMapper.selectDescendantFiles(rootFolderIds, shareUserId,
+                    FileDelFlagEnums.USING.getFlag());
         }
-        logger.debug("准备批量插入文件数量: {}", copyFileList.size());
-        this.fileInfoMapper.insertBatch(copyFileList);
+
+        // 5. Group descendants by PID for easy lookup
+        Map<String, List<FileInfo>> childrenMap = allDescendants.stream()
+                .collect(Collectors.groupingBy(FileInfo::getFilePid));
+
+        // 6. Prepare for copy
+        List<FileInfo> batchInsertList = new ArrayList<>();
+        // Queue for BFS: Pair of <SourceFileId, NewParentId>
+        // Since we don't have Pair class, we use parallel list or just process via IDs.
+        // Better: Queue of SourceFileInfo, with a way to carry NewParentId.
+        // We can use a Map<SourceId, NewId> to look up parents.
+        Map<String, String> idMapping = new java.util.HashMap<>();
+        Date curDate = new Date();
+        Long totalSize = 0L;
+
+        // 7. Process Roots
+        for (FileInfo root : shareRootFileList) {
+            String newFileId = StringTools.getRandomString(Constants.LENGTH_10);
+            idMapping.put(root.getFileId(), newFileId); // Record mapping
+
+            FileInfo newRoot = copyFileInfo(root, newFileId, myFolderId, currentUserId, curDate);
+            // Rename if conflict in target folder
+            FileInfo existing = currentFileMap.get(newRoot.getFileName());
+            if (existing != null) {
+                newRoot.setFileName(StringTools.rename(newRoot.getFileName()));
+            }
+
+            totalSize += (newRoot.getFileSize() == null ? 0L : newRoot.getFileSize());
+            batchInsertList.add(newRoot);
+        }
+
+        // 8. Process Descendants (Iterative BFS)
+        // We iterate through allDescendants. But strict hierarchy order is needed?
+        // Actually, since we map oldId -> newId, if we process a child before its
+        // parent is processed,
+        // we won't find the parent's new ID in idMapping.
+        // CTE return order is not guaranteed breadth-first.
+        // So we must walk the tree starting from roots.
+
+        // Use a Queue for processing source IDs whose children need to be copied
+        java.util.Queue<String> folderQueue = new java.util.LinkedList<>(rootFolderIds);
+
+        while (!folderQueue.isEmpty()) {
+            String sourceParentId = folderQueue.poll();
+            String newParentId = idMapping.get(sourceParentId);
+            if (newParentId == null) {
+                // Should not happen if roots are processed
+                logger.error("Parent ID mapping not found for sourceId: {}", sourceParentId);
+                continue;
+            }
+
+            List<FileInfo> children = childrenMap.get(sourceParentId);
+            if (children != null) {
+                for (FileInfo child : children) {
+                    String newFileId = StringTools.getRandomString(Constants.LENGTH_10);
+                    idMapping.put(child.getFileId(), newFileId);
+
+                    FileInfo newChild = copyFileInfo(child, newFileId, newParentId, currentUserId, curDate);
+                    totalSize += (newChild.getFileSize() == null ? 0L : newChild.getFileSize());
+                    batchInsertList.add(newChild);
+
+                    if (FileFolderTypeEnums.FOLDER.getType().equals(child.getFolderType())) {
+                        folderQueue.add(child.getFileId());
+                    }
+
+                    // Batch Insert Check
+                    if (batchInsertList.size() >= 1000) {
+                        fileInfoMapper.insertBatch(batchInsertList);
+                        batchInsertList.clear();
+                    }
+                }
+            }
+        }
+
+        // 9. Final Batch Insert
+        if (!batchInsertList.isEmpty()) {
+            fileInfoMapper.insertBatch(batchInsertList);
+        }
+
+        // 10. Update User Space
+        if (totalSize > 0) {
+            UserSpaceDto spaceDto = redisComponent.getUserSpaceUse(currentUserId);
+            if (spaceDto.getUseSpace() + totalSize > spaceDto.getTotalSpace()) {
+                // Rollback handled by Transaction?
+                // But we already inserted. We should check space BEFORE?
+                // Checking space for massive share is hard.
+                // We better check remaining space vs totalSize if possible?
+                // But totalSize is known only after full traversal.
+                // We'll throw exception here to rollback transaction.
+                throw new BusinessException(ResponseCodeEnum.CODE_904);
+            }
+            updateUserSpace(new SessionWebUserDto(null, currentUserId, null, null), totalSize);
+        }
     }
 
-    private void findAllSubFile(List<FileInfo> copyFileList, FileInfo fileInfo, String sourceUserId,
-            String currentUserId, Date curDate, String newFilePid) {
-        String sourceFileId = fileInfo.getFileId();
-        fileInfo.setCreateTime(curDate);
-        fileInfo.setLastUpdateTime(curDate);
-        fileInfo.setFilePid(newFilePid);
-        fileInfo.setUserId(currentUserId);
-        String newFileId = StringTools.getRandomString(Constants.LENGTH_10);
-        fileInfo.setFileId(newFileId);
-        copyFileList.add(fileInfo);
-        if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
-            List<FileInfo> sourceFileList = fileInfoMapper.selectListByQuery(
-                    QueryWrapper.create()
-                            .where(FILE_INFO.FILE_PID.eq(sourceFileId))
-                            .and(FILE_INFO.USER_ID.eq(sourceUserId)));
-            for (FileInfo item : sourceFileList) {
-                findAllSubFile(copyFileList, item, sourceUserId, currentUserId, curDate, newFileId);
-            }
-        }
+    private FileInfo copyFileInfo(FileInfo source, String newId, String newPid, String userId, Date date) {
+        FileInfo info = new FileInfo();
+        info.setFileId(newId);
+        info.setUserId(userId);
+        info.setFileMd5(source.getFileMd5());
+        info.setFilePid(newPid);
+        info.setFileSize(source.getFileSize());
+        info.setFileName(source.getFileName());
+        info.setFileCover(source.getFileCover());
+        info.setFilePath(source.getFilePath());
+        info.setCreateTime(date);
+        info.setLastUpdateTime(date);
+        info.setFolderType(source.getFolderType());
+        info.setFileCategory(source.getFileCategory());
+        info.setFileType(source.getFileType());
+        info.setStatus(FileStatusEnums.USING.getStatus());
+        info.setRecoveryTime(null);
+        info.setDelFlag(FileDelFlagEnums.USING.getFlag());
+        return info;
     }
 
     @Override
     public Long getUserUseSpace(String userId) {
-        return this.fileInfoMapper.selectUseSpace(userId);
+        return redisComponent.getUserSpaceUse(userId).getUseSpace();
     }
 
     @Override

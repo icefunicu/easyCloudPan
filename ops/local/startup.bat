@@ -32,6 +32,8 @@ REM Map Docker environment variables to Spring Boot properties
 set "SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/%POSTGRES_DB%"
 set "SPRING_DATASOURCE_USERNAME=%POSTGRES_USER%"
 set "SPRING_DATASOURCE_PASSWORD=%POSTGRES_PASSWORD%"
+if not defined SPRING_DATA_REDIS_HOST set "SPRING_DATA_REDIS_HOST=localhost"
+if not defined SPRING_DATA_REDIS_PORT set "SPRING_DATA_REDIS_PORT=6379"
 set "SPRING_DATA_REDIS_PASSWORD=%REDIS_PASSWORD%"
 set "MINIO_ENDPOINT=http://localhost:9000"
 set "MINIO_ACCESS_KEY=%MINIO_ROOT_USER%"
@@ -56,7 +58,8 @@ if not "%COMPOSE_EXIT%"=="0" (
 )
 
 echo [2/4] Starting backend in a new window...
-start "EasyCloudPan Backend" cmd /k "chcp 65001 >nul && cd /d "%REPO_ROOT%\backend" && set JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Dproject.folder="%PROJECT_FOLDER%" && mvn spring-boot:run -Dspring-boot.run.profiles=local"
+set "BACKEND_CMD=chcp 65001 >nul && cd /d "%REPO_ROOT%\backend" && set "JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Dproject.folder=%PROJECT_FOLDER%" && set "SPRING_DATASOURCE_URL=%SPRING_DATASOURCE_URL%" && set "SPRING_DATASOURCE_USERNAME=%SPRING_DATASOURCE_USERNAME%" && set "SPRING_DATASOURCE_PASSWORD=%SPRING_DATASOURCE_PASSWORD%" && set "SPRING_DATA_REDIS_HOST=%SPRING_DATA_REDIS_HOST%" && set "SPRING_DATA_REDIS_PORT=%SPRING_DATA_REDIS_PORT%" && set "SPRING_DATA_REDIS_PASSWORD=%SPRING_DATA_REDIS_PASSWORD%" && set "MINIO_ENDPOINT=%MINIO_ENDPOINT%" && set "MINIO_ACCESS_KEY=%MINIO_ACCESS_KEY%" && set "MINIO_SECRET_KEY=%MINIO_SECRET_KEY%" && set "MINIO_BUCKET_NAME=%MINIO_BUCKET_NAME%" && set "JWT_SECRET=%JWT_SECRET%" && set "JASYPT_ENCRYPTOR_PASSWORD=%JASYPT_ENCRYPTOR_PASSWORD%" && set "SPRING_MAIL_HOST=%SPRING_MAIL_HOST%" && set "SPRING_MAIL_PORT=%SPRING_MAIL_PORT%" && set "SPRING_MAIL_USERNAME=%SPRING_MAIL_USERNAME%" && set "SPRING_MAIL_PASSWORD=%SPRING_MAIL_PASSWORD%" && set "ADMIN_EMAILS=%ADMIN_EMAILS%" && set "LOG_ROOT_LEVEL=%LOG_ROOT_LEVEL%" && set "DEV_MODE=%DEV_MODE%" && set "QQ_APP_ID=%QQ_APP_ID%" && set "QQ_APP_KEY=%QQ_APP_KEY%" && set "OAUTH_GITHUB_CLIENT_ID=%OAUTH_GITHUB_CLIENT_ID%" && set "OAUTH_GITHUB_CLIENT_SECRET=%OAUTH_GITHUB_CLIENT_SECRET%" && set "OAUTH_GITEE_CLIENT_ID=%OAUTH_GITEE_CLIENT_ID%" && set "OAUTH_GITEE_CLIENT_SECRET=%OAUTH_GITEE_CLIENT_SECRET%" && set "OAUTH_GOOGLE_CLIENT_ID=%OAUTH_GOOGLE_CLIENT_ID%" && set "OAUTH_GOOGLE_CLIENT_SECRET=%OAUTH_GOOGLE_CLIENT_SECRET%" && set "OAUTH_MICROSOFT_CLIENT_ID=%OAUTH_MICROSOFT_CLIENT_ID%" && set "OAUTH_MICROSOFT_CLIENT_SECRET=%OAUTH_MICROSOFT_CLIENT_SECRET%" && mvn spring-boot:run -DskipTests"
+start "EasyCloudPan Backend" cmd /k "%BACKEND_CMD%"
 
 echo [3/5] Waiting for backend to be ready...
 powershell -Command "$attempt=0; while($attempt -lt 60){$attempt++; try{$r=Invoke-WebRequest -Uri 'http://localhost:7090/api/actuator/health' -UseBasicParsing -TimeoutSec 2 -ErrorAction SilentlyContinue; if($r.StatusCode -eq 200){Write-Host '[OK] Backend is ready!' -ForegroundColor Green; exit 0}}catch{} Write-Host \"  Waiting... ($attempt/60)\"; Start-Sleep 2}; Write-Host '[WARN] Backend did not become ready within timeout.' -ForegroundColor Yellow"

@@ -2,6 +2,9 @@ package com.easypan.entity.dto;
 
 import com.easypan.service.oauth.OAuthUserInfo;
 
+/**
+ * OAuth 回调 DTO.
+ */
 public class OAuthCallbackDto {
     private boolean loginSuccess;
     private SessionWebUserDto sessionWebUserDto;

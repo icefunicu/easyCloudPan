@@ -1,5 +1,8 @@
 package com.easypan.service.oauth;
 
+/**
+ * OAuth 提供商策略接口.
+ */
 public interface OAuthProviderStrategy {
     String getProviderName(); // "github", "gitee", "google", "microsoft", "qq"
 

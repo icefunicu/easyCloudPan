@@ -173,6 +173,27 @@ public class FileInfoController extends CommonFileController {
         return getSuccessResponseVO(uploadedChunks);
     }
 
+    @Resource
+    private com.easypan.service.UploadProgressService uploadProgressService;
+
+    /**
+     * 获取上传进度.
+     *
+     * @param session HTTP 会话
+     * @param fileId  文件ID
+     * @return 进度信息
+     */
+    @RequestMapping("/getUploadProgress")
+    @GlobalInterceptor(checkParams = true)
+    @Operation(summary = "Get Upload Progress", description = "Get current upload progress")
+    public ResponseVO<com.easypan.entity.dto.UploadProgressDto> getUploadProgress(HttpSession session,
+            @VerifyParam(required = true) String fileId) {
+        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        com.easypan.entity.dto.UploadProgressDto progress = uploadProgressService.getProgress(webUserDto.getUserId(),
+                fileId);
+        return getSuccessResponseVO(progress);
+    }
+
     /**
      * 查询文件转码状态.
      *

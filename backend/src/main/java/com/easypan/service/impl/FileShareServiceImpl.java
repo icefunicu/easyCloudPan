@@ -89,7 +89,7 @@ public class FileShareServiceImpl implements FileShareService {
 
     @Override
     public Integer updateFileShareByShareId(FileShare bean, String shareId) {
-        return this.fileShareMapper.updateByQuery(bean, 
+        return this.fileShareMapper.updateByQuery(bean,
                 QueryWrapper.create().where(FILE_SHARE.SHARE_ID.eq(shareId)));
     }
 
@@ -114,7 +114,7 @@ public class FileShareServiceImpl implements FileShareService {
             share.setCode(StringTools.getRandomString(Constants.LENGTH_5));
         }
         share.setShareId(StringTools.getRandomString(Constants.LENGTH_20));
-        
+
         FileInfo fileInfo = this.fileShareMapper.selectFileInfoByFileId(share.getFileId());
         if (fileInfo != null) {
             share.setFileName(fileInfo.getFileName());
@@ -123,7 +123,7 @@ public class FileShareServiceImpl implements FileShareService {
             share.setFileType(fileInfo.getFileType());
             share.setFileCover(fileInfo.getFileCover());
         }
-        
+
         this.fileShareMapper.insert(share);
     }
 
@@ -154,5 +154,53 @@ public class FileShareServiceImpl implements FileShareService {
         shareSessionDto.setFileId(share.getFileId());
         shareSessionDto.setExpireTime(share.getExpireTime());
         return shareSessionDto;
+    }
+
+    @Override
+    public com.easypan.entity.query.CursorPage<FileShare> findShareListByCursor(String userId, String cursor,
+            Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
+            pageSize = 20;
+        }
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+
+        Date cursorTime = null;
+        String cursorId = null;
+
+        if (cursor != null && !cursor.isEmpty()) {
+            String[] parts = cursor.split("_");
+            if (parts.length >= 2) {
+                try {
+                    cursorTime = new Date(Long.parseLong(parts[0]));
+                    cursorId = parts[1];
+                } catch (NumberFormatException e) {
+                    // Ignore invalid cursor
+                }
+            }
+        }
+
+        int fetchSize = pageSize + 1;
+        List<FileShare> list;
+
+        if (cursorTime == null || cursorId == null) {
+            QueryWrapper qw = QueryWrapper.create()
+                    .where(FILE_SHARE.USER_ID.eq(userId))
+                    .orderBy(FILE_SHARE.SHARE_TIME.desc(), FILE_SHARE.SHARE_ID.desc())
+                    .limit(fetchSize);
+            list = this.fileShareMapper.selectListByQuery(qw);
+        } else {
+            list = this.fileShareMapper.selectByCursorPagination(userId, cursorTime, cursorId, fetchSize);
+        }
+
+        String nextCursor = null;
+        if (list.size() > pageSize) {
+            FileShare lastItem = list.get(pageSize - 1);
+            nextCursor = lastItem.getShareTime().getTime() + "_" + lastItem.getShareId();
+            list = list.subList(0, pageSize);
+        }
+
+        return com.easypan.entity.query.CursorPage.of(list, nextCursor, pageSize);
     }
 }

@@ -10,6 +10,9 @@ import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Google OAuth 登录策略.
+ */
 @Component
 public class GoogleOAuthStrategy implements OAuthProviderStrategy {
 

@@ -1,12 +1,12 @@
 import request from '@/utils/Request'
 import type { ResponseVO, PaginationResultVO } from '@/types'
-import { 
-  adaptFileInfo, 
-  adaptFileInfoList, 
-  adaptFolderList, 
-  adaptUploadResult, 
+import {
+  adaptFileInfo,
+  adaptFileInfoList,
+  adaptFolderList,
+  adaptUploadResult,
   adaptFileInfoPagination,
-  adaptUploadedChunks 
+  adaptUploadedChunks,
 } from '@/adapters'
 import type { FileInfoVO, FolderVO, UploadResultDto, FileInfoQuery } from '@/types'
 
@@ -21,6 +21,7 @@ const api = {
   download: '/api/file/download',
   uploadFile: '/file/uploadFile',
   uploadedChunks: '/file/uploadedChunks',
+  transferStatus: '/file/transferStatus',
   loadAllFolder: '/file/loadAllFolder',
   getImage: '/api/file/getImage',
   getFile: '/file/getFile',
@@ -55,7 +56,7 @@ export interface ChangeFileFolderParams {
 }
 
 export interface UploadFileParams {
-  file: File
+  file: Blob
   fileName: string
   fileMd5: string
   chunkIndex: number
@@ -74,12 +75,15 @@ export interface LoadAllFolderParams {
   currentFileIds?: string
 }
 
-export async function loadDataList(params: LoadDataListParams): Promise<PaginationResultVO<FileInfoVO> | null> {
-  const result = await request({ 
-    url: api.loadDataList, 
+export async function loadDataList(
+  params: LoadDataListParams,
+  showLoading: boolean = true
+): Promise<PaginationResultVO<FileInfoVO> | null> {
+  const result = (await request({
+    url: api.loadDataList,
     params,
-    showLoading: true,
-  }) as ResponseVO<unknown> | null
+    showLoading: showLoading,
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfoPagination(result.data)
   }
@@ -87,7 +91,7 @@ export async function loadDataList(params: LoadDataListParams): Promise<Paginati
 }
 
 export async function rename(params: RenameParams): Promise<FileInfoVO | null> {
-  const result = await request({ url: api.rename, params }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.rename, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfo(result.data)
   }
@@ -95,7 +99,7 @@ export async function rename(params: RenameParams): Promise<FileInfoVO | null> {
 }
 
 export async function newFolder(params: NewFolderParams): Promise<FileInfoVO | null> {
-  const result = await request({ url: api.newFoloder, params }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.newFoloder, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfo(result.data)
   }
@@ -103,11 +107,11 @@ export async function newFolder(params: NewFolderParams): Promise<FileInfoVO | n
 }
 
 export async function getFolderInfo(path: string): Promise<FolderVO[] | null> {
-  const result = await request({ 
-    url: api.getFolderInfo, 
+  const result = (await request({
+    url: api.getFolderInfo,
     params: { path },
     showLoading: false,
-  }) as ResponseVO<unknown[]> | null
+  })) as ResponseVO<unknown[]> | null
   if (result && result.code === 200) {
     return adaptFolderList(result.data)
   }
@@ -123,9 +127,9 @@ export async function changeFileFolder(params: ChangeFileFolderParams): Promise<
 }
 
 export async function createDownloadUrl(fileId: string): Promise<string | null> {
-  const result = await request({ 
+  const result = (await request({
     url: `${api.createDownloadUrl}/${fileId}`,
-  }) as ResponseVO<string> | null
+  })) as ResponseVO<string> | null
   return result?.data ?? null
 }
 
@@ -137,34 +141,79 @@ export async function uploadFile(
   params: UploadFileParams,
   onProgress?: (event: ProgressEvent) => void
 ): Promise<UploadResultDto | null> {
-  const result = await request({ 
+  const result = (await request({
     url: api.uploadFile,
     params,
     dataType: 'file',
     showLoading: false,
     showError: false,
     uploadProgressCallback: onProgress,
-  }) as ResponseVO<unknown> | null
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptUploadResult(result.data)
   }
   return null
 }
 
+export interface UploadFileWithErrorResult {
+  data: UploadResultDto | null
+  errorMsg?: string
+}
+
+export async function uploadFileWithError(
+  params: UploadFileParams,
+  onProgress?: (event: ProgressEvent) => void
+): Promise<UploadFileWithErrorResult> {
+  let errorMsg: string | undefined
+  const result = (await request({
+    url: api.uploadFile,
+    params,
+    dataType: 'file',
+    showLoading: false,
+    showError: false,
+    errorCallback: msg => {
+      errorMsg = msg
+    },
+    uploadProgressCallback: onProgress,
+  })) as ResponseVO<unknown> | null
+
+  if (result && result.code === 200) {
+    return { data: adaptUploadResult(result.data) }
+  }
+
+  return { data: null, errorMsg }
+}
+
 export async function getUploadedChunks(params: UploadedChunksParams): Promise<number[] | null> {
-  const result = await request({ 
+  const result = (await request({
     url: api.uploadedChunks,
     params,
     showLoading: false,
-  }) as ResponseVO<unknown> | null
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptUploadedChunks(result.data)
   }
   return null
 }
 
+export async function getTransferStatus(fileId: string): Promise<number | null> {
+  const result = (await request({
+    url: api.transferStatus,
+    params: { fileId },
+    showLoading: false,
+    showError: false,
+  })) as ResponseVO<unknown> | null
+
+  if (result && result.code === 200) {
+    const raw = result.data as Record<string, unknown>
+    return typeof raw.status === 'number' ? raw.status : Number(raw.status)
+  }
+
+  return null
+}
+
 export async function loadAllFolder(params: LoadAllFolderParams): Promise<FileInfoVO[] | null> {
-  const result = await request({ url: api.loadAllFolder, params }) as ResponseVO<unknown[]> | null
+  const result = (await request({ url: api.loadAllFolder, params })) as ResponseVO<unknown[]> | null
   if (result && result.code === 200) {
     return adaptFileInfoList(result.data)
   }

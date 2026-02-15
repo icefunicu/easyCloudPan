@@ -66,6 +66,12 @@ public class JsonUtils {
         }
     }
 
+    /**
+     * 将 JSON 字符串转换为 Map.
+     *
+     * @param json JSON 字符串
+     * @return Map 对象
+     */
     public static Map<String, Object> convertJson2Map(String json) {
         try {
             return OBJECT_MAPPER.readValue(json,

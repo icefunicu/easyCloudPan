@@ -14,8 +14,15 @@ export interface LoadRecycleListParams {
   pageSize?: number
 }
 
-export async function loadRecycleList(params: LoadRecycleListParams): Promise<PaginationResultVO<FileInfoVO> | null> {
-  const result = await request({ url: api.loadRecycleList, params }) as ResponseVO<unknown> | null
+export async function loadRecycleList(
+  params: LoadRecycleListParams,
+  showLoading: boolean = true
+): Promise<PaginationResultVO<FileInfoVO> | null> {
+  const result = (await request({
+    url: api.loadRecycleList,
+    params,
+    showLoading: showLoading,
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfoPagination(result.data)
   }

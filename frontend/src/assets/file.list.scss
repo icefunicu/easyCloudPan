@@ -1,3 +1,9 @@
+.main {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
 .top {
     margin-top: 20px;
     padding: 0 10px;
@@ -53,6 +59,9 @@
 
 .file-list {
     margin-top: 10px;
+    flex: 1;
+    height: 0; // Force height constraints for flex child
+    overflow: hidden; // Prevent spillover
 
     .file-item {
         position: relative;
@@ -156,12 +165,10 @@
             padding: 0 6px;
             gap: 2px;
             z-index: 2;
-            background: linear-gradient(
-                270deg,
-                rgba(255, 255, 255, 0.92) 0%,
-                rgba(255, 255, 255, 0.86) 70%,
-                rgba(255, 255, 255, 0) 100%
-            );
+            background: linear-gradient(270deg,
+                    rgba(255, 255, 255, 0.92) 0%,
+                    rgba(255, 255, 255, 0.86) 70%,
+                    rgba(255, 255, 255, 0) 100%);
             -webkit-backdrop-filter: blur(6px);
             backdrop-filter: blur(6px);
 
@@ -208,7 +215,8 @@
 }
 
 .no-data {
-    height: calc(100vh - 200px);
+    flex: 1;
+    // height: calc(100vh - 200px); // Removed fixed calc
     display: flex;
     align-items: center;
     justify-content: center;

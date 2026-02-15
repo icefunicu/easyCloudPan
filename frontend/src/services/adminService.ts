@@ -48,7 +48,7 @@ export interface DelFileParams {
 }
 
 export async function loadUserList(params: UserInfoQuery): Promise<PaginationResultVO<UserInfoVO> | null> {
-  const result = await request({ url: api.loadUserList, params }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.loadUserList, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     const raw = result.data as Record<string, unknown>
     return {
@@ -71,7 +71,7 @@ export async function updateUserSpace(params: UpdateUserSpaceParams): Promise<Re
 }
 
 export async function getSysSettings(): Promise<SysSettingsDto | null> {
-  const result = await request({ url: api.getSysSettings }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.getSysSettings })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptSysSettings(result.data)
   }
@@ -82,8 +82,15 @@ export async function saveSysSettings(params: SaveSysSettingsParams): Promise<Re
   return request({ url: api.saveSysSettings, params }) as Promise<ResponseVO<null> | null>
 }
 
-export async function loadFileList(params: LoadFileListParams): Promise<PaginationResultVO<FileInfoVO> | null> {
-  const result = await request({ url: api.loadFileList, params }) as ResponseVO<unknown> | null
+export async function loadFileList(
+  params: LoadFileListParams,
+  showLoading: boolean = true
+): Promise<PaginationResultVO<FileInfoVO> | null> {
+  const result = (await request({
+    url: api.loadFileList,
+    params,
+    showLoading: showLoading,
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfoPagination(result.data)
   }
@@ -95,9 +102,9 @@ export async function delFile(fileIdAndUserIds: string): Promise<ResponseVO<null
 }
 
 export async function createDownloadUrl(userId: string, fileId: string): Promise<string | null> {
-  const result = await request({ 
+  const result = (await request({
     url: `${api.createDownloadUrl}/${userId}/${fileId}`,
-  }) as ResponseVO<string> | null
+  })) as ResponseVO<string> | null
   return result?.data ?? null
 }
 
@@ -106,11 +113,11 @@ export function getDownloadUrl(code: string): string {
 }
 
 export async function getFolderInfo(path: string): Promise<import('@/types').FolderVO[] | null> {
-  const result = await request({ 
-    url: api.getFolderInfo, 
+  const result = (await request({
+    url: api.getFolderInfo,
     params: { path },
     showLoading: false,
-  }) as ResponseVO<unknown[]> | null
+  })) as ResponseVO<unknown[]> | null
   if (result && result.code === 200) {
     return adaptFolderList(result.data)
   }

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.Resource;
 import java.util.Map;
 
+/**
+ * GitHub OAuth 登录策略.
+ */
 @Component
 public class GitHubOAuthStrategy implements OAuthProviderStrategy {
 

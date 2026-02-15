@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="main">
       <div class="top">
           <div class="top-op">
               <div class="btn">
@@ -54,7 +54,18 @@
           <!-- 导航 -->
           <Navigation ref="navigationRef" @nav-change="navChange"></Navigation>
       </div>
-      <div v-if="tableData.list && tableData.list.length > 0" class="file-list">
+      <div 
+        v-if="tableData.list && tableData.list.length > 0" 
+        class="file-list"
+        @drop="handleDrop"
+        @dragover.prevent="isDragOver = true"
+        @dragleave="isDragOver = false"
+        :class="{ 'drag-over': isDragOver }"
+      >
+        <div class="drop-mask" v-if="isDragOver">
+            <span class="iconfont icon-upload"></span>
+            <div class="text">松开鼠标上传文件</div>
+        </div>
         <Table
           ref="dataTableRef"
           :columns="columns"
@@ -141,7 +152,18 @@
         </template>
         </Table>
       </div>
-      <div v-else class="no-data">
+      <div 
+        v-else 
+        class="no-data"
+        @drop="handleDrop"
+        @dragover.prevent="isDragOver = true"
+        @dragleave="isDragOver = false"
+        :class="{ 'drag-over': isDragOver }"
+      >
+        <div class="drop-mask" v-if="isDragOver">
+            <span class="iconfont icon-upload"></span>
+            <div class="text">松开鼠标上传文件</div>
+        </div>
         <div class="no-data-inner">
           <Icon icon-name="no_data" :width="120" fit="fill"></Icon>
           <div class="tips">当前目录为空, 上传你的第一个文件吧</div>
@@ -179,13 +201,30 @@
 <script setup>
 import CategoryInfo from "@/js/CategoryInfo.js";
 import ShareFile from "./ShareFile.vue";
-import { ref, getCurrentInstance, nextTick, computed } from "vue";
+import { ref, getCurrentInstance, nextTick, computed, onMounted, onUnmounted } from "vue";
 import * as fileService from "@/services/fileService";
+import EventBus from '@/utils/EventBus';
+
 const { proxy } = getCurrentInstance();
 
 const emit = defineEmits(["addFile"]);
 const addFile = (fileData) => {
   emit("addFile", { file: fileData.file, filePid: currentFolder.value.fileId });
+};
+
+// 拖拽上传
+const isDragOver = ref(false);
+const handleDrop = (e) => {
+  e.preventDefault();
+  isDragOver.value = false;
+  if (e.dataTransfer.files.length > 0) {
+    for (let i = 0; i < e.dataTransfer.files.length; i++) {
+        emit('addFile', {
+            file: e.dataTransfer.files[i],
+            filePid: currentFolder.value.fileId
+        });
+    }
+  }
 };
 
 // 添加文件回调
@@ -235,6 +274,7 @@ const tableOptions = ref({
     extHeight: 50,
     selectType: "checkbox",
     rowKey: "fileId",
+    tableHeight: "calc(100% - 50px)",
 });
 
 const fileNameFuzzy = ref();
@@ -309,23 +349,42 @@ const saveNameEdit = async (index) => {
         proxy.Message.warning("文件名不能为空且不能含有斜杠");
         return;
     }
+
+    // Optimistic UI for Rename
+    const oldFileName = tableData.value.list[index].fileName;
+    if (fileId != "") {
+        tableData.value.list[index].fileName = fileNameReal;
+    }
+    // End Optimistic
+
     let result;
-    if (fileId == "") {
-        result = await fileService.newFolder({
-            filePid: filePid,
-            fileName: fileNameReal,
-        });
-    } else {
-        result = await fileService.rename({
-            fileId: fileId,
-            fileName: fileNameReal,
-        });
+    try {
+        if (fileId == "") {
+            result = await fileService.newFolder({
+                filePid: filePid,
+                fileName: fileNameReal,
+            });
+        } else {
+            result = await fileService.rename({
+                fileId: fileId,
+                fileName: fileNameReal,
+            });
+        }
+        if (!result) {
+            // Revert on null result
+            if (fileId != "") {
+                tableData.value.list[index].fileName = oldFileName;
+            }
+            return;
+        }
+        tableData.value.list[index] = result;
+        editing.value = false;
+    } catch (e) {
+        // Revert on error
+        if (fileId != "") {
+             tableData.value.list[index].fileName = oldFileName;
+        }
     }
-    if (!result) {
-        return;
-    }
-    tableData.value.list[index] = result;
-    editing.value = false;
 };
 
 const editFileName = (index) => {
@@ -370,11 +429,18 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
+      // Optimistic UI Delete
+      const index = tableData.value.list.findIndex(item => item.fileId === row.fileId);
+      if (index !== -1) {
+          tableData.value.list.splice(index, 1);
+      }
+      
       const result = await fileService.delFile(row.fileId);
       if (!result) {
+        loadDataList(); // Revert/Reload if failed
         return;
       }
-      loadDataList();
+      // loadDataList(); // Removed to avoid reload flash
     }
   );
 };
@@ -386,11 +452,17 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
+      // Optimistic UI Batch Delete
+      const ids = selectFileIdList.value;
+      const backupList = [...tableData.value.list];
+      tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.fileId));
+
       const result = await fileService.delFile(selectFileIdList.value.join(","));
       if (!result) {
+        tableData.value.list = backupList; // Revert
         return;
       }
-      loadDataList();
+      loadDataList(); // Safe reload to accept server state
     }
   );
 };
@@ -468,6 +540,20 @@ const shareRef = ref();
 const share = (row) => {
   shareRef.value.show(row);
 };
+
+// EventBus Listener
+const handleReload = () => {
+    showLoading.value = false;
+    loadDataList();
+};
+
+onMounted(() => {
+    EventBus.on('reload_data', handleReload);
+});
+
+onUnmounted(() => {
+    EventBus.off('reload_data', handleReload);
+});
 </script>
 
 <style lang="scss" scoped>
@@ -496,5 +582,65 @@ const share = (row) => {
       }
     }
   }
+  
+  .file-list .file-item .op {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      align-items: center;
+      padding-right: 10px;
+      z-index: 10;
+      
+      .iconfont {
+          width: 44px;
+          height: 44px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          margin-left: 0 !important;
+          margin-right: 5px;
+          
+          &:hover {
+              background: #f0f0f0;
+              border-radius: 50%;
+          }
+      }
+  }
+}
+
+.file-list {
+    position: relative;
+    &.drag-over {
+        border: 2px dashed var(--primary);
+    }
+    
+    .drop-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 100;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        
+        .iconfont {
+            font-size: 64px;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        
+        .text {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+    }
 }
 </style>

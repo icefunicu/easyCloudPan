@@ -131,8 +131,8 @@ services:
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-dummy_mail_password}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-admin@example.com}
       LOG_ROOT_LEVEL: ${LOG_ROOT_LEVEL:-info}
-      DEV_MODE: "false"
-      SERVER_PORT: 7090
+      DEV_MODE: "${DEV_MODE:-false}"
+      SERVER_PORT: "${SERVER_PORT:-7090}"
     ports:
       - "7090:7090"
     volumes:

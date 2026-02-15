@@ -15,7 +15,14 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompletedMultipartUpload;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartCopyResponse;
 
 import jakarta.annotation.Resource;
 import java.io.File;
@@ -41,7 +48,7 @@ public class S3Component {
     /**
      * 上传文件.
      *
-     * @param key S3 对象键
+     * @param key  S3 对象键
      * @param file 要上传的文件
      */
     public void uploadFile(String key, File file) {
@@ -55,7 +62,7 @@ public class S3Component {
     /**
      * 上传字节数组.
      *
-     * @param key S3 对象键
+     * @param key     S3 对象键
      * @param content 字节数组
      */
     public void uploadBytes(String key, byte[] content) {
@@ -69,7 +76,7 @@ public class S3Component {
     /**
      * 下载到本地文件.
      *
-     * @param key S3 对象键
+     * @param key  S3 对象键
      * @param path 下载到的本地路径
      */
     public void downloadFile(String key, Path path) {
@@ -91,6 +98,33 @@ public class S3Component {
                 .key(key)
                 .build();
         s3Client.deleteObject(deleteObjectRequest);
+    }
+
+    /**
+     * 批量删除文件.
+     *
+     * @param keys S3 对象键列表
+     */
+    public void deleteObjects(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+
+        List<ObjectIdentifier> objectsToDelete = keys.stream()
+                .map(key -> ObjectIdentifier.builder().key(key).build())
+                .collect(Collectors.toList());
+
+        Delete objects = Delete.builder()
+                .objects(objectsToDelete)
+                .quiet(true)
+                .build();
+
+        DeleteObjectsRequest deleteReq = DeleteObjectsRequest.builder()
+                .bucket(bucketName)
+                .delete(objects)
+                .build();
+
+        s3Client.deleteObjects(deleteReq);
     }
 
     /**
@@ -198,7 +232,7 @@ public class S3Component {
      * 异步上传文件到 S3.
      * 使用 Async 注解在 Virtual Thread 上执行。
      *
-     * @param key S3 对象键
+     * @param key  S3 对象键
      * @param file 要上传的文件
      * @return 异步操作结果
      */
@@ -219,7 +253,7 @@ public class S3Component {
      * 异步从 S3 下载文件.
      * 使用 Async 注解在 Virtual Thread 上执行。
      *
-     * @param key S3 对象键
+     * @param key  S3 对象键
      * @param path 下载到的本地路径
      * @return 异步操作结果
      */
@@ -274,5 +308,82 @@ public class S3Component {
             log.error("目录删除失败: {}", prefix, e);
             return CompletableFuture.failedFuture(e);
         }
+    }
+
+    /**
+     * 初始化分片上传.
+     *
+     * @param key S3 对象键
+     * @return uploadId
+     */
+    public String createMultipartUpload(String key) {
+        CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+        return s3Client.createMultipartUpload(createMultipartUploadRequest).uploadId();
+    }
+
+    /**
+     * 复制分片（服务端复制）.
+     *
+     * @param sourceKey      源文件的 Key
+     * @param destinationKey 目标文件的 Key
+     * @param uploadId       分片上传 ID
+     * @param partNumber     分片号
+     * @return CompletedPart
+     */
+    public CompletedPart uploadPartCopy(String sourceKey, String destinationKey, String uploadId, int partNumber) {
+        UploadPartCopyRequest uploadPartCopyRequest = UploadPartCopyRequest.builder()
+                .sourceBucket(bucketName)
+                .sourceKey(sourceKey)
+                .destinationBucket(bucketName)
+                .destinationKey(destinationKey)
+                .uploadId(uploadId)
+                .partNumber(partNumber)
+                .build();
+
+        UploadPartCopyResponse response = s3Client.uploadPartCopy(uploadPartCopyRequest);
+        return CompletedPart.builder()
+                .partNumber(partNumber)
+                .eTag(response.copyPartResult().eTag())
+                .build();
+    }
+
+    /**
+     * 完成分片上传.
+     *
+     * @param key      S3 对象键
+     * @param uploadId 分片上传 ID
+     * @param parts    分片列表
+     */
+    public void completeMultipartUpload(String key, String uploadId, List<CompletedPart> parts) {
+        CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
+                .parts(parts)
+                .build();
+
+        CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .uploadId(uploadId)
+                .multipartUpload(completedMultipartUpload)
+                .build();
+
+        s3Client.completeMultipartUpload(completeMultipartUploadRequest);
+    }
+
+    /**
+     * 中止分片上传.
+     *
+     * @param key      S3 对象键
+     * @param uploadId 分片上传 ID
+     */
+    public void abortMultipartUpload(String key, String uploadId) {
+        AbortMultipartUploadRequest abortMultipartUploadRequest = AbortMultipartUploadRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .uploadId(uploadId)
+                .build();
+        s3Client.abortMultipartUpload(abortMultipartUploadRequest);
     }
 }

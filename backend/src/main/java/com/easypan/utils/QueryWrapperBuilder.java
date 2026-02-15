@@ -33,6 +33,13 @@ public final class QueryWrapperBuilder {
         return build(query, true);
     }
 
+    /**
+     * 构建 FileInfo 查询条件.
+     *
+     * @param query          查询参数
+     * @param applyOrderBy   是否应用排序
+     * @return QueryWrapper
+     */
     public static QueryWrapper build(FileInfoQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         
@@ -126,6 +133,13 @@ public final class QueryWrapperBuilder {
         return build(query, true);
     }
 
+    /**
+     * 构建 UserInfo 查询条件.
+     *
+     * @param query          查询参数
+     * @param applyOrderBy   是否应用排序
+     * @return QueryWrapper
+     */
     public static QueryWrapper build(UserInfoQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         
@@ -173,6 +187,13 @@ public final class QueryWrapperBuilder {
         return build(query, true);
     }
 
+    /**
+     * 构建 FileShare 查询条件.
+     *
+     * @param query          查询参数
+     * @param applyOrderBy   是否应用排序
+     * @return QueryWrapper
+     */
     public static QueryWrapper build(FileShareQuery query, boolean applyOrderBy) {
         QueryWrapper qw = QueryWrapper.create();
         

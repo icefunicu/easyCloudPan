@@ -27,6 +27,9 @@ import java.util.Map;
 
 import static com.easypan.entity.po.table.UserInfoTableDef.USER_INFO;
 
+/**
+ * OAuth 登录服务.
+ */
 @Service
 public class OAuthLoginService {
 
@@ -50,6 +53,9 @@ public class OAuthLoginService {
 
     private Map<String, OAuthProviderStrategy> strategyMap = new HashMap<>();
 
+    /**
+     * 初始化策略映射.
+     */
     @PostConstruct
     public void init() {
         for (OAuthProviderStrategy strategy : strategyList) {
@@ -57,6 +63,13 @@ public class OAuthLoginService {
         }
     }
 
+    /**
+     * 构建 OAuth 授权 URL.
+     *
+     * @param provider OAuth 提供商
+     * @param state    状态参数
+     * @return 授权 URL
+     */
     public String buildAuthorizationUrl(String provider, String state) {
         OAuthProviderStrategy strategy = strategyMap.get(provider);
         if (strategy == null) {
@@ -65,6 +78,13 @@ public class OAuthLoginService {
         return strategy.buildAuthorizationUrl(state);
     }
 
+    /**
+     * OAuth 登录处理.
+     *
+     * @param provider OAuth 提供商
+     * @param code     授权码
+     * @return 登录结果
+     */
     @Transactional(rollbackFor = Exception.class)
     public OAuthCallbackDto login(String provider, String code) {
         OAuthProviderStrategy strategy = strategyMap.get(provider);
@@ -114,6 +134,14 @@ public class OAuthLoginService {
         return result;
     }
 
+    /**
+     * OAuth 用户注册.
+     *
+     * @param provider  OAuth 提供商
+     * @param oauthUser OAuth 用户信息
+     * @param password  密码
+     * @return 会话用户信息
+     */
     @Transactional(rollbackFor = Exception.class)
     public SessionWebUserDto register(String provider, OAuthUserInfo oauthUser, String password) {
         // Double check if user exists (concurrency)

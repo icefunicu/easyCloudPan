@@ -4,8 +4,8 @@
 
 <script setup>
 import * as docx from "docx-preview";
-import { ref, reactive, getCurrentInstance, nextTick, onMounted } from "vue";
-const { proxy } = getCurrentInstance();
+import { ref, onMounted } from "vue";
+import { fetchBlob } from "@/services";
 
 const props = defineProps({
     url: {
@@ -15,10 +15,7 @@ const props = defineProps({
 
 const docRef = ref();
 const initDoc = async () => {
-    const result = await proxy.Request({
-        url: props.url,
-        responseType: "blob",
-    });
+    const result = await fetchBlob(props.url);
     if (!result) {
         return;
     }

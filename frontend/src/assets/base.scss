@@ -98,9 +98,14 @@
     outline: none;
 }
 
-body {
-    padding: 0;
+html, body, #app {
+    height: 100%;
     margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
     font-family: var(--font-body);
     font-size: 14px;
     color: var(--text-secondary);

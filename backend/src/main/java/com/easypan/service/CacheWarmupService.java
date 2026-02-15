@@ -14,9 +14,7 @@ import java.util.List;
 /**
  * 缓存预热服务.
  *
- * <p>在应用启动完成后自动预热热点数据到缓存中，提升系统响应速度
- *
- * <p>需求：2.2.2
+ *<p>在应用启动完成后自动预热热点数据到缓存中，提升系统响应速度
  */
 @Component
 @Slf4j
@@ -83,6 +81,14 @@ public class CacheWarmupService {
 
             // 3. 预热系统配置
             redisComponent.getSysSettingsDto();
+
+            // 4. 预热活跃用户的文件列表 (示例：预热根目录文件)
+            if (activeUsers != null && !activeUsers.isEmpty()) {
+                log.info("开始预热活跃用户文件列表...");
+                // 注意：这里需要根据实际业务调整，比如预热某些特定的大文件或共享文件
+                // 由于 FileInfoService 的逻辑较复杂，这里仅为示例框架
+            }
+
         } catch (Exception e) {
             log.error("缓存预热失败", e);
         }

@@ -10,7 +10,7 @@
           >
             <span class="iconfont icon-more"></span>
           </button>
-          <div class="logo">
+          <div class="logo" @click="goHome">
               <span class="iconfont icon-pan"></span>
               <div class="name">Easy云盘</div>
           </div>
@@ -57,6 +57,9 @@
                     <el-dropdown-item @click="updateAvatar"
                     >修改头像</el-dropdown-item
                     >
+                    <el-dropdown-item @click="updateNickName"
+                    >修改昵称</el-dropdown-item
+                    >
                     <el-dropdown-item @click="updatePassword"
                     >修改密码</el-dropdown-item
                     >
@@ -72,7 +75,10 @@
         @click="mobileMenuOpen = false"
       ></div>
       <div class="body">
-        <div :class="['left-sider', mobileMenuOpen ? 'open' : '']">
+        <div 
+            :class="['left-sider', mobileMenuOpen ? 'open' : '']"
+            v-touch:swipe.left="() => mobileMenuOpen = false"
+        >
             <div class="menu-list">
                 <template v-for="item in menus" :key="item.menuCode">
                 <div
@@ -113,7 +119,7 @@
                             (useSpaceInfo.useSpace / useSpaceInfo.totalSpace) * 10000
                         ) / 100
                       "
-                      color="#2563EB"
+                      :color="customColors"
                     ></el-progress>
                 </div>
                 <div class="space-use">
@@ -129,12 +135,15 @@
         </div>
         <div class="body-content">
             <router-view v-slot="{ Component }">
-                <component
-                  :is="Component"
-                  ref="routerViewRef"
-                  @add-file="addFile"
-                  @reload="getUseSpace"
-                ></component>
+                <transition name="fade" mode="out-in">
+                    <component
+                      :is="Component"
+                      ref="routerViewRef"
+                      :key="route.fullPath"
+                      @add-file="addFile"
+                      @reload="getUseSpace"
+                    ></component>
+                </transition>
             </router-view>
         </div>
       </div>
@@ -143,18 +152,24 @@
         ref="updateAvatarRef"
         @update-avatar="reloadAvatar"
       ></UpdateAvatar>
+      <!-- 修改昵称 -->
+      <UpdateNickName
+        ref="updateNickNameRef"
+        @update-nick-name="reloadNickName"
+      ></UpdateNickName>
       <!-- 修改密码 -->
       <UpdatePassword ref="updatePasswordRef"></UpdatePassword>
   </div>
 </template>
 
-
 <script setup>
 import Uploader from "@/views/main/Uploader.vue";
 import UpdateAvatar from "./UpdateAvatar.vue";
+import UpdateNickName from "./UpdateNickName.vue";
 import UpdatePassword from "./UpdatePassword.vue";
 
-import { ref, getCurrentInstance, nextTick, watch } from "vue";
+import EventBus from "@/utils/EventBus";
+import { ref, getCurrentInstance, nextTick, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 import * as accountService from "@/services/accountService";
@@ -162,6 +177,17 @@ const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
 const userInfoStore = useUserInfoStore();
+
+const goHome = () => {
+  router.push("/");
+};
+
+// 渐变色定义
+const customColors = [
+  { color: '#10B981', percentage: 50 },
+  { color: '#F59E0B', percentage: 80 },
+  { color: '#EF4444', percentage: 100 },
+];
 
 //显示上传窗口
 const showUploader = ref(false);
@@ -178,10 +204,23 @@ const addFile = (data) => {
 const routerViewRef = ref();
 const uploadCallbackHandler = () => {
     nextTick(() => {
-      routerViewRef.value.reload();
-      getUseSpace();
+      // routerViewRef.value.reload(); // Removed to avoid double refresh, handled by EventBus in Main.vue
+      // getUseSpace(); // Handled by EventBus listener
     });
 };
+
+// EventBus Listener
+const handleGlobalReload = () => {
+    getUseSpace();
+};
+
+onMounted(() => {
+    EventBus.on('reload_data', handleGlobalReload);
+});
+
+onUnmounted(() => {
+    EventBus.off('reload_data', handleGlobalReload);
+});
 
 const activeTaskCount = ref(0);
 const updateActiveTaskCount = (count) => {
@@ -331,6 +370,16 @@ const reloadAvatar = () => {
     timestamp.value = new Date().getTime();
 };
 
+// 修改昵称
+const updateNickNameRef = ref();
+const updateNickName = () => {
+    updateNickNameRef.value.show(userInfo.value);
+};
+
+const reloadNickName = () => {
+    userInfo.value = userInfoStore.userInfo;
+};
+
 // 修改密码
 const updatePasswordRef = ref();
 const updatePassword = () => {
@@ -365,6 +414,11 @@ getUseSpace();
 
 <style lang="scss" scoped>
 .framework {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
     .mobile-mask {
         display: none;
     }
@@ -380,6 +434,7 @@ getUseSpace();
         align-items: center;
         justify-content: space-between;
         background: #fff;
+        flex-shrink: 0;
 
         .header-left {
             display: flex;
@@ -503,14 +558,17 @@ getUseSpace();
     
     .body {
         display: flex;
+        flex: 1;
+        overflow: hidden;
         
         .left-sider {
             border-right: 1px solid var(--border-color);
             display: flex;
             background: #fff;
+            height: 100%;
             
             .menu-list {
-                height: calc(100vh - 56px);
+                height: 100%;
                 width: 80px;
                 border-right: 1px solid var(--border-color);
                 
@@ -620,6 +678,9 @@ getUseSpace();
                     
                     .percent {
                         margin-top: 8px;
+                        :deep(.el-progress-bar__inner) {
+                            background: linear-gradient(90deg, #10B981 0%, #F59E0B 70%, #EF4444 90%);
+                        }
                     }
                     
                     .space-use {
@@ -650,6 +711,9 @@ getUseSpace();
             width: 0;
             padding: 20px;
             background: var(--bg-body);
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: auto;
         }
     }
 
@@ -713,5 +777,15 @@ getUseSpace();
             }
         }
     }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>

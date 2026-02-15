@@ -28,8 +28,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick, watch } from "vue";
-const { proxy } = getCurrentInstance();
+import { ref, watch } from "vue";
+import { getFileFolderInfo, getShareFolderInfo, getAdminFolderInfo } from "@/services";
 import { useRouter, useRoute } from "vue-router";
 const router = useRouter();
 const route = useRoute();
@@ -47,12 +47,6 @@ const props = defineProps({
         default: false,
     },
 });
-
-const api = {
-    getFolderInfo: "/file/getFolderInfo",
-    getFolderInfo4Share: "/showShare/getFolderInfo",
-    getFolderInfo4Admin: "/admin/getFolderInfo",
-};
 
 // 分类
 const category = ref();
@@ -121,25 +115,18 @@ const setPath = () => {
 
 // 获取当前路径的目录
 const getNavigationFolder = async (path) => {
-    let url = api.getFolderInfo;
+    let result = null;
     if (props.shareId) {
-        url = api.getFolderInfo4Share;
+        result = await getShareFolderInfo(props.shareId, path);
+    } else if (props.adminShow) {
+        result = await getAdminFolderInfo(path);
+    } else {
+        result = await getFileFolderInfo(path);
     }
-    if (props.adminShow) {
-        url = api.getFolderInfo4Admin;
-    }
-    const result = await proxy.Request({
-        url: url,
-        showLoading: false,
-        params: {
-            path: path,
-            shareId: props.shareId,
-        },
-    });
     if (!result) {
         return;
     }
-    folderList.value = result.data;
+    folderList.value = result;
 };
 
 const emit = defineEmits(["navChange"]);
@@ -151,19 +138,20 @@ const doCallback = () => {
 };
 
 watch(
-    () => route,
-    (newVal, oldVal) => {
+    () => [route.query.path, route.params.category, route.path],
+    (newValues, oldValues) => {
         if (!props.watchPath) {
             return;
         }
-        if (newVal.path.indexOf("/main") === -1 &&
-            newVal.path.indexOf("/settings/fileList") === -1 &&
-            newVal.path.indexOf("/share") === -1
+        const [path, categoryId, routePath] = newValues;
+        
+        if (routePath.indexOf("/main") === -1 &&
+            routePath.indexOf("/settings/fileList") === -1 &&
+            routePath.indexOf("/share") === -1
         ) {
             return;
         }
-        const path = newVal.query.path;
-        category.value = newVal.params.category;
+        category.value = categoryId;
         if (path == undefined) {
             init();
         } else {
@@ -175,7 +163,7 @@ watch(
             doCallback();
         }
     },
-    { immediate: true, deep: true }
+    { immediate: true, deep: false }
 );
 </script>
 

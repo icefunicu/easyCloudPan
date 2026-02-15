@@ -2,6 +2,10 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig, loadEnv, type UserConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import ElementPlus from 'unplugin-element-plus/vite'
 import viteCompression from 'vite-plugin-compression'
 import { VitePWA } from 'vite-plugin-pwa'
 import viteImagemin from 'vite-plugin-imagemin'
@@ -13,6 +17,17 @@ export default defineConfig(({ mode }): UserConfig => {
     base: env.VITE_CDN_URL || '/',
     plugins: [
       vue(),
+      AutoImport({
+        imports: ['vue', 'vue-router', 'pinia'],
+        resolvers: [ElementPlusResolver()],
+        dts: 'src/auto-imports.d.ts',
+      }),
+      Components({
+        // Keep full Element Plus CSS import for now, avoid per-component CSS duplication.
+        resolvers: [ElementPlusResolver({ importStyle: false })],
+        dts: 'src/components.d.ts',
+      }),
+      ElementPlus({ useSource: true }),
       viteCompression({
         verbose: true,
         disable: false,
@@ -47,7 +62,65 @@ export default defineConfig(({ mode }): UserConfig => {
               type: 'image/png'
             }
           ]
-        }
+        },
+        workbox: {
+          // Keep install/update lightweight: do not precache large/rarely-used chunks.
+          globIgnores: [
+            '**/assets/preview-*.js',
+            '**/assets/preview-*.css',
+            '**/assets/media-vendor-*.js',
+            '**/assets/media-vendor-*.css',
+            '**/assets/vendor-*.js',
+            '**/assets/element-plus-*.js',
+            '**/assets/element-plus-*.css',
+            '**/hls.min.js',
+          ],
+          runtimeCaching: [
+            {
+              // Cache built JS/CSS on demand for faster revisits.
+              urlPattern: ({ request, url }) => {
+                if (url.pathname.startsWith('/api/')) return false
+                return request.destination === 'script' || request.destination === 'style'
+              },
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'assets-js-css',
+                expiration: {
+                  maxEntries: 80,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                },
+              },
+            },
+            {
+              urlPattern: ({ request, url }) => {
+                if (url.pathname.startsWith('/api/')) return false
+                return request.destination === 'image'
+              },
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'assets-images',
+                expiration: {
+                  maxEntries: 60,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                },
+              },
+            },
+            {
+              urlPattern: ({ request, url }) => {
+                if (url.pathname.startsWith('/api/')) return false
+                return request.destination === 'font'
+              },
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'assets-fonts',
+                expiration: {
+                  maxEntries: 20,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+              },
+            },
+          ],
+        },
       }),
       viteImagemin({
         gifsicle: {

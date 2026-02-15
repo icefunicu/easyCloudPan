@@ -47,4 +47,12 @@ public interface FileShareMapper extends BaseMapper<FileShare> {
             + "</script>")
     Integer deleteFileShareBatch(@Param("shareIdArray") String[] shareIdArray, @Param("userId") String userId);
 
+    @Select("SELECT * FROM file_share WHERE user_id = #{userId} "
+            + "AND (share_time, share_id) < (#{cursorTime}, #{cursorId}) "
+            + "ORDER BY share_time DESC, share_id DESC LIMIT #{pageSize}")
+    java.util.List<FileShare> selectByCursorPagination(
+            @Param("userId") String userId,
+            @Param("cursorTime") java.util.Date cursorTime,
+            @Param("cursorId") String cursorId,
+            @Param("pageSize") int pageSize);
 }

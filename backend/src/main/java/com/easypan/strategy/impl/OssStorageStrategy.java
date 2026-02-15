@@ -66,6 +66,11 @@ public class OssStorageStrategy implements StorageStrategy {
     }
 
     @Override
+    public void deleteBatch(java.util.List<String> keys) {
+        s3Component.deleteObjects(keys);
+    }
+
+    @Override
     public String getUrl(String path) {
         // In a real scenario, this might return a presigned URL or a CDN URL.
         // For now, consistent with existing logic, we might not use this explicitly

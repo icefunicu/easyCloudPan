@@ -86,11 +86,11 @@ function handleMetric(name: string, metric: { value: number; delta: number; id: 
 }
 
 export function initWebVitals() {
-  onLCP((metric) => handleMetric('LCP', metric))
-  onINP((metric) => handleMetric('INP', metric))
-  onCLS((metric) => handleMetric('CLS', metric))
-  onTTFB((metric) => handleMetric('TTFB', metric))
-  onFCP((metric) => handleMetric('FCP', metric))
+  onLCP(metric => handleMetric('LCP', metric))
+  onINP(metric => handleMetric('INP', metric))
+  onCLS(metric => handleMetric('CLS', metric))
+  onTTFB(metric => handleMetric('TTFB', metric))
+  onFCP(metric => handleMetric('FCP', metric))
 }
 
 export { VITALS_THRESHOLD }

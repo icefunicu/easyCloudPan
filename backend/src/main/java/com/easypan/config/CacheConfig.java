@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Caffeine 本地缓存配置.
  *
- * <p>实现多级缓存策略的本地缓存层：
+ *<p>实现多级缓存策略的本地缓存层：
  * 用户信息缓存：5000 条，10 分钟过期；
  * 系统设置缓存：100 条，30 分钟过期.
  */
@@ -64,6 +64,21 @@ public class CacheConfig {
         return Caffeine.newBuilder()
                 .maximumSize(100)
                 .expireAfterWrite(30, TimeUnit.MINUTES)
+                .recordStats()
+                .build();
+    }
+
+    /**
+     * 文件信息缓存.
+     * 最大 10000 条，10 分钟过期.
+     *
+     * @return 文件信息缓存
+     */
+    @Bean
+    public Cache<String, com.easypan.entity.po.FileInfo> fileInfoCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(10000)
+                .expireAfterWrite(10, TimeUnit.MINUTES)
                 .recordStats()
                 .build();
     }

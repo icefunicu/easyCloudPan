@@ -64,7 +64,8 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
             @Param("oldDelFlag") Integer oldDelFlag);
 
     @Delete("<script>"
-            + "DELETE FROM file_info WHERE user_id = #{userId} AND del_flag = #{oldDelFlag} "
+            + "DELETE FROM file_info WHERE user_id = #{userId} "
+            + "<if test='oldDelFlag != null'>AND del_flag = #{oldDelFlag} </if>"
             + "<if test='filePidList != null and filePidList.size() > 0'>"
             + "AND file_pid IN <foreach collection='filePidList' item='pid' open='(' separator=',' close=')'>#{pid}</foreach>"
             + "</if>"
@@ -85,15 +86,33 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
 
     @Select("<script>"
             + "WITH RECURSIVE descendants AS ("
-            + "SELECT file_id FROM file_info WHERE user_id = #{userId} AND del_flag = #{delFlag} "
+            + "SELECT file_id FROM file_info WHERE user_id = #{userId} "
+            + "<if test='delFlag != null'>AND del_flag = #{delFlag} </if>"
             + "AND file_id IN <foreach collection='fileIdList' item='fid' open='(' separator=',' close=')'>#{fid}</foreach> "
             + "UNION ALL "
             + "SELECT f.file_id FROM file_info f "
             + "INNER JOIN descendants d ON f.file_pid = d.file_id "
-            + "WHERE f.user_id = #{userId} AND f.del_flag = #{delFlag}"
+            + "WHERE f.user_id = #{userId} "
+            + "<if test='delFlag != null'>AND f.del_flag = #{delFlag} </if>"
             + ") SELECT file_id FROM descendants"
             + "</script>")
     List<String> selectDescendantFolderIds(@Param("fileIdList") List<String> fileIdList,
+            @Param("userId") String userId,
+            @Param("delFlag") Integer delFlag);
+
+    @Select("<script>"
+            + "WITH RECURSIVE descendants AS ("
+            + "SELECT * FROM file_info WHERE user_id = #{userId} "
+            + "<if test='delFlag != null'>AND del_flag = #{delFlag} </if>"
+            + "AND file_id IN <foreach collection='fileIdList' item='fid' open='(' separator=',' close=')'>#{fid}</foreach> "
+            + "UNION ALL "
+            + "SELECT f.* FROM file_info f "
+            + "INNER JOIN descendants d ON f.file_pid = d.file_id "
+            + "WHERE f.user_id = #{userId} "
+            + "<if test='delFlag != null'>AND f.del_flag = #{delFlag} </if>"
+            + ") SELECT * FROM descendants"
+            + "</script>")
+    List<FileInfo> selectDescendantFiles(@Param("fileIdList") List<String> fileIdList,
             @Param("userId") String userId,
             @Param("delFlag") Integer delFlag);
 
@@ -115,5 +134,19 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
 
     @Select("SELECT DISTINCT file_md5 FROM file_info WHERE file_md5 IS NOT NULL")
     List<String> selectAllMd5();
+
+    @Update("<script>"
+            + "<foreach collection='list' item='item' separator=';'>"
+            + "UPDATE file_info SET "
+            + "file_pid = #{item.filePid}, "
+            + "file_name = #{item.fileName}, "
+            + "last_update_time = #{item.lastUpdateTime} "
+            + "WHERE file_id = #{item.fileId} AND user_id = #{item.userId}"
+            + "</foreach>"
+            + "</script>")
+    void updateBatch(@Param("list") List<FileInfo> list);
+
+    @Select("SELECT * FROM file_info WHERE file_id = #{fileId} AND user_id = #{userId}")
+    FileInfo selectByFileIdAndUserId(@Param("fileId") String fileId, @Param("userId") String userId);
 
 }

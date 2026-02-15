@@ -42,8 +42,15 @@ export interface CheckShareCodeParams {
   code: string
 }
 
-export async function loadShareList(params: LoadShareListParams): Promise<PaginationResultVO<FileShare> | null> {
-  const result = await request({ url: api.loadShareList, params }) as ResponseVO<unknown> | null
+export async function loadShareList(
+  params: LoadShareListParams,
+  showLoading: boolean = true
+): Promise<PaginationResultVO<FileShare> | null> {
+  const result = (await request({
+    url: api.loadShareList,
+    params,
+    showLoading: showLoading,
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileSharePagination(result.data)
   }
@@ -55,7 +62,7 @@ export async function cancelShare(shareIds: string): Promise<ResponseVO<null> | 
 }
 
 export async function shareFile(params: ShareFileParams): Promise<FileShare | null> {
-  const result = await request({ url: api.shareFile, params }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.shareFile, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     const raw = result.data as Record<string, unknown>
     return {
@@ -76,11 +83,11 @@ export async function shareFile(params: ShareFileParams): Promise<FileShare | nu
 }
 
 export async function getShareLoginInfo(shareId: string): Promise<ShareInfoVO | null> {
-  const result = await request({ 
-    url: api.getShareLoginInfo, 
+  const result = (await request({
+    url: api.getShareLoginInfo,
     params: { shareId },
     showLoading: false,
-  }) as ResponseVO<unknown> | null
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     if (result.data === null) return null
     return adaptShareInfo(result.data)
@@ -88,8 +95,10 @@ export async function getShareLoginInfo(shareId: string): Promise<ShareInfoVO | 
   return null
 }
 
-export async function loadFileList(params: LoadFileListParams): Promise<PaginationResultVO<import('@/types').FileInfoVO> | null> {
-  const result = await request({ url: api.loadFileList, params }) as ResponseVO<unknown> | null
+export async function loadFileList(
+  params: LoadFileListParams
+): Promise<PaginationResultVO<import('@/types').FileInfoVO> | null> {
+  const result = (await request({ url: api.loadFileList, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptFileInfoPagination(result.data)
   }
@@ -97,10 +106,10 @@ export async function loadFileList(params: LoadFileListParams): Promise<Paginati
 }
 
 export async function getShareInfo(shareId: string): Promise<ShareInfoVO | null> {
-  const result = await request({ 
-    url: api.getShareInfo, 
+  const result = (await request({
+    url: api.getShareInfo,
     params: { shareId },
-  }) as ResponseVO<unknown> | null
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptShareInfo(result.data)
   }
@@ -112,9 +121,9 @@ export async function checkShareCode(params: CheckShareCodeParams): Promise<Resp
 }
 
 export async function createDownloadUrl(shareId: string, fileId: string): Promise<string | null> {
-  const result = await request({ 
+  const result = (await request({
     url: `${api.createDownloadUrl}/${shareId}/${fileId}`,
-  }) as ResponseVO<string> | null
+  })) as ResponseVO<string> | null
   return result?.data ?? null
 }
 
@@ -127,11 +136,11 @@ export async function saveShare(params: SaveShareParams): Promise<ResponseVO<nul
 }
 
 export async function getFolderInfo(shareId: string, path: string): Promise<import('@/types').FolderVO[] | null> {
-  const result = await request({ 
-    url: api.getFolderInfo, 
+  const result = (await request({
+    url: api.getFolderInfo,
     params: { shareId, path },
     showLoading: false,
-  }) as ResponseVO<unknown[]> | null
+  })) as ResponseVO<unknown[]> | null
   if (result && result.code === 200) {
     const { adaptFolderList } = await import('@/adapters')
     return adaptFolderList(result.data)

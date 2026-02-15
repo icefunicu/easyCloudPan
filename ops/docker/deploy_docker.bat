@@ -30,6 +30,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+
+if not exist "%DOCKER_DIR%\.env" (
+    echo [INFO] .env not found. Creating from .env.example...
+    copy "%DOCKER_DIR%\.env.example" "%DOCKER_DIR%\.env"
+    echo [OK] Created .env file.
+)
+
 if "%BUILD_IMAGES%"=="1" (
     echo [1/2] Building and starting containers...
     docker compose up -d --build

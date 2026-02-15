@@ -8,13 +8,7 @@
       :show-cancel="showCancel"
       @close="dialogConfig.show = false"
     >
-      <el-form
-        ref="formDataRef"
-        :model="formData"
-        :rules="rules"
-        label-width="100px"
-        @submit.prevent
-      >
+      <el-form ref="formDataRef" :model="formData" :rules="rules" label-width="100px" @submit.prevent>
         <!-- 分享 -->
         <el-form-item label="文件" prop="">
           {{ formData.fileName }}
@@ -48,9 +42,7 @@
         </template>
         <template v-else>
           <!-- 分享链接 -->
-          <el-form-item label="分享链接">
-            {{ shareUrl }}{{ resultInfo.shareId }}
-          </el-form-item>
+          <el-form-item label="分享链接">{{ shareUrl }}{{ resultInfo.shareId }}</el-form-item>
           <!-- 链接提取码 -->
           <el-form-item label="提取码">
             {{ resultInfo.code }}
@@ -66,90 +58,84 @@
 </template>
 
 <script setup>
-import useClipboard from "vue-clipboard3";
-const { toClipboard } = useClipboard();
-import { ref, getCurrentInstance, nextTick } from "vue";
-const { proxy } = getCurrentInstance();
+import useClipboard from 'vue-clipboard3'
+const { toClipboard } = useClipboard()
+import { ref, getCurrentInstance, nextTick } from 'vue'
+import { shareFile } from '@/services'
+const { proxy } = getCurrentInstance()
 
-const shareUrl = ref(document.location.origin + "/share/");
-const api = {
-    shareFile: "/share/shareFile",
-};
+const shareUrl = ref(document.location.origin + '/share/')
 
 // 是否展示分享表单 0:分享表单 1:分享结果
-const showType = ref(0);
-const formData = ref({});
-const formDataRef = ref();
+const showType = ref(0)
+const formData = ref({})
+const formDataRef = ref()
 const rules = {
-    validType: [{ required: true, message: "请选择有效期" }],
-    codeType: [{ required: true, message: "请选择提取码类型" }],
-    code: [
-      { required: true, message: "请输入提取码" },
-      { validator: proxy.Verify.shareCode, message: "请输入提取码" },
-      { min: 5, message: "提取码最少5位" },
-    ],
-};
+  validType: [{ required: true, message: '请选择有效期' }],
+  codeType: [{ required: true, message: '请选择提取码类型' }],
+  code: [
+    { required: true, message: '请输入提取码' },
+    { validator: proxy.Verify.shareCode, message: '请输入提取码' },
+    { min: 5, message: '提取码最少5位' },
+  ],
+}
 
-const showCancel = ref(true);
+const showCancel = ref(true)
 const dialogConfig = ref({
-    show: false,
-    title: "分享",
-    buttons: [
-      {
-        type: "primary",
-        text: "确定",
-        click: () => {
-            share();
-        },
+  show: false,
+  title: '分享',
+  buttons: [
+    {
+      type: 'primary',
+      text: '确定',
+      click: () => {
+        share()
       },
-    ],
-});
+    },
+  ],
+})
 
-const resultInfo = ref({});
+const resultInfo = ref({})
 const share = async () => {
-    if (Object.keys(resultInfo.value).length > 0) {
-        dialogConfig.value.show = false;
-        return;
+  if (Object.keys(resultInfo.value).length > 0) {
+    dialogConfig.value.show = false
+    return
+  }
+  formDataRef.value.validate(async valid => {
+    if (!valid) {
+      return
     }
-    formDataRef.value.validate(async (valid) => {
-        if (!valid) {
-            return;
-        }
-        const params = {};
-        Object.assign(params, formData.value);
-        const result = await proxy.Request({
-            url: api.shareFile,
-            params: params,
-        });
-        if (!result) {
-            return;
-        }
-        showType.value = 1;
-        resultInfo.value = result.data;
-        dialogConfig.value.buttons[0].text = "关闭";
-        showCancel.value = false;
-    });
-};
+    const result = await shareFile({
+      fileId: formData.value.fileId,
+      validType: formData.value.validType,
+      ...(formData.value.codeType == 0 ? { code: formData.value.code } : {}),
+    })
+    if (!result) {
+      return
+    }
+    showType.value = 1
+    resultInfo.value = result
+    dialogConfig.value.buttons[0].text = '关闭'
+    showCancel.value = false
+  })
+}
 
-const show = (data) => {
-  showType.value = 0;
-  dialogConfig.value.show = true;
-  showCancel.value = true;
-  resultInfo.value = {};
+const show = data => {
+  showType.value = 0
+  dialogConfig.value.show = true
+  showCancel.value = true
+  resultInfo.value = {}
   nextTick(() => {
-    formDataRef.value.resetFields();
-    formData.value = Object.assign({}, data);
-  });
-};
-defineExpose({ show });
+    formDataRef.value.resetFields()
+    formData.value = Object.assign({}, data)
+  })
+}
+defineExpose({ show })
 
 const copy = async () => {
-    await toClipboard(
-      `链接:${shareUrl.value}${resultInfo.value.shareId} 提取码:${resultInfo.value.code}`
-    );
-    proxy.Message.success("复制成功");
-};
+  await toClipboard(`链接:${shareUrl.value}${resultInfo.value.shareId} 提取码:${resultInfo.value.code}`)
+  proxy.Message.success('复制成功')
+}
 </script>
 
-<style lang="scss" scoped>
-</style>
+<style lang="scss" scoped></style>

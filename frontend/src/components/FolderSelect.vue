@@ -34,12 +34,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
-const { proxy } = getCurrentInstance();
-
-const api = {
-    loadAllFolder: "/file/loadAllFolder",
-};
+import { ref } from "vue";
+import { loadAllFolder as loadAllFolderService } from "@/services";
 
 const dialogConfig = ref({
     show: false,
@@ -56,22 +52,19 @@ const dialogConfig = ref({
 });
 // 父级ID
 const filePid = ref("0");
-const currentFileIds = ref({});
+const currentFileIds = ref(undefined);
 const folderList = ref([]);
 const currentFolder = ref({});
 
 const loadAllFolder = async () => {
-    const result = await proxy.Request({
-        url: api.loadAllFolder,
-        params: {
-            filePid: filePid.value,
-            currentFileIds: currentFileIds.value,
-        },
+    const result = await loadAllFolderService({
+        filePid: filePid.value,
+        currentFileIds: currentFileIds.value,
     });
     if (!result) {
         return;
     }
-    folderList.value = result.data;
+    folderList.value = result;
 };
 
 const close = () => {
@@ -79,7 +72,7 @@ const close = () => {
 };
 const  showFolderDialog = (currentFolder) => {
     dialogConfig.value.show = true;
-    currentFileIds.value = currentFolder;
+    currentFileIds.value = typeof currentFolder === "string" ? currentFolder : undefined;
     loadAllFolder();
 };
 defineExpose({

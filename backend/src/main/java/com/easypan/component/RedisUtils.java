@@ -51,7 +51,7 @@ public class RedisUtils<V> {
     /**
      * 普通缓存放入.
      *
-     * @param key 键
+     * @param key   键
      * @param value 值
      * @return true成功 false失败
      */
@@ -68,9 +68,9 @@ public class RedisUtils<V> {
     /**
      * 普通缓存放入并设置时间.
      *
-     * @param key 键
+     * @param key   键
      * @param value 值
-     * @param time 时间(秒) time要大于0 如果time小于等于0 将设置无限期
+     * @param time  时间(秒) time要大于0 如果time小于等于0 将设置无限期
      * @return true成功 false失败
      */
     public boolean setex(String key, V value, long time) {
@@ -85,5 +85,70 @@ public class RedisUtils<V> {
             logger.error("设置redisKey:{},value:{}失败", key, value);
             return false;
         }
+    }
+
+    /**
+     * 指定缓存失效时间.
+     *
+     * @param key  键
+     * @param time 时间(秒)
+     * @return boolean
+     */
+    public boolean expire(String key, long time) {
+        try {
+            if (time > 0) {
+                redisTemplate.expire(key, time, TimeUnit.SECONDS);
+            }
+            return true;
+        } catch (Exception e) {
+            logger.error("设置过期时间失败 key:{}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * Set放入.
+     *
+     * @param key    键
+     * @param values 值
+     * @return 成功个数
+     */
+    @SafeVarargs
+    public final long setSet(String key, V... values) {
+        try {
+            return redisTemplate.opsForSet().add(key, values);
+        } catch (Exception e) {
+            logger.error("Set放入失败 key:{}", key, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 获取Set缓存的大小.
+     *
+     * @param key 键
+     * @return long
+     */
+    public long getSetSize(String key) {
+        try {
+            return redisTemplate.opsForSet().size(key);
+        } catch (Exception e) {
+            logger.error("获取Set大小失败 key:{}", key, e);
+            return 0;
+        }
+    }
+
+    /**
+     * 递增.
+     *
+     * @param key   键
+     * @param delta 要增加几(大于0)
+     * @return long
+     */
+    public long increment(String key, long delta) {
+        if (delta < 0) {
+            throw new RuntimeException("递增因子必须大于0");
+        }
+        return redisTemplate.opsForValue().increment(key, delta);
     }
 }

@@ -17,6 +17,7 @@ const api = {
   updatePassword: '/updatePassword',
   updateUserAvatar: '/updateUserAvatar',
   refreshToken: '/refreshToken',
+  updateNickName: '/updateNickName',
 }
 
 export interface SendEmailCodeParams {
@@ -60,7 +61,7 @@ export async function register(params: RegisterParams): Promise<ResponseVO<null>
 }
 
 export async function login(params: LoginParams): Promise<LoginResult | null> {
-  const result = await request({ url: api.login, params }) as ResponseVO<unknown> | null
+  const result = (await request({ url: api.login, params })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptLoginResult(result.data)
   }
@@ -72,23 +73,27 @@ export async function resetPwd(params: ResetPwdParams): Promise<ResponseVO<null>
 }
 
 export async function qqLogin(callbackUrl?: string): Promise<string | null> {
-  const result = await request({ 
-    url: api.qqlogin, 
-    params: { callbackUrl } 
-  }) as ResponseVO<string> | null
+  const result = (await request({
+    url: api.qqlogin,
+    params: { callbackUrl },
+  })) as ResponseVO<string> | null
   return result?.data ?? null
 }
 
-export async function qqLoginCallback(params: QQLoginCallbackParams): Promise<{ userInfo: SessionWebUserDto; redirectUrl: string } | null> {
-  const result = await request({ 
-    url: api.qqloginCallback, 
+export async function qqLoginCallback(
+  params: QQLoginCallbackParams
+): Promise<{ userInfo: SessionWebUserDto; redirectUrl: string } | null> {
+  const result = (await request({
+    url: api.qqloginCallback,
     params,
-    errorCallback: () => {},
-  }) as ResponseVO<{ userInfo: unknown; errorCallback?: string }> | null
+    showLoading: false,
+  })) as ResponseVO<{ userInfo: unknown; callbackUrl?: unknown }> | null
   if (result && result.code === 200) {
+    const redirectUrlRaw = result.data.callbackUrl
+    const redirectUrl = typeof redirectUrlRaw === 'string' && redirectUrlRaw ? redirectUrlRaw : '/'
     return {
       userInfo: adaptSessionWebUser(result.data.userInfo),
-      redirectUrl: result.data.errorCallback || '/',
+      redirectUrl,
     }
   }
   return null
@@ -99,10 +104,10 @@ export async function logout(): Promise<ResponseVO<null> | null> {
 }
 
 export async function getUseSpace(): Promise<UserSpaceDto | null> {
-  const result = await request({ 
-    url: api.getUseSpace, 
-    showLoading: false 
-  }) as ResponseVO<unknown> | null
+  const result = (await request({
+    url: api.getUseSpace,
+    showLoading: false,
+  })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptUserSpace(result.data)
   }
@@ -114,8 +119,8 @@ export async function updatePassword(password: string): Promise<ResponseVO<null>
 }
 
 export async function updateUserAvatar(avatar: File): Promise<ResponseVO<null> | null> {
-  return request({ 
-    url: api.updateUserAvatar, 
+  return request({
+    url: api.updateUserAvatar,
     params: { avatar },
     dataType: 'file',
   }) as Promise<ResponseVO<null> | null>
@@ -125,11 +130,13 @@ export function getAvatarUrl(userId: string): string {
   return `/api${api.getAvatar}/${userId}`
 }
 
-export async function refreshTokenRequest(refreshToken: string): Promise<{ token: string; refreshToken: string } | null> {
-  const result = await request({ 
-    url: api.refreshToken, 
+export async function refreshTokenRequest(
+  refreshToken: string
+): Promise<{ token: string; refreshToken: string } | null> {
+  const result = (await request({
+    url: api.refreshToken,
     params: { refreshToken },
     showError: false,
-  }) as ResponseVO<{ token: string; refreshToken: string }> | null
+  })) as ResponseVO<{ token: string; refreshToken: string }> | null
   return result?.data ?? null
 }

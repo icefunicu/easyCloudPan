@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="file-list-panel">
         <div class="top">
           <div class="top-op">
               <div class="search-panel">
@@ -129,10 +129,17 @@ const search = () => {
   loadDataList();
 };
 
-const tableData = ref({});
+const tableData = ref({
+  list: [],
+  pageNo: 1,
+  pageSize: 15,
+  totalCount: 0,
+  pageTotal: 0,
+});
 const tableOptions = ref({
     extHeight: 50,
     selectType: "checkbox",
+    tableHeight: "calc(100% - 50px)",
 });
 
 // 多选
@@ -148,8 +155,8 @@ const fileNameFuzzy = ref();
 const showLoading = ref(true);
 const loadDataList = async () => {
     const params = {
-        pageNo: tableData.value.pageNo,
-        pageSize: tableData.value.pageSize,
+        pageNo: tableData.value.pageNo || 1,
+        pageSize: tableData.value.pageSize || 15,
         fileNameFuzzy: fileNameFuzzy.value,
         filePid: currentFolder.value.fileId,
     };
@@ -203,11 +210,17 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除后不可还原`,
     async () => {
+      // Optimistic UI
+      const index = tableData.value.list.findIndex(item => item.fileId === row.fileId && item.userId === row.userId);
+      if (index !== -1) {
+          tableData.value.list.splice(index, 1);
+      }
+
       const result = await adminService.delFile(row.userId + "_" + row.fileId);
       if (!result) {
+        loadDataList(); // Revert
         return;
       }
-      loadDataList();
     }
   );
 };
@@ -219,11 +232,19 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除后不可还原`,
     async () => {
+      // Optimistic UI
+      const ids = selectFileIdList.value;
+      const backupList = [...tableData.value.list];
+      tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.userId + "_" + item.fileId));
+
       const result = await adminService.delFile(selectFileIdList.value.join(","));
       if (!result) {
+        tableData.value.list = backupList; // Revert
         return;
       }
-      loadDataList();
+      
+      selectFileIdList.value = [];
+      loadDataList(); // Safe silent reload
     }
   );
 };
@@ -240,11 +261,19 @@ const download = async (row) => {
 
 <style lang="scss" scoped>
 @import "@/assets/file.list.scss";
+.file-list-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
 .search-panel {
     margin-left: 0px !important;
 }
 .file-list {
     margin-top: 10px;
+    flex: 1;
+    height: 0;
+    overflow: hidden;
     .file-item {
         position: relative;
         .op {

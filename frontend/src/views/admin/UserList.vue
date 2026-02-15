@@ -1,6 +1,7 @@
 <template>
-    <div>
-        <div class="top-panel">
+    <div class="user-list-panel">
+    <div class="top-panel">
+        <el-card>
             <el-form
               ref="formDataRef"
               :model="searchFormData"
@@ -8,8 +9,8 @@
               label-width="80px"
               @submit.prevent
             >
-              <el-row>
-                <el-col :span="4">
+              <el-row :gutter="10" align="middle">
+                <el-col :span="6">
                   <!-- 模糊搜索 -->
                   <el-form-item label="用户昵称">
                     <el-input
@@ -20,7 +21,7 @@
                     ></el-input>
                   </el-form-item>
                 </el-col>
-                <el-col :span="4">
+                <el-col :span="5">
                     <!-- 下拉框 -->
                     <el-form-item label="状态">
                         <el-select
@@ -33,12 +34,15 @@
                         </el-select>
                     </el-form-item>
                 </el-col>
-                <el-col :span="4" :style="{ 'padding-left': '10px' }">
+                <el-col :span="13" :style="{ 'padding-left': '10px' }">
                   <el-button type="primary" @click="loadDataList">查询</el-button>
+                  <el-button type="success" @click="batchUpdateStatus(1)" :disabled="selectUserIdList.length == 0">批量启用</el-button>
+                  <el-button type="danger" @click="batchUpdateStatus(0)" :disabled="selectUserIdList.length == 0">批量禁用</el-button>
                 </el-col>
               </el-row>
-        </el-form>
-        </div>
+            </el-form>
+        </el-card>
+    </div>
         <div class="file-list">
           <Table
             ref="dataTableRef"
@@ -60,8 +64,8 @@
               }}
             </template>
             <template #status="{ row }">
-              <span v-if="row.status == 1" style="color: #529b2e">启用</span>
-              <span v-if="row.status == 0" style="color: #f56c62">禁用</span>
+              <el-tag v-if="row.status == 1" type="success">启用</el-tag>
+              <el-tag v-if="row.status == 0" type="danger">禁用</el-tag>
             </template>
             <template #op="{ row }">
               <span class="a-link" @click="updateSpace(row)">分配空间</span>
@@ -91,14 +95,37 @@
               {{ formData.nickName }}
             </el-form-item>
             <!-- 空间分配 -->
-            <el-form-item label="空间大小" prop="changeSpace">
-              <el-input
-                v-model.trim="formData.changeSpace"
+            <el-form-item label="空间大小">
+               <el-input
+                v-model.trim="spaceSize"
                 clearable
                 placeholder="请输入空间大小"
               >
-                <template #suffix>MB</template>
+                 <template #append>
+                    <el-select v-model="spaceUnit" style="width: 100px">
+                        <el-option 
+                            v-for="item in spaceUnits" 
+                            :key="item.value" 
+                            :label="item.label" 
+                            :value="item.value"
+                        />
+                    </el-select>
+                 </template>
               </el-input>
+              <div class="space-presets">
+                  <span class="label">快速选择：</span>
+                  <div class="preset-tags">
+                     <el-tag
+                        v-for="item in presets" 
+                        :key="item.label" 
+                        class="preset-tag"
+                        effect="plain"
+                        @click="selectPreset(item)"
+                     >
+                        {{ item.label }}
+                     </el-tag>
+                  </div>
+              </div>
             </el-form-item>
           </el-form>
         </Dialog>
@@ -155,14 +182,47 @@ const columns = [
 
 const searchFormData = ref({});
 
-const tableData = ref({});
+const tableData = ref({
+  list: [],
+  pageNo: 1,
+  pageSize: 15,
+  totalCount: 0,
+  pageTotal: 0,
+});
 const tableOptions = {
     extHeight: 20,
+    selectType: "checkbox",
+    tableHeight: "calc(100% - 50px)",
 };
+// 多选
+const selectUserIdList = ref([]);
+const rowSelected = (rows) => {
+  selectUserIdList.value = [];
+  rows.forEach((item) => {
+    selectUserIdList.value.push(item.userId);
+  });
+};
+
+const batchUpdateStatus = (status) => {
+    if (selectUserIdList.value.length == 0) return;
+    proxy.Confirm(
+        `你确定要批量${status == 0 ? "禁用" : "启用"}这些用户吗?`,
+        async () => {
+             const result = await adminService.updateUserStatus({
+                userId: selectUserIdList.value.join(','), // Assuming backend supports CSV
+                status: status,
+            });
+            if (!result) return;
+            proxy.Message.success("操作成功");
+            loadDataList();
+        }
+    );
+};
+
 const loadDataList = async () => {
     const params = {
-        pageNo: tableData.value.pageNo,
-        pageSize: tableData.value.pageSize,
+        pageNo: tableData.value.pageNo || 1,
+        pageSize: tableData.value.pageSize || 15,
     };
     Object.assign(params, searchFormData.value);
     const result = await adminService.loadUserList(params);
@@ -176,14 +236,21 @@ const updateUserStatus = (row) => {
     proxy.Confirm(
         `你确定要【${row.status == 0 ? "启用" : "禁用"}】吗?`,
         async () => {
+             // Optimistic UI
+             const oldStatus = row.status;
+             const newStatus = row.status == 0 ? 1 : 0;
+             row.status = newStatus;
+
             const result = await adminService.updateUserStatus({
                 userId: row.userId,
-                status: row.status == 0 ? 1 : 0,
+                status: newStatus,
             });
             if (!result) {
+                // Revert
+                row.status = oldStatus;
                 return;
             }
-            loadDataList();
+            // Success, no need to reload
         }
     );
 };
@@ -205,24 +272,88 @@ const dialogConfig = ref({
 const formData = ref({});
 const formDataRef = ref();
 const rules = {
-    changeSpace: [{ required: true, message: "请输入空间大小" }],
 };
+
+const spaceSize = ref();
+const spaceUnit = ref("MB"); // 默认单位
+const spaceUnits = [
+    { label: "MB", value: "MB" },
+    { label: "GB", value: "GB" },
+    { label: "TB", value: "TB" },
+];
+
+const presets = [
+    { label: "100MB", size: 100, unit: "MB" },
+    { label: "1GB", size: 1, unit: "GB" },
+    { label: "10GB", size: 10, unit: "GB" },
+    { label: "50GB", size: 50, unit: "GB" },
+    { label: "100GB", size: 100, unit: "GB" },
+    { label: "2TB", size: 2, unit: "TB" },
+];
 
 const updateSpace = (data) => {
     dialogConfig.value.show = true;
     nextTick(() => {
         formDataRef.value.resetFields();
         formData.value = Object.assign({}, data);
+        
+        const totalSpaceBytes = data.totalSpace;
+        if (totalSpaceBytes) {
+            if (totalSpaceBytes >= 1024 * 1024 * 1024 * 1024) {
+                spaceSize.value = parseFloat((totalSpaceBytes / (1024 * 1024 * 1024 * 1024)).toFixed(2));
+                spaceUnit.value = "TB";
+            } else if (totalSpaceBytes >= 1024 * 1024 * 1024) {
+                spaceSize.value = parseFloat((totalSpaceBytes / (1024 * 1024 * 1024)).toFixed(2));
+                spaceUnit.value = "GB";
+            } else {
+                spaceSize.value = parseFloat((totalSpaceBytes / (1024 * 1024)).toFixed(2));
+                spaceUnit.value = "MB";
+            }
+        } else {
+            spaceSize.value = 0;
+            spaceUnit.value = "MB";
+        }
     });
+};
+
+const selectPreset = (preset) => {
+    spaceSize.value = preset.size;
+    spaceUnit.value = preset.unit;
 };
 
 const submitForm = () => {
     formDataRef.value.validate(async (valid) => {
-        if (!valid) {
-            return;
+        // changeSpace 校验移除或者改为校验 spaceSize
+        // 由于 rules 绑定在 formData.changeSpace 上，而 Input 绑定了 spaceSize
+        // 需要手动校验 spaceSize 或者调整 rules
+        // 这里简单处理：手动校验 spaceSize
+        
+        let totalMB = 0;
+        const size = Number(spaceSize.value);
+        if (isNaN(size) || size < 0) {
+             proxy.Message.warning("请输入有效的空间大小");
+             return;
         }
-        const params = {};
-        Object.assign(params, formData.value);
+
+        switch (spaceUnit.value) {
+            case "MB":
+                totalMB = size;
+                break;
+            case "GB":
+                totalMB = size * 1024;
+                break;
+            case "TB":
+                totalMB = size * 1024 * 1024;
+                break;
+            default:
+                totalMB = size;
+        }
+
+        const params = {
+            userId: formData.value.userId,
+            changeSpace: Math.floor(totalMB),
+        };
+        
         const result = await adminService.updateUserSpace(params);
         if (!result) {
             return;
@@ -235,17 +366,64 @@ const submitForm = () => {
 </script>
 
 <style lang="scss" scoped>
+.user-list-panel {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
 .top-panel {
     margin-top: 10px;
+}
+.file-list {
+    margin-top: 10px;
+    flex: 1;
+    height: 0;
+    overflow: hidden;
 }
 .avatar {
     width: 50px;
     height: 50px;
-    border-radius: 20px;
+    border-radius: 50%;
     overflow: hidden;
+    transition: transform 0.3s;
+    cursor: pointer;
+    
+    &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
     img {
         width: 100%;
-        height: 100;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+.space-presets {
+    margin-top: 10px;
+    display: flex;
+    align-items: flex-start;
+    .label {
+        font-size: 12px;
+        color: #999;
+        margin-right: 10px;
+        white-space: nowrap;
+        margin-top: 4px;
+    }
+    .preset-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        .preset-tag {
+            cursor: pointer;
+            transition: all 0.3s;
+            &:hover {
+                color: var(--el-color-primary);
+                border-color: var(--el-color-primary);
+                transform: translateY(-2px);
+            }
+        }
     }
 }
 </style>

@@ -23,6 +23,18 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
 
     private static final Logger logger = LoggerFactory.getLogger(MediaTranscodeServiceImpl.class);
 
+    private static final String FFMPEG_PATH;
+
+    static {
+        String path = "";
+        try {
+            path = new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath();
+        } catch (Exception e) {
+            logger.error("Failed to resolve FFmpeg path", e);
+        }
+        FFMPEG_PATH = path;
+    }
+
     @Override
     public boolean createThumbnail(File sourceFile, int width, File targetFile, boolean delSource) {
         try {
@@ -45,7 +57,7 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     public void createVideoCover(File sourceFile, int width, File targetFile) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
+            cmd.add(FFMPEG_PATH);
             cmd.add("-i");
             cmd.add(sourceFile.getAbsolutePath());
             cmd.add("-y");
@@ -65,7 +77,7 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     public void transcodeToTs(String sourceFilePath, String targetTsPath) {
         List<String> cmd = new ArrayList<>();
         // 使用 JAVE2 获取内嵌 FFmpeg 路径
-        cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
+        cmd.add(FFMPEG_PATH);
         cmd.add("-y");
         cmd.add("-i");
         cmd.add(sourceFilePath);
@@ -89,7 +101,7 @@ public class MediaTranscodeServiceImpl implements MediaTranscodeService {
     public void cutToM3u8(String sourceTsPath, String targetFolder, String fileId) {
         List<String> cmd = new ArrayList<>();
         // 使用 JAVE2 获取内嵌 FFmpeg 路径
-        cmd.add(new ws.schild.jave.process.ffmpeg.DefaultFFMPEGLocator().getExecutablePath());
+        cmd.add(FFMPEG_PATH);
         cmd.add("-i");
         cmd.add(sourceTsPath);
         cmd.add("-c");

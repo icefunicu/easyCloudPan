@@ -19,8 +19,7 @@
   </template>
   
 <script setup>
-import { getCurrentInstance } from "vue";
-const { proxy } = getCurrentInstance();
+import { createDownloadCode } from "@/services";
 
 const props = defineProps({
     createDownloadUrl: {
@@ -35,13 +34,11 @@ const props = defineProps({
 });
 
 const download = async () => {
-    const result = await proxy.Request({
-        url: props.createDownloadUrl,
-    });
-    if (!result) {
+    const code = await createDownloadCode(props.createDownloadUrl);
+    if (!code) {
         return;
     }
-    window.location.href = props.downloadUrl + "/" + result.data;
+    window.location.href = props.downloadUrl + "/" + code;
 };
 </script>
 

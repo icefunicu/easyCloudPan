@@ -7,6 +7,7 @@
         label-width="150px"
         @submit.prevent
       >
+        <div class="panel-title">用户注册设置</div>
         <!-- 用户配置 -->
         <el-form-item label="注册邮箱标题" prop="registerEmailTitle">
           <el-input
@@ -98,6 +99,14 @@ const saveSettings = async () => {
         width: min(280px, 100%);
         display: block;
         margin: 0 auto;
+    }
+    
+    .panel-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        padding-left: 10px;
+        border-left: 4px solid var(--primary);
     }
 }
 </style>

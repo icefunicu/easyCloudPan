@@ -1,9 +1,10 @@
-package com.easypan.unit.service;
+package com.easypan.service;
 
 import com.easypan.component.S3Component;
 import com.easypan.entity.dto.UploadResultDto;
 import com.easypan.exception.BusinessException;
-import com.easypan.service.ChunkUploadService;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class ChunkUploadServiceTest {
     @Mock
     private MultipartFile chunkFile;
 
+    @Mock
+    private org.springframework.core.task.AsyncTaskExecutor virtualThreadExecutor;
+
     @InjectMocks
     private ChunkUploadService chunkUploadService;
 
@@ -48,6 +52,7 @@ class ChunkUploadServiceTest {
         userId = "user123";
         fileMd5 = "abc123def456";
         lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        ReflectionTestUtils.setField(chunkUploadService, "virtualThreadExecutor", virtualThreadExecutor);
     }
 
     @Test

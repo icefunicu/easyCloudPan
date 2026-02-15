@@ -20,12 +20,15 @@ import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * OAuth 登录控制器.
+ */
 @RestController
 @RequestMapping("/oauth")
 public class OAuthController extends ABaseController {
 
     @Resource
-    private OAuthLoginService oAuthLoginService;
+    private OAuthLoginService oauthLoginService;
 
     @Resource
     private com.easypan.component.JwtTokenProvider jwtTokenProvider;
@@ -46,7 +49,7 @@ public class OAuthController extends ABaseController {
             String callbackUrl) {
         String state = StringTools.getRandomString(Constants.LENGTH_30);
         session.setAttribute(state, callbackUrl);
-        String url = oAuthLoginService.buildAuthorizationUrl(provider, state);
+        String url = oauthLoginService.buildAuthorizationUrl(provider, state);
         return getSuccessResponseVO(url);
     }
 
@@ -65,7 +68,7 @@ public class OAuthController extends ABaseController {
 
         String cachedCallbackUrl = (String) session.getAttribute(state);
 
-        OAuthCallbackDto callbackDto = oAuthLoginService.login(provider, code);
+        OAuthCallbackDto callbackDto = oauthLoginService.login(provider, code);
         Map<String, Object> result = new HashMap<>();
 
         if (callbackDto.isLoginSuccess()) {
@@ -120,7 +123,7 @@ public class OAuthController extends ABaseController {
         OAuthUserInfo oauthUser = (OAuthUserInfo) cached;
 
         // 注册用户
-        SessionWebUserDto sessionWebUserDto = oAuthLoginService.register(
+        SessionWebUserDto sessionWebUserDto = oauthLoginService.register(
                 oauthUser.getProvider(), oauthUser, password);
         session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
 

@@ -84,4 +84,6 @@ public class Constants {
 
     public static final String REDIS_KEY_REFRESH_TOKEN = "easypan:jwt:refresh:";
 
+    public static final String REDIS_KEY_USER_INFO = "easypan:user:info:";
+
 }

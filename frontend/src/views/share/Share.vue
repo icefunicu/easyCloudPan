@@ -154,27 +154,33 @@ const cancelShareBatch = () => {
     cancelShareIdList.value = selectIdList.value;
     cancelShareDone();
 };
-
 const cancelShare = (row) => {
     cancelShareIdList.value = [row.shareId];
     cancelShareDone();
 };
 
-const cancelShareDone = () => {
+const cancelShareDone = async () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
+        // Optimistic UI
+        const ids = cancelShareIdList.value;
+        const backupList = [...tableData.value.list];
+        tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.shareId));
+
         const result = await shareService.cancelShare(cancelShareIdList.value.join(","));
         if (!result) {
+            tableData.value.list = backupList; // Revert
             return;
         }
         proxy.Message.success("取消分享成功");
-        loadDataList();
+        selectIdList.value = [];
+        loadDataList(); // Safe silent reload
     });
 };
 </script>
 
 <style lang="scss" scoped>
 @import "@/assets/file.list.scss";
-.file-list {
+.file-list { 
     margin-top: 10px;
     .file-item {
         .file-name {

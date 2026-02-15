@@ -109,7 +109,10 @@ const router = createRouter({
   routes: routes
 })
 
+import request, { cancelAllPendingRequests } from "@/utils/Request";
+
 router.beforeEach((to, from, next) => {
+  cancelAllPendingRequests();
   const userInfoStore = useUserInfoStore();
   const userInfo = userInfoStore.userInfo;
   if (to.meta.needLogin != null && to.meta.needLogin && userInfo == null) {

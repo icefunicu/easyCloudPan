@@ -71,7 +71,7 @@ public interface FileShareService {
     /**
      * 根据分享ID修改.
      *
-     * @param bean 实体对象
+     * @param bean    实体对象
      * @param shareId 分享ID
      * @return 影响行数
      */
@@ -96,7 +96,7 @@ public interface FileShareService {
      * 批量删除分享.
      *
      * @param shareIdArray 分享ID数组
-     * @param userId 用户ID
+     * @param userId       用户ID
      */
     void deleteFileShareBatch(String[] shareIdArray, String userId);
 
@@ -104,8 +104,19 @@ public interface FileShareService {
      * 校验分享码.
      *
      * @param shareId 分享ID
-     * @param code 分享码
+     * @param code    分享码
      * @return 分享会话信息
      */
     SessionShareDto checkShareCode(String shareId, String code);
+
+    /**
+     * 游标分页查询分享列表.
+     *
+     * @param userId   用户ID
+     * @param cursor   游标
+     * @param pageSize 每页数量
+     * @return 游标分页结果
+     */
+    com.easypan.entity.query.CursorPage<FileShare> findShareListByCursor(String userId, String cursor,
+            Integer pageSize);
 }
