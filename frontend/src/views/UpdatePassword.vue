@@ -9,6 +9,7 @@
           @close="dialogConfig.show = false"
         >
           <el-form
+            class="profile-form"
             ref="formDataRef"
             :model="formData"
             :rules="rules"
@@ -119,4 +120,12 @@ const submitForm = async () => {
 </script>
 
 <style lang="scss" scoped>
+.profile-form {
+  padding-top: 6px;
+
+  :deep(.el-form-item__label) {
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+}
 </style>

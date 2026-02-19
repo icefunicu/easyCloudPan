@@ -221,6 +221,46 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     @Override
+    public com.easypan.entity.query.CursorPage<FileInfo> findListByCursorWithFilter(
+            String userId, String filePid, Integer delFlag, Integer category,
+            String cursor, Integer pageSize) {
+        if (pageSize == null || pageSize <= 0) {
+            pageSize = 20;
+        }
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+
+        Date cursorTime = null;
+        String cursorId = null;
+
+        if (cursor != null && !cursor.isEmpty()) {
+            String[] parts = cursor.split("_");
+            if (parts.length >= 2) {
+                try {
+                    cursorTime = new Date(Long.parseLong(parts[0]));
+                    cursorId = parts[1];
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid cursor format: {}", cursor);
+                }
+            }
+        }
+
+        int fetchSize = pageSize + 1;
+        List<FileInfo> list = this.fileInfoMapper.selectByCursorWithFilter(
+                userId, filePid, delFlag, category, null, cursorTime, cursorId, fetchSize);
+
+        String nextCursor = null;
+        if (list.size() > pageSize) {
+            FileInfo lastItem = list.get(pageSize - 1);
+            nextCursor = lastItem.getCreateTime().getTime() + "_" + lastItem.getFileId();
+            list = list.subList(0, pageSize);
+        }
+
+        return com.easypan.entity.query.CursorPage.of(list, nextCursor, pageSize);
+    }
+
+    @Override
     public Integer add(FileInfo bean) {
         return this.fileInfoMapper.insert(bean);
     }
@@ -898,14 +938,24 @@ public class FileInfoServiceImpl implements FileInfoService {
         this.fileInfoMapper.updateFileDelFlagBatch(fileInfo, userId, null, delFileIdList,
                 FileDelFlagEnums.RECYCLE.getFlag());
 
+        // Batch update renamed files (avoid N+1)
+        Date updateTime = new Date();
+        List<FileInfo> renameList = new ArrayList<>();
         for (FileInfo item : fileInfoList) {
             FileInfo rootFileInfo = rootFileMap.get(item.getFileName());
             if (rootFileInfo != null) {
                 String fileName = StringTools.rename(item.getFileName());
                 FileInfo updateInfo = new FileInfo();
+                updateInfo.setFileId(item.getFileId());
+                updateInfo.setUserId(userId);
+                updateInfo.setFilePid(Constants.ZERO_STR);
                 updateInfo.setFileName(fileName);
-                updateFileInfoByFileIdAndUserId(updateInfo, item.getFileId(), userId);
+                updateInfo.setLastUpdateTime(updateTime);
+                renameList.add(updateInfo);
             }
+        }
+        if (!renameList.isEmpty()) {
+            this.fileInfoMapper.updateBatch(renameList);
         }
     }
 
@@ -1054,20 +1104,32 @@ public class FileInfoServiceImpl implements FileInfoService {
         Map<String, List<FileInfo>> childrenMap = allDescendants.stream()
                 .collect(Collectors.groupingBy(FileInfo::getFilePid));
 
-        // 6. Prepare for copy
+        // 6. Pre-calculate total size BEFORE any insertion (space pre-check)
+        Long totalSize = 0L;
+        for (FileInfo root : shareRootFileList) {
+            totalSize += (root.getFileSize() == null ? 0L : root.getFileSize());
+        }
+        for (FileInfo desc : allDescendants) {
+            totalSize += (desc.getFileSize() == null ? 0L : desc.getFileSize());
+        }
+
+        // 7. Pre-check space availability
+        if (totalSize > 0) {
+            UserSpaceDto spaceDto = redisComponent.getUserSpaceUse(currentUserId);
+            if (spaceDto.getUseSpace() + totalSize > spaceDto.getTotalSpace()) {
+                throw new BusinessException(ResponseCodeEnum.CODE_904);
+            }
+        }
+
+        // 8. Prepare for copy
         List<FileInfo> batchInsertList = new ArrayList<>();
-        // Queue for BFS: Pair of <SourceFileId, NewParentId>
-        // Since we don't have Pair class, we use parallel list or just process via IDs.
-        // Better: Queue of SourceFileInfo, with a way to carry NewParentId.
-        // We can use a Map<SourceId, NewId> to look up parents.
         Map<String, String> idMapping = new java.util.HashMap<>();
         Date curDate = new Date();
-        Long totalSize = 0L;
 
-        // 7. Process Roots
+        // 9. Process Roots
         for (FileInfo root : shareRootFileList) {
             String newFileId = StringTools.getRandomString(Constants.LENGTH_10);
-            idMapping.put(root.getFileId(), newFileId); // Record mapping
+            idMapping.put(root.getFileId(), newFileId);
 
             FileInfo newRoot = copyFileInfo(root, newFileId, myFolderId, currentUserId, curDate);
             // Rename if conflict in target folder
@@ -1076,26 +1138,16 @@ public class FileInfoServiceImpl implements FileInfoService {
                 newRoot.setFileName(StringTools.rename(newRoot.getFileName()));
             }
 
-            totalSize += (newRoot.getFileSize() == null ? 0L : newRoot.getFileSize());
             batchInsertList.add(newRoot);
         }
 
-        // 8. Process Descendants (Iterative BFS)
-        // We iterate through allDescendants. But strict hierarchy order is needed?
-        // Actually, since we map oldId -> newId, if we process a child before its
-        // parent is processed,
-        // we won't find the parent's new ID in idMapping.
-        // CTE return order is not guaranteed breadth-first.
-        // So we must walk the tree starting from roots.
-
-        // Use a Queue for processing source IDs whose children need to be copied
+        // 10. Process Descendants (Iterative BFS)
         java.util.Queue<String> folderQueue = new java.util.LinkedList<>(rootFolderIds);
 
         while (!folderQueue.isEmpty()) {
             String sourceParentId = folderQueue.poll();
             String newParentId = idMapping.get(sourceParentId);
             if (newParentId == null) {
-                // Should not happen if roots are processed
                 logger.error("Parent ID mapping not found for sourceId: {}", sourceParentId);
                 continue;
             }
@@ -1107,7 +1159,6 @@ public class FileInfoServiceImpl implements FileInfoService {
                     idMapping.put(child.getFileId(), newFileId);
 
                     FileInfo newChild = copyFileInfo(child, newFileId, newParentId, currentUserId, curDate);
-                    totalSize += (newChild.getFileSize() == null ? 0L : newChild.getFileSize());
                     batchInsertList.add(newChild);
 
                     if (FileFolderTypeEnums.FOLDER.getType().equals(child.getFolderType())) {
@@ -1123,23 +1174,13 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
         }
 
-        // 9. Final Batch Insert
+        // 11. Final Batch Insert
         if (!batchInsertList.isEmpty()) {
             fileInfoMapper.insertBatch(batchInsertList);
         }
 
-        // 10. Update User Space
+        // 12. Update User Space (already pre-checked, safe to update)
         if (totalSize > 0) {
-            UserSpaceDto spaceDto = redisComponent.getUserSpaceUse(currentUserId);
-            if (spaceDto.getUseSpace() + totalSize > spaceDto.getTotalSpace()) {
-                // Rollback handled by Transaction?
-                // But we already inserted. We should check space BEFORE?
-                // Checking space for massive share is hard.
-                // We better check remaining space vs totalSize if possible?
-                // But totalSize is known only after full traversal.
-                // We'll throw exception here to rollback transaction.
-                throw new BusinessException(ResponseCodeEnum.CODE_904);
-            }
             updateUserSpace(new SessionWebUserDto(null, currentUserId, null, null), totalSize);
         }
     }

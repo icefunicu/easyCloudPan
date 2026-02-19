@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="table-shell">
         <template v-if="loading && skeleton">
             <el-skeleton animated>
                 <template #default>
@@ -57,6 +57,7 @@
                 :align="column.align || 'left'"
                 :width="column.width"
                 :class-name="column.className"
+                :sortable="column.sortable"
               >
                 <template #default="scope">
                   <slot
@@ -76,6 +77,7 @@
               :width="column.width"
               :class-name="column.className"
               :fixed="column.fixed"
+              :sortable="column.sortable"
             >
             </el-table-column>
           </template>
@@ -109,6 +111,7 @@ interface TableColumn {
     fixed?: string | boolean;
     className?: string;
     scopedSlots?: string;
+    sortable?: boolean | string;
 }
 
 interface TableOptions {
@@ -203,20 +206,32 @@ const tableHeight = ref(
 const updateTableHeight = () => {
     if (props.options.tableHeight) {
          tableHeight.value = props.options.tableHeight;
-         // If it's a string (e.g. "100%"), we don't need to recalculate on window resize usually, 
-         // but if the parent container resizes, it might depend on CSS. 
-         // However, element-plus table height string/number support handles it.
          return;
     }
     tableHeight.value = window.innerHeight - topHeight - (props.options.extHeight || 0);
 };
 
+// Debounced resize handler (100ms)
+let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedUpdateTableHeight = () => {
+    if (resizeTimer) {
+        clearTimeout(resizeTimer);
+    }
+    resizeTimer = setTimeout(() => {
+        updateTableHeight();
+        resizeTimer = null;
+    }, 100);
+};
+
 onMounted(() => {
-    window.addEventListener("resize", updateTableHeight, { passive: true });
+    window.addEventListener("resize", debouncedUpdateTableHeight, { passive: true });
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener("resize", updateTableHeight);
+    window.removeEventListener("resize", debouncedUpdateTableHeight);
+    if (resizeTimer) {
+        clearTimeout(resizeTimer);
+    }
 });
 
 watch(
@@ -279,47 +294,65 @@ const handlePageNoChange = (pageNo: number) => {
 };
 </script>
 <style lang="scss" scoped>
-.pagination {
-    padding-top: 15px;
-    padding-right: 10px;
+.table-shell {
+    width: 100%;
 }
+
+.pagination {
+    padding-top: 14px;
+    padding-right: 4px;
+}
+
 .el-pagination {
     justify-content: right;
 }
 
+:deep(.el-table) {
+    border-radius: 14px;
+    overflow: hidden;
+}
+
 :deep(.el-table__cell) {
-    padding: 8px 0px; 
+    padding: 10px 0;
 }
 
 :deep(.table-header-row) {
-    background-color: var(--bg-hover);
     color: var(--text-main);
-    font-weight: 600;
+    font-weight: 700;
+}
+
+:deep(.el-table tbody tr td) {
+    border-bottom-color: rgba(194, 204, 220, 0.58);
+}
+
+:deep(.el-table tbody tr:hover > td) {
+    background: rgba(31, 79, 104, 0.08);
 }
 
 .skeleton-wrapper {
-    padding: 12px 0;
-    background: var(--bg-card);
-    border-radius: var(--border-radius-md);
+    padding: 10px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.75);
 
     .skeleton-header {
         display: flex;
         align-items: center;
         padding: 12px 10px;
-        background: var(--bg-hover);
-        border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
         margin-bottom: 8px;
+        border-radius: 10px;
+        background: rgba(31, 79, 104, 0.1);
     }
 
     .skeleton-row {
         display: flex;
         align-items: center;
-        padding: 14px 10px;
-        border-bottom: 1px solid var(--border-color);
-        transition: background 0.2s;
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(194, 204, 220, 0.6);
+        transition: var(--transition-fast);
 
         &:hover {
-            background: var(--bg-hover);
+            background: rgba(31, 79, 104, 0.06);
         }
 
         &:last-child {
@@ -328,3 +361,4 @@ const handlePageNoChange = (pageNo: number) => {
     }
 }
 </style>
+

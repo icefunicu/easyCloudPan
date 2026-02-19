@@ -36,8 +36,8 @@
                 </el-col>
                 <el-col :span="13" :style="{ 'padding-left': '10px' }">
                   <el-button type="primary" @click="loadDataList">查询</el-button>
-                  <el-button type="success" @click="batchUpdateStatus(1)" :disabled="selectUserIdList.length == 0">批量启用</el-button>
-                  <el-button type="danger" @click="batchUpdateStatus(0)" :disabled="selectUserIdList.length == 0">批量禁用</el-button>
+                  <el-button type="success" :disabled="selectUserIdList.length == 0" @click="batchUpdateStatus(1)">批量启用</el-button>
+                  <el-button type="danger" :disabled="selectUserIdList.length == 0" @click="batchUpdateStatus(0)">批量禁用</el-button>
                 </el-col>
               </el-row>
             </el-form>
@@ -68,7 +68,7 @@
               <el-tag v-if="row.status == 0" type="danger">禁用</el-tag>
             </template>
             <template #op="{ row }">
-              <span class="a-link" @click="updateSpace(row)">分配空间</span>
+              <span class="a-link" @click="updateSpace(row)">空间管理</span>
               <el-divider direction="vertical"></el-divider>
               <span class="a-link" @click="updateUserStatus(row)">{{
                 row.status == 0 ? "启用" : "禁用"
@@ -80,7 +80,7 @@
           :show="dialogConfig.show"
           :title="dialogConfig.title"
           :buttons="dialogConfig.buttons"
-          width="400px"
+          width="450px"
           :show-cancel="false"
           @close="dialogConfig.show = false"
         >
@@ -94,12 +94,25 @@
             <el-form-item label="昵称">
               {{ formData.nickName }}
             </el-form-item>
+            <el-form-item label="当前空间">
+              <span class="space-info">
+                已用: <b>{{ proxy.Utils.size2Str(formData.useSpace) }}</b> / 
+                总量: <b>{{ proxy.Utils.size2Str(formData.totalSpace) }}</b>
+              </span>
+            </el-form-item>
+            <el-form-item label="操作类型">
+              <el-radio-group v-model="spaceOperation">
+                <el-radio value="set">设置为</el-radio>
+                <el-radio value="add">增加</el-radio>
+                <el-radio value="subtract">减少</el-radio>
+              </el-radio-group>
+            </el-form-item>
             <!-- 空间分配 -->
-            <el-form-item label="空间大小">
+            <el-form-item :label="spaceOperation === 'set' ? '空间大小' : '调整量'">
                <el-input
                 v-model.trim="spaceSize"
                 clearable
-                placeholder="请输入空间大小"
+                :placeholder="spaceOperation === 'set' ? '请输入目标空间大小' : '请输入调整量'"
               >
                  <template #append>
                     <el-select v-model="spaceUnit" style="width: 100px">
@@ -127,13 +140,21 @@
                   </div>
               </div>
             </el-form-item>
+            <el-form-item v-if="previewSpace !== null" label="预览">
+              <span :class="['preview-space', previewSpace < formData.useSpace ? 'warning' : '']">
+                操作后总量: <b>{{ proxy.Utils.size2Str(previewSpace) }}</b>
+                <span v-if="previewSpace < formData.useSpace" class="warning-text">
+                  (低于已使用量，无法执行)
+                </span>
+              </span>
+            </el-form-item>
           </el-form>
         </Dialog>
     </div>
 </template>
 
 <script setup>
-import { ref, getCurrentInstance, nextTick } from "vue";
+import { ref, getCurrentInstance, nextTick, computed } from "vue";
 import * as adminService from "@/services/adminService";
 const { proxy } = getCurrentInstance();
 
@@ -276,11 +297,39 @@ const rules = {
 
 const spaceSize = ref();
 const spaceUnit = ref("MB"); // 默认单位
+const spaceOperation = ref("set"); // 操作类型: set, add, subtract
 const spaceUnits = [
     { label: "MB", value: "MB" },
     { label: "GB", value: "GB" },
     { label: "TB", value: "TB" },
 ];
+
+// 计算预览空间
+const previewSpace = computed(() => {
+    if (!spaceSize.value) return null;
+    
+    const size = Number(spaceSize.value);
+    if (isNaN(size)) return null;
+    
+    let deltaMB = size;
+    switch (spaceUnit.value) {
+        case "GB": deltaMB = size * 1024; break;
+        case "TB": deltaMB = size * 1024 * 1024; break;
+    }
+    
+    const currentTotalMB = (formData.value.totalSpace || 0) / (1024 * 1024);
+    
+    switch (spaceOperation.value) {
+        case "set":
+            return deltaMB * 1024 * 1024;
+        case "add":
+            return (currentTotalMB + deltaMB) * 1024 * 1024;
+        case "subtract":
+            return Math.max(0, (currentTotalMB - deltaMB) * 1024 * 1024);
+        default:
+            return null;
+    }
+});
 
 const presets = [
     { label: "100MB", size: 100, unit: "MB" },
@@ -293,6 +342,7 @@ const presets = [
 
 const updateSpace = (data) => {
     dialogConfig.value.show = true;
+    spaceOperation.value = "set"; // 默认设置为模式
     nextTick(() => {
         formDataRef.value.resetFields();
         formData.value = Object.assign({}, data);
@@ -322,19 +372,20 @@ const selectPreset = (preset) => {
 };
 
 const submitForm = () => {
-    formDataRef.value.validate(async (valid) => {
-        // changeSpace 校验移除或者改为校验 spaceSize
-        // 由于 rules 绑定在 formData.changeSpace 上，而 Input 绑定了 spaceSize
-        // 需要手动校验 spaceSize 或者调整 rules
-        // 这里简单处理：手动校验 spaceSize
-        
-        let totalMB = 0;
+    formDataRef.value.validate(async (_valid) => {
         const size = Number(spaceSize.value);
         if (isNaN(size) || size < 0) {
              proxy.Message.warning("请输入有效的空间大小");
              return;
         }
 
+        // 检查预览空间是否低于已使用量
+        if (previewSpace.value !== null && previewSpace.value < formData.value.useSpace) {
+            proxy.Message.warning("空间不能低于已使用量");
+            return;
+        }
+
+        let totalMB = 0;
         switch (spaceUnit.value) {
             case "MB":
                 totalMB = size;
@@ -349,12 +400,22 @@ const submitForm = () => {
                 totalMB = size;
         }
 
-        const params = {
-            userId: formData.value.userId,
-            changeSpace: Math.floor(totalMB),
-        };
+        let result;
+        if (spaceOperation.value === "set") {
+            // 设置绝对值
+            result = await adminService.setUserSpace({
+                userId: formData.value.userId,
+                totalSpaceMB: Math.floor(totalMB),
+            });
+        } else {
+            // 增量操作
+            const changeSpace = spaceOperation.value === "add" ? Math.floor(totalMB) : -Math.floor(totalMB);
+            result = await adminService.updateUserSpace({
+                userId: formData.value.userId,
+                changeSpace: changeSpace,
+            });
+        }
         
-        const result = await adminService.updateUserSpace(params);
         if (!result) {
             return;
         }
@@ -368,17 +429,28 @@ const submitForm = () => {
 <style lang="scss" scoped>
 .user-list-panel {
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
 .top-panel {
     margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(194, 204, 216, 0.88);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-xs);
 }
 .file-list {
     margin-top: 10px;
     flex: 1;
-    height: 0;
+    min-height: 0;
     overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(194, 204, 216, 0.86);
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: var(--shadow-xs);
+    padding: 8px;
 }
 .avatar {
     width: 50px;
@@ -390,7 +462,7 @@ const submitForm = () => {
     
     &:hover {
         transform: scale(1.1);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 12px rgba(31, 79, 104, 0.18);
     }
     
     img {
@@ -406,7 +478,7 @@ const submitForm = () => {
     align-items: flex-start;
     .label {
         font-size: 12px;
-        color: #999;
+        color: var(--text-light);
         margin-right: 10px;
         white-space: nowrap;
         margin-top: 4px;
@@ -424,6 +496,32 @@ const submitForm = () => {
                 transform: translateY(-2px);
             }
         }
+    }
+}
+
+.space-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+    b {
+        color: var(--el-color-primary);
+    }
+}
+
+.preview-space {
+    font-size: 14px;
+    color: var(--text-secondary);
+    b {
+        color: var(--el-color-success);
+    }
+    &.warning {
+        b {
+            color: var(--el-color-danger);
+        }
+    }
+    .warning-text {
+        color: var(--el-color-danger);
+        font-size: 12px;
+        margin-left: 8px;
     }
 }
 </style>

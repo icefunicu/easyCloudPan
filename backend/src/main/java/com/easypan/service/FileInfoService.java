@@ -51,6 +51,22 @@ public interface FileInfoService {
     CursorPage<FileInfo> findListByCursor(String userId, String cursor, Integer pageSize);
 
     /**
+     * 游标分页查询（支持多条件过滤）.
+     * 用于文件列表的高性能分页，避免 OFFSET 深分页问题.
+     *
+     * @param userId   用户ID
+     * @param filePid  父目录ID
+     * @param delFlag  删除标记
+     * @param category 文件分类
+     * @param cursor   游标（格式：timestamp_id）
+     * @param pageSize 每页数量
+     * @return 游标分页结果
+     */
+    CursorPage<FileInfo> findListByCursorWithFilter(
+            String userId, String filePid, Integer delFlag, Integer category,
+            String cursor, Integer pageSize);
+
+    /**
      * 新增.
      *
      * @param bean 文件信息

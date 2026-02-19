@@ -4,7 +4,7 @@
       <div class="header-content">
         <div class="logo" @click="jump">
           <span class="iconfont icon-pan"></span>
-          <span class="name">Easy云盘</span>
+          <span class="name">易云盘</span>
         </div>
       </div>
     </div>
@@ -320,44 +320,68 @@ const jump = () => {
 <style lang="scss" scoped>
 @import "@/assets/file.list.scss";
 .share {
-    background: var(--bg-body);
+    min-height: 100vh;
+    background:
+      radial-gradient(620px 420px at 2% -2%, rgba(43, 137, 169, 0.16), rgba(43, 137, 169, 0)),
+      radial-gradient(620px 420px at 98% 100%, rgba(58, 115, 145, 0.12), rgba(58, 115, 145, 0)),
+      linear-gradient(180deg, #f7f8fb 0%, #f1f3f8 100%);
 }
 
 .header {
     width: 100%;
     position: fixed;
-    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
-    height: 50px;
-    z-index: 10;
+    height: 62px;
+    z-index: 12;
+    border-bottom: 1px solid rgba(194, 204, 220, 0.6);
+    background: rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(10px);
+
     .header-content {
         width: min(1100px, calc(100% - 32px));
         margin: 0 auto;
-        color: var(--text-white);
-        line-height: 50px;
+        color: var(--text-main);
+        line-height: 62px;
+
         .logo {
             display: flex;
             align-items: center;
             cursor: pointer;
             user-select: none;
+
             .icon-pan {
-                font-size: 40px;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                font-size: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #fff;
+                background: var(--primary);
+                box-shadow: 0 12px 22px rgba(31, 79, 104, 0.24);
             }
+
             .name {
-                font-weight: bold;
-                margin-left: 5px;
-                font-size: 25px;
+                margin-left: 8px;
+                font-size: 20px;
+                letter-spacing: 0.06em;
+                font-family: var(--font-heading);
+                font-weight: 700;
             }
         }
     }
 }
+
 .share-body {
     width: min(1100px, calc(100% - 32px));
     margin: 0 auto;
-    padding-top: 70px;
+    padding-top: 80px;
+
     .loading {
         height: calc(100vh / 2);
         width: 100%;
     }
+
     .share-panel {
         margin-top: 16px;
         display: flex;
@@ -365,35 +389,42 @@ const jump = () => {
         justify-content: space-between;
         gap: 12px;
         padding: 16px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-lg);
-        background: var(--bg-card);
+        border: 1px solid rgba(194, 204, 220, 0.8);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.8);
         box-shadow: var(--shadow-sm);
+        backdrop-filter: blur(8px);
+
         .share-user-info {
             flex: 1;
             display: flex;
             align-items: center;
+
             .avatar {
-                margin-right: 5px;
+                margin-right: 8px;
             }
+
             .share-info {
                 .user-info {
                     display: flex;
                     align-items: center;
                     flex-wrap: wrap;
+
                     .nick-name {
                         font-size: 15px;
-                        font-weight: 600;
+                        font-weight: 700;
                         color: var(--text-main);
                     }
+
                     .share-time {
-                        margin-left: 20px;
+                        margin-left: 16px;
                         font-size: 12px;
-                        color: var(--text-light);
+                        color: var(--text-secondary);
                     }
                 }
+
                 .file-name {
-                    margin-top: 10px;
+                    margin-top: 8px;
                     font-size: 12px;
                     color: var(--text-secondary);
                 }
@@ -412,6 +443,7 @@ const jump = () => {
 
 .file-list {
     margin-top: 10px;
+
     .file-item {
         .op {
             width: 170px;
@@ -421,7 +453,7 @@ const jump = () => {
 
 @media screen and (max-width: 768px) {
     .share-body {
-        padding-top: 64px;
+        padding-top: 70px;
     }
     .share-body .share-panel {
         flex-direction: column;
@@ -434,3 +466,4 @@ const jump = () => {
     }
 }
 </style>
+

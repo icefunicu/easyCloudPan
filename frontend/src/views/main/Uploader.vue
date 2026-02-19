@@ -924,4 +924,88 @@ const uploadFile = async (uid, chunkIndex) => {
     transform: rotate(360deg);
   }
 }
+
+// Mobile responsive styles
+@media screen and (max-width: 768px) {
+  .uploader-panel {
+    .uploader-title {
+      flex-wrap: wrap;
+      padding: 0 10px;
+      line-height: 40px;
+
+      .tips {
+        display: none;
+      }
+
+      .title-actions {
+        width: 100%;
+        margin-top: 6px;
+        margin-bottom: 8px;
+        
+        .el-button {
+          flex: 1;
+        }
+      }
+    }
+
+    .file-list {
+      min-height: 50vh;
+      max-height: calc(100vh - 160px);
+
+      .file-item {
+        padding: 8px 10px;
+        flex-wrap: wrap;
+      }
+
+      .upload-panel {
+        width: 100%;
+        flex: none;
+
+        .file-name {
+          font-size: 13px;
+          word-break: break-all;
+        }
+
+        .upload-status {
+          flex-wrap: wrap;
+          gap: 4px;
+
+          .status {
+            font-size: 12px;
+          }
+
+          .upload-info {
+            font-size: 11px;
+          }
+        }
+      }
+
+      .op {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border-color);
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .uploader-panel {
+    .uploader-title {
+      font-size: 14px;
+
+      .title-actions {
+        gap: 6px;
+      }
+    }
+
+    .file-list {
+      .upload-panel .file-name {
+        font-size: 12px;
+      }
+    }
+  }
+}
 </style>

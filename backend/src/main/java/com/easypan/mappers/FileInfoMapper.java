@@ -125,6 +125,31 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
             @Param("cursorId") String cursorId,
             @Param("pageSize") int pageSize);
 
+    /**
+     * 游标分页查询（支持目录过滤）.
+     * 用于文件列表的高性能分页，避免 OFFSET 深分页问题.
+     */
+    @Select("<script>"
+            + "SELECT * FROM file_info WHERE user_id = #{userId} "
+            + "<if test='filePid != null'>AND file_pid = #{filePid} </if>"
+            + "<if test='delFlag != null'>AND del_flag = #{delFlag} </if>"
+            + "<if test='fileCategory != null'>AND file_category = #{fileCategory} </if>"
+            + "<if test='folderType != null'>AND folder_type = #{folderType} </if>"
+            + "<if test='cursorTime != null and cursorId != null'>"
+            + "AND (create_time, file_id) &lt; (#{cursorTime}, #{cursorId}) "
+            + "</if>"
+            + "ORDER BY create_time DESC, file_id DESC LIMIT #{pageSize}"
+            + "</script>")
+    List<FileInfo> selectByCursorWithFilter(
+            @Param("userId") String userId,
+            @Param("filePid") String filePid,
+            @Param("delFlag") Integer delFlag,
+            @Param("fileCategory") Integer fileCategory,
+            @Param("folderType") Integer folderType,
+            @Param("cursorTime") Date cursorTime,
+            @Param("cursorId") String cursorId,
+            @Param("pageSize") int pageSize);
+
     @Select("SELECT file_id, file_size, file_path, file_md5, user_id, file_cover "
             + "FROM file_info "
             + "WHERE file_md5 = #{fileMd5} AND status = #{status} "

@@ -143,7 +143,7 @@ const handleRegister = async () => {
         token: data.token,
         refreshToken: data.refreshToken,
       })
-      proxy.Message.success('注册成功！欢迎使用 EasyCloudPan')
+      proxy.Message.success('注册成功，欢迎使用云盘')
       router.push('/')
     } catch (error) {
       proxy.Message.error(error.message || '注册失败，请重试')
@@ -173,39 +173,45 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background:
+    radial-gradient(620px 420px at 6% 8%, rgba(47, 109, 140, 0.2), rgba(47, 109, 140, 0)),
+    linear-gradient(180deg, #f5f8fa 0%, #eef3f6 100%);
   padding: 20px;
 }
 
 .register-card {
-  background: #fff;
-  border-radius: 16px;
-  padding: 40px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 24px;
+  padding: 32px;
   width: 100%;
-  max-width: 440px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  max-width: 480px;
+  border: 1px solid rgba(194, 204, 216, 0.86);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
 
   .title {
     text-align: center;
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
-    color: #303133;
-    margin: 0 0 8px 0;
+    color: var(--text-main);
+    margin: 0 0 6px 0;
+    font-family: var(--font-heading);
+    letter-spacing: 0.08em;
   }
 
   .subtitle {
     text-align: center;
-    color: #909399;
+    color: var(--text-secondary);
     font-size: 14px;
     margin: 0 0 24px 0;
     line-height: 1.6;
 
     .provider-badge {
       display: inline-block;
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: linear-gradient(135deg, #2a6785 0%, #1f4f68 100%);
       color: #fff;
       padding: 2px 10px;
-      border-radius: 12px;
+      border-radius: 999px;
       font-size: 13px;
       font-weight: 600;
     }
@@ -216,20 +222,21 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  background: #f5f7fa;
-  border-radius: 12px;
+  background: rgba(36, 95, 124, 0.08);
+  border-radius: 14px;
+  border: 1px solid rgba(36, 95, 124, 0.2);
   padding: 16px;
   margin-bottom: 24px;
 
   .user-info {
     .nickname {
       font-size: 16px;
-      font-weight: 600;
-      color: #303133;
+      font-weight: 700;
+      color: var(--text-main);
     }
     .email-hint {
       font-size: 13px;
-      color: #909399;
+      color: var(--text-secondary);
       margin-top: 4px;
     }
   }
@@ -241,7 +248,7 @@ onMounted(() => {
   gap: 6px;
   margin-top: 8px;
   font-size: 12px;
-  color: #e6a23c;
+  color: #8b6d52;
   line-height: 1.5;
 
   .el-icon {
@@ -252,13 +259,25 @@ onMounted(() => {
 
 .submit-btn {
   width: 100%;
-  height: 44px;
+  height: 46px;
   font-size: 16px;
-  border-radius: 8px;
+  letter-spacing: 0.06em;
 }
 
 .back-link {
   text-align: center;
   margin-top: 16px;
 }
+
+@media screen and (max-width: 768px) {
+  .register-card {
+    padding: 24px 18px;
+    border-radius: 18px;
+  }
+
+  .register-card .title {
+    font-size: 22px;
+  }
+}
 </style>
+

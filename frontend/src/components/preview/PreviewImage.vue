@@ -10,18 +10,17 @@
     </el-image-viewer>
 </template>
 
-<script setup>
-import { ref, reactive, getCurrentInstance, nextTick } from "vue";
-const { proxy } = getCurrentInstance();
+<script setup lang="ts">
+import { ref } from "vue";
 
-const props = defineProps({
+defineProps({
     imageList: {
-        type: Array,
+        type: Array as () => string[],
     },
 });
 
-const previewImgIndex = ref(null);
-const show = (index) => {
+const previewImgIndex = ref<number | null>(null);
+const show = (index: number) => {
     // stopScroll();
     previewImgIndex.value = index;
 };
@@ -43,8 +42,10 @@ const closeImgViewer = () => {
 
 <style lang="scss" scoped>
 .image-viewer {
-    .el-image-viewer__mask {
-        opacity: 0.7;
-    }
+  :deep(.el-image-viewer__mask) {
+    opacity: 0.86;
+    backdrop-filter: blur(4px);
+    background: rgba(7, 28, 27, 0.72);
+  }
 }
 </style>

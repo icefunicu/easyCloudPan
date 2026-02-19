@@ -100,6 +100,45 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
+     * 游标分页查询（支持目录和分类过滤）.
+     * 推荐用于文件列表加载，性能优于传统 OFFSET 分页.
+     *
+     * @param session  HTTP 会话
+     * @param filePid  父目录ID（可选）
+     * @param category 文件分类（可选）
+     * @param cursor   游标
+     * @param pageSize 每页大小
+     * @return 分页结果
+     */
+    @RequestMapping("/loadDataListCursorV2")
+    @GlobalInterceptor(checkParams = true)
+    @Operation(summary = "Load Data List with Cursor V2", description = "Cursor-based pagination with filters")
+    public ResponseVO<CursorPage<FileInfoVO>> loadDataListCursorV2(
+            HttpSession session,
+            String filePid,
+            String category,
+            String cursor,
+            Integer pageSize) {
+        SessionWebUserDto userDto = getUserInfoFromSession(session);
+
+        FileCategoryEnums categoryEnum = FileCategoryEnums.getByCode(category);
+        Integer categoryValue = categoryEnum != null ? categoryEnum.getCategory() : null;
+
+        CursorPage<FileInfo> result = fileInfoService.findListByCursorWithFilter(
+                userDto.getUserId(),
+                filePid,
+                FileDelFlagEnums.USING.getFlag(),
+                categoryValue,
+                cursor,
+                pageSize);
+
+        List<FileInfoVO> voList = CopyTools.copyList(result.getList(), FileInfoVO.class);
+        CursorPage<FileInfoVO> voResult = CursorPage.of(voList, result.getNextCursor(), result.getPageSize());
+
+        return getSuccessResponseVO(voResult);
+    }
+
+    /**
      * 上传文件.
      *
      * @param session    HTTP 会话
@@ -215,6 +254,27 @@ public class FileInfoController extends CommonFileController {
         dto.setFileId(fileId);
         dto.setStatus(fileInfo.getStatus());
         return getSuccessResponseVO(dto);
+    }
+
+    /**
+     * 获取单个文件信息.
+     *
+     * @param session HTTP 会话
+     * @param fileId  文件ID
+     * @return 文件信息
+     */
+    @RequestMapping("/getFileInfo/{fileId}")
+    @GlobalInterceptor(checkParams = true)
+    @Operation(summary = "Get File Info", description = "Get single file info by fileId")
+    public ResponseVO<FileInfoVO> getFileInfo(
+            HttpSession session,
+            @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+        SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, webUserDto.getUserId());
+        if (fileInfo == null) {
+            throw new BusinessException("文件不存在");
+        }
+        return getSuccessResponseVO(CopyTools.copy(fileInfo, FileInfoVO.class));
     }
 
     /**

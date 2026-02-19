@@ -8,36 +8,56 @@
     <Window
       v-else
       :show="windowShow"
-      :width="fileInfo.fileCategory == 1 ? 1500 : 900"
+      :width="fileInfo.fileCategory == 1 ? 1000 : 900"
       :title="fileInfo.fileName"
       :align="fileInfo.fileCategory == 1 ? 'center' : 'top'"
       @close="closeWindow"
     >
-    <PreviewVideo v-if="fileInfo.fileCategory == 1" :url="url"></PreviewVideo>
-    <PreviewDoc v-if="fileInfo.fileType == 5" :url="url"></PreviewDoc>
-    <PreviewExcel v-if="fileInfo.fileType == 6" :url="url"></PreviewExcel>
-    <PreviewPdf v-if="fileInfo.fileType == 4" :url="url"></PreviewPdf>
-    <PreviewTxt
-      v-if="fileInfo.fileType == 7 || fileInfo.fileType == 8"
-      :url="url"
-    ></PreviewTxt>
-    <PreviewMusic
-      v-if="fileInfo.fileCategory == 2"
-      :url="url"
-      :file-name="fileInfo.fileName"
-    ></PreviewMusic>
+      <div class="preview-shell">
+        <div class="preview-toolbar">
+          <div class="meta">
+            <span class="type">{{ previewTypeLabel }}</span>
+            <span v-if="fileInfo.fileSize">大小 {{ proxy.Utils.size2Str(fileInfo.fileSize) }}</span>
+            <span v-if="fileInfo.lastUpdateTime">更新于 {{ fileInfo.lastUpdateTime }}</span>
+          </div>
+          <div class="actions">
+            <el-button v-if="canOpenInNewTab" size="small" @click="openInNewTab">新窗口打开</el-button>
+            <el-button v-if="canDownload" size="small" type="primary" @click="downloadCurrent">下载</el-button>
+          </div>
+        </div>
+        <div v-if="previewLoading" class="preview-loading">
+          <span class="loading-dot"></span>
+          正在加载预览...
+        </div>
+        <template v-else>
+          <PreviewVideo v-if="fileInfo.fileCategory == 1" :url="url"></PreviewVideo>
+          <PreviewDoc v-if="fileInfo.fileType == 5" :url="url"></PreviewDoc>
+          <PreviewExcel v-if="fileInfo.fileType == 6" :url="url"></PreviewExcel>
+          <PreviewPdf v-if="fileInfo.fileType == 4" :url="url"></PreviewPdf>
+          <PreviewTxt
+            v-if="fileInfo.fileType == 7 || fileInfo.fileType == 8"
+            :url="url"
+          ></PreviewTxt>
+          <PreviewMusic
+            v-if="fileInfo.fileCategory == 2"
+            :url="url"
+            :file-name="fileInfo.fileName"
+          ></PreviewMusic>
 
-    <PreviewDownload
-      v-if="fileInfo.fileCategory == 5 && fileInfo.fileType != 8"
-      :create-download-url="createDownloadUrl"
-      :download-url="downloadUrl"
-      :file-info="fileInfo"
-    ></PreviewDownload>
+          <PreviewDownload
+            v-if="fileInfo.fileCategory == 5 && fileInfo.fileType != 8"
+            :create-download-url="createDownloadUrl"
+            :download-url="downloadUrl"
+            :file-info="fileInfo"
+          ></PreviewDownload>
+        </template>
+      </div>
     </Window>
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance, computed, nextTick, defineAsyncComponent } from "vue";
+import { ref, getCurrentInstance, computed, nextTick, defineAsyncComponent, onUnmounted } from "vue";
+import { createDownloadCode } from "@/services";
 const PreviewVideo = defineAsyncComponent(() => import("@/components/preview/PreviewVideo.vue"));
 const PreviewDoc = defineAsyncComponent(() => import("@/components/preview/PreviewDoc.vue"));
 const PreviewExcel = defineAsyncComponent(() => import("@/components/preview/PreviewExcel.vue"));
@@ -57,8 +77,14 @@ const imageUrl = computed( () => {
 });
 
 const windowShow = ref(false);
+const previewLoading = ref(false);
+let previewLoadingTimer = null;
 const closeWindow = () => {
     windowShow.value = false;
+    previewLoading.value = false;
+    if (previewLoadingTimer) {
+        clearTimeout(previewLoadingTimer);
+    }
 };
 
 const FILE_URL_MAP = {
@@ -85,10 +111,69 @@ const FILE_URL_MAP = {
 const url = ref(null);
 const createDownloadUrl = ref(null);
 const downloadUrl = ref(null);
+const canOpenInNewTab = computed(() => {
+    return !!url.value && fileInfo.value.fileCategory !== 2;
+});
+const canDownload = computed(() => {
+    return !!createDownloadUrl.value && !!downloadUrl.value && fileInfo.value.folderType === 0;
+});
+const previewTypeLabel = computed(() => {
+    if (fileInfo.value.folderType === 1) {
+        return "文件夹";
+    }
+    if (fileInfo.value.fileCategory == 1) {
+        return "视频预览";
+    }
+    if (fileInfo.value.fileCategory == 2) {
+        return "音频预览";
+    }
+    if (fileInfo.value.fileCategory == 3) {
+        return "图片预览";
+    }
+    if (fileInfo.value.fileType == 4) {
+        return "PDF 文档";
+    }
+    if (fileInfo.value.fileType == 5) {
+        return "Word 文档";
+    }
+    if (fileInfo.value.fileType == 6) {
+        return "Excel 表格";
+    }
+    if (fileInfo.value.fileType == 7 || fileInfo.value.fileType == 8) {
+        return "文本预览";
+    }
+    return "文件预览";
+});
+
+const openInNewTab = () => {
+    if (!fileInfo.value.fileId) {
+        return;
+    }
+    // Open the dedicated preview page in new tab
+    window.open(`/preview/${fileInfo.value.fileId}`, "_blank");
+};
+
+const downloadCurrent = async () => {
+    if (!canDownload.value) {
+        return;
+    }
+    const code = await createDownloadCode(createDownloadUrl.value);
+    if (!code) {
+        return;
+    }
+    window.location.href = `${downloadUrl.value}/${code}`;
+};
 
 const fileInfo = ref({});
 const imageViewRef = ref();
 const showPreview = (data, showPart) => {
+    previewLoading.value = true;
+    if (previewLoadingTimer) {
+        clearTimeout(previewLoadingTimer);
+    }
+    previewLoadingTimer = setTimeout(() => {
+        previewLoading.value = false;
+    }, 260);
     fileInfo.value = data;
     if (data.fileCategory == 3) {
         nextTick( () => {
@@ -122,7 +207,108 @@ const showPreview = (data, showPart) => {
 };
 
 defineExpose({ showPreview });
+
+onUnmounted(() => {
+    if (previewLoadingTimer) {
+        clearTimeout(previewLoadingTimer);
+    }
+});
 </script>
 
 <style lang="scss" scoped>
+.preview-shell {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px);
+}
+
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(189, 208, 202, 0.78);
+  background: rgba(255, 255, 255, 0.78);
+  flex-shrink: 0;
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+
+    .type {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+  }
+
+  .actions {
+    display: flex;
+    gap: 6px;
+  }
+}
+
+.preview-loading {
+  flex: 1;
+  border-radius: 14px;
+  border: 1px solid rgba(189, 208, 202, 0.72);
+  background: rgba(255, 255, 255, 0.86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+
+  .loading-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: previewDot 0.9s ease-in-out infinite;
+  }
+}
+
+:deep(.el-image-viewer__wrapper) {
+  backdrop-filter: blur(4px);
+}
+
+@keyframes previewDot {
+  0%,
+  100% {
+    transform: scale(0.75);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// Mobile responsive
+@media screen and (max-width: 768px) {
+  .preview-shell {
+    height: calc(100vh - 100px);
+    max-height: calc(100vh - 100px);
+    padding: 6px;
+    gap: 6px;
+  }
+
+  .preview-toolbar {
+    flex-wrap: wrap;
+    padding: 6px 8px;
+
+    .meta {
+      font-size: 11px;
+      gap: 6px;
+    }
+  }
+}
 </style>

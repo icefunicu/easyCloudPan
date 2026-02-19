@@ -9,12 +9,11 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import APlayer from "aplayer";
 import "aplayer/dist/APlayer.min.css";
 
-import { ref, reactive, getCurrentInstance, nextTick, onMounted, onUnmounted } from "vue";
-const { proxy } = getCurrentInstance();
+import { ref, onMounted, onUnmounted } from "vue";
 
 const props = defineProps({
     url: {
@@ -25,11 +24,11 @@ const props = defineProps({
     },
 });
 
-const playerRef =ref();
-const player = ref();
+const playerRef = ref<HTMLElement | null>(null);
+const player = ref<APlayer | null>(null);
 onMounted(() => {
     player.value = new APlayer({
-        container: playerRef.value,
+        container: playerRef.value!,
         audio: {
             url: `/api/${props.url}`,
             name: props.fileName,
@@ -40,7 +39,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    player.value.destroy();
+    player.value?.destroy();
 });
 </script>
 
@@ -50,17 +49,28 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     width: 100%;
+
     .body-content {
         text-align: center;
-        width: 80%;
+        width: min(740px, 90%);
+        padding: 22px;
+        border-radius: 18px;
+        border: 1px solid rgba(189, 208, 202, 0.76);
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: var(--shadow-sm);
+
         .cover {
-            margin: 0px auto;
+            margin: 0 auto;
             width: 200px;
             text-align: center;
+
             img {
                 width: 100%;
+                border-radius: 16px;
+                box-shadow: var(--shadow-sm);
             }
         }
+
         .music-player {
             margin-top: 20px;
         }

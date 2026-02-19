@@ -187,7 +187,12 @@ public class AccountController extends ABaseController {
                 throw new BusinessException("图片验证码不正确");
             }
             SessionWebUserDto sessionWebUserDto = userInfoService.login(email, password);
-            session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+
+            // 会话固定防护：登录后使原会话失效，创建新会话
+            // 防止攻击者利用固定会话 ID 劫持用户会话
+            session.invalidate();
+            HttpSession newSession = request.getSession(true);
+            newSession.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
 
             String token = jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null);
             String refreshToken = jwtTokenProvider.generateRefreshToken(sessionWebUserDto.getUserId(), null);
@@ -202,7 +207,7 @@ public class AccountController extends ABaseController {
 
             return getSuccessResponseVO(result);
         } finally {
-            session.removeAttribute(Constants.CHECK_CODE_KEY);
+            // 原会话已失效，无需再移除验证码
         }
     }
 

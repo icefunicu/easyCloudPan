@@ -1,5 +1,6 @@
 package com.easypan.service;
 
+import com.easypan.component.RedisComponent;
 import com.easypan.component.TenantContextHolder;
 import com.easypan.entity.po.TenantInfo;
 import com.easypan.exception.BusinessException;
@@ -31,6 +32,9 @@ public class TenantQuotaService {
     @Resource
     private UserInfoMapper userInfoMapper;
 
+    @Resource
+    private RedisComponent redisComponent;
+
     /**
      * 检查存储配额.
      *
@@ -53,32 +57,45 @@ public class TenantQuotaService {
             throw new BusinessException("租户已被禁用");
         }
 
-        // 计算当前已用空间
-        // 注意：这里假设 MyBatis-Flex 会自动添加 tenant_id 过滤
-        // 如果 TenantFactory 已配置且 apply 到 file_info 表，则 QueryWrapper 不需要显式添加 tenant_id
-        // 但为了保险起见，如果不确定 TenantFactory 配置是否生效，可以这里显式添加？
-        // 不过既然目的是验证 TenantPlugin，应该让插件自动处理。
-        // 这里只写业务逻辑查询
-        
-        // 查询未删除的文件总大小 (del_flag != 0 表示删除或回收站? FileInfo defined: 0:删除 1:回收站 2:正常)
-        // 通常配额统计包括正常文件和回收站文件? 
-        // 假设包括正常(2)和回收站(1)，排除彻底删除(0)
-        
-        // sum(file_size) where del_flag in (1, 2)
-        Long usedStorage = fileInfoMapper.selectObjectByQueryAs(
-                QueryWrapper.create().select("sum(file_size)")
-                        .from(FILE_INFO)
-                        .where(FILE_INFO.DEL_FLAG.in(1, 2)),
-                Long.class
-        );
-
+        // 优先从缓存获取已用存储
+        Long usedStorage = redisComponent.getTenantUsedStorage(tenantId);
         if (usedStorage == null) {
-            usedStorage = 0L;
+            // 缓存未命中，查询数据库
+            usedStorage = fileInfoMapper.selectObjectByQueryAs(
+                    QueryWrapper.create().select("sum(file_size)")
+                            .from(FILE_INFO)
+                            .where(FILE_INFO.DEL_FLAG.in(1, 2)),
+                    Long.class
+            );
+            if (usedStorage == null) {
+                usedStorage = 0L;
+            }
+            // 写入缓存
+            redisComponent.saveTenantUsedStorage(tenantId, usedStorage);
         }
 
         if (usedStorage + fileSize > tenantInfo.getStorageQuota()) {
             throw new BusinessException(String.format("租户存储空间不足，总配额: %d MB, 已用: %d MB", 
                 tenantInfo.getStorageQuota() / 1024 / 1024, usedStorage / 1024 / 1024));
+        }
+    }
+
+    /**
+     * 更新租户已用存储（增量）.
+     * 上传成功后调用。
+     *
+     * @param deltaSize 变化大小（正数增加，负数减少）
+     */
+    public void updateUsedStorage(Long deltaSize) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId == null) {
+            return;
+        }
+        // 增量更新缓存
+        Long newValue = redisComponent.incrementTenantUsedStorage(tenantId, deltaSize);
+        if (newValue == null) {
+            // 缓存不存在，删除让下次查询重建
+            redisComponent.deleteTenantUsedStorage(tenantId);
         }
     }
 

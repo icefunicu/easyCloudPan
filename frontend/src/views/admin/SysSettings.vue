@@ -92,7 +92,12 @@ const saveSettings = async () => {
 
 <style lang="scss" scoped>
 .sys-setting-panel {
-    margin-top: 20px;
+    margin-top: 14px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(194, 204, 220, 0.82);
+    background: rgba(255, 255, 255, 0.76);
+    box-shadow: var(--shadow-xs);
     width: min(600px, 100%);
 
     .save-btn {
@@ -103,8 +108,9 @@ const saveSettings = async () => {
     
     .panel-title {
         font-size: 16px;
-        font-weight: 600;
+        font-weight: 700;
         margin-bottom: 20px;
+        letter-spacing: 0.06em;
         padding-left: 10px;
         border-left: 4px solid var(--primary);
     }

@@ -65,6 +65,19 @@ public class BloomFilterConfig implements SmartInitializingSingleton {
     }
 
     /**
+     * 创建文件 ID 布隆过滤器.
+     * 用于防止对不存在文件的缓存穿透查询.
+     */
+    @Bean("fileIdBloomFilter")
+    @SuppressWarnings("null")
+    public BloomFilter<String> fileIdBloomFilter() {
+        return BloomFilter.create(
+                Funnels.stringFunnel(StandardCharsets.UTF_8),
+                50_000_000,
+                0.001);
+    }
+
+    /**
      * 应用启动后初始化布隆过滤器，将已有文件 MD5 预热进去.
      * 使用 SmartInitializingSingleton 确保所有单例 bean 初始化完成后再执行.
      */

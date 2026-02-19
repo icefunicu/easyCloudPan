@@ -191,7 +191,7 @@ const preview = (data) => {
   }
   // 文件
   if (data.status != 2) {
-    proxy.Message.warning("文件未完成转码, 无法预览");
+    proxy.Message.warning("文件未完成转码，无法预览");
     return;
   }
   previewRef.value.showPreview(data, 1);
@@ -263,6 +263,7 @@ const download = async (row) => {
 @import "@/assets/file.list.scss";
 .file-list-panel {
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
@@ -272,7 +273,7 @@ const download = async (row) => {
 .file-list {
     margin-top: 10px;
     flex: 1;
-    height: 0;
+    min-height: 0;
     overflow: hidden;
     .file-item {
         position: relative;

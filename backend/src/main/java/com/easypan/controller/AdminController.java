@@ -104,10 +104,10 @@ public class AdminController extends CommonFileController {
     }
 
     /**
-     * 更新用户空间.
+     * 更新用户空间（增量）.
      *
      * @param userId 用户ID
-     * @param changeSpace 变更空间
+     * @param changeSpace 变更空间（MB），正数增加，负数减少
      * @return 响应对象
      */
     @RequestMapping("/updateUserSpace")
@@ -115,6 +115,21 @@ public class AdminController extends CommonFileController {
     public ResponseVO<Void> updateUserSpace(@VerifyParam(required = true) String userId,
             @VerifyParam(required = true) Integer changeSpace) {
         userInfoService.changeUserSpace(userId, changeSpace);
+        return getSuccessResponseVO(null);
+    }
+
+    /**
+     * 设置用户空间（绝对值）.
+     *
+     * @param userId 用户ID
+     * @param totalSpaceMB 总空间大小（MB）
+     * @return 响应对象
+     */
+    @RequestMapping("/setUserSpace")
+    @GlobalInterceptor(checkParams = true, checkAdmin = true)
+    public ResponseVO<Void> setUserSpace(@VerifyParam(required = true) String userId,
+            @VerifyParam(required = true) Long totalSpaceMB) {
+        userInfoService.setUserSpace(userId, totalSpaceMB);
         return getSuccessResponseVO(null);
     }
 

@@ -216,10 +216,18 @@ const delBatch = () => {
 @import "@/assets/file.list.scss";
 .file-list {
     margin-top: 10px;
+
     .file-item {
         .op {
             width: 120px;
         }
+    }
+}
+
+.top {
+    .el-button {
+        min-width: 112px;
+        letter-spacing: 0.03em;
     }
 }
 </style>

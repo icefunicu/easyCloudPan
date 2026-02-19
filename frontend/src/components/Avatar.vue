@@ -40,6 +40,8 @@ const props = defineProps({
     height: 40px;
     border-radius: 50%;
     overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 16px rgba(13, 57, 54, 0.16);
     img {
         width: 100%;
         object-fit: cover;

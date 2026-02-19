@@ -11,8 +11,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AdvancedSearch: typeof import('./components/AdvancedSearch.vue')['default']
     Avatar: typeof import('./components/Avatar.vue')['default']
     AvatarUpload: typeof import('./components/AvatarUpload.vue')['default']
+    BatchToolbar: typeof import('./components/BatchToolbar.vue')['default']
+    ContextMenu: typeof import('./components/ContextMenu.vue')['default']
     Dialog: typeof import('./components/Dialog.vue')['default']
     ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElButton: typeof import('element-plus/es')['ElButton']
@@ -63,6 +66,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     Table: typeof import('./components/Table.vue')['default']
+    VirtualTable: typeof import('./components/VirtualTable.vue')['default']
     Window: typeof import('./components/Window.vue')['default']
   }
   export interface GlobalDirectives {

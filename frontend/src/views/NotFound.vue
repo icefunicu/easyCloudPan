@@ -3,7 +3,7 @@
     <div class="card">
       <div class="brand">
         <span class="iconfont icon-pan"></span>
-        <span class="name">Easy云盘</span>
+        <span class="name">易云盘</span>
       </div>
       <div class="code">404</div>
       <div class="title">页面不存在</div>
@@ -38,16 +38,15 @@ const goBack = () => {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(900px 380px at 20% 10%, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0) 60%),
-    radial-gradient(900px 380px at 80% 90%, rgba(249, 115, 22, 0.12), rgba(249, 115, 22, 0) 60%),
-    var(--bg-body);
+    radial-gradient(900px 380px at 20% 10%, rgba(47, 109, 140, 0.16), rgba(47, 109, 140, 0) 60%),
+    linear-gradient(180deg, #f5f8fa 0%, #eef3f6 100%);
 }
 
 .card {
   width: min(560px, 100%);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: var(--border-radius-xl);
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(194, 204, 220, 0.82);
+  border-radius: 24px;
   box-shadow: var(--shadow-lg);
   padding: 28px;
   backdrop-filter: blur(12px);
@@ -60,24 +59,32 @@ const goBack = () => {
   color: var(--text-main);
 
   .icon-pan {
-    font-size: 28px;
-    color: var(--primary);
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 22px;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
   }
 
   .name {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
+    letter-spacing: 0.05em;
     font-family: var(--font-heading);
   }
 }
 
 .code {
   margin-top: 18px;
-  font-size: 64px;
+  font-size: 66px;
   line-height: 1;
   font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--primary);
+  letter-spacing: 0.08em;
+  color: var(--primary-dark);
   font-family: var(--font-heading);
 }
 

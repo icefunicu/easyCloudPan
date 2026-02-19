@@ -479,6 +479,34 @@ public class UserInfoServiceImpl implements UserInfoService {
             newTotalSpace = 0L;
         }
 
+        // 减少空间时校验：新空间不能低于已使用空间
+        if (deltaSpace < 0) {
+            Long usedSpace = fileInfoService.getUserUseSpace(userId);
+            if (newTotalSpace < usedSpace) {
+                throw new BusinessException("空间不能低于已使用量（" + (usedSpace / Constants.MB) + "MB）");
+            }
+        }
+
+        this.userInfoMapper.updateTotalSpace(userId, newTotalSpace);
+        redisComponent.resetUserSpaceUse(userId);
+        redisComponent.deleteUserInfo(userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void setUserSpace(String userId, Long totalSpaceMB) {
+        if (totalSpaceMB == null || totalSpaceMB < 0) {
+            throw new BusinessException("空间大小无效");
+        }
+
+        Long newTotalSpace = totalSpaceMB * Constants.MB;
+
+        // 校验：新空间不能低于已使用空间
+        Long usedSpace = fileInfoService.getUserUseSpace(userId);
+        if (newTotalSpace < usedSpace) {
+            throw new BusinessException("空间不能低于已使用量（" + (usedSpace / Constants.MB) + "MB）");
+        }
+
         this.userInfoMapper.updateTotalSpace(userId, newTotalSpace);
         redisComponent.resetUserSpaceUse(userId);
         redisComponent.deleteUserInfo(userId);

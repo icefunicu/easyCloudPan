@@ -29,9 +29,16 @@ public class JwtTokenProvider {
     @Value("${jwt.secret:defaultSecretKeyRequires256BitsMinimumLengthForHS256AlgorithmIsHere}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:604800000}")
+    /**
+     * Access Token 过期时间（默认 1 小时）.
+     * 生产环境建议使用较短的有效期以提高安全性.
+     */
+    @Value("${jwt.expiration:3600000}")
     private long jwtExpirationInMs;
 
+    /**
+     * Refresh Token 过期时间（默认 30 天）.
+     */
     @Value("${jwt.refresh-expiration:2592000000}")
     private long jwtRefreshExpirationInMs;
 

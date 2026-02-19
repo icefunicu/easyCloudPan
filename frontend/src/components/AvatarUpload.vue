@@ -27,13 +27,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, getCurrentInstance } from "vue";
-import { useRouter, useRoute } from "vue-router";
-const { proxy } = getCurrentInstance();
-const router = useRoute();
-const route = useRoute();
-
-const timestamp = ref("");
+import { ref } from "vue";
 
 const props = defineProps({
     modelValue: {
@@ -55,13 +49,16 @@ const uploadImage = async (file) => {
 };
 </script>
 
-<style lang="scss">
+<style lang="scss" scoped>
 .avatar-upload {
     display: flex;
     justify-content: center;
-    align-items: end;
+    align-items: flex-end;
+
     .avatar-show {
-        background: rgb(245, 245, 245);
+        background: rgba(250, 252, 252, 0.86);
+        border: 1px solid rgba(189, 208, 202, 0.78);
+        border-radius: 16px;
         width: 150px;
         height: 150px;
         display: flex;
@@ -69,25 +66,43 @@ const uploadImage = async (file) => {
         justify-content: center;
         overflow: hidden;
         position: relative;
+        box-shadow: var(--shadow-xs);
+
         .iconfont {
             font-size: 50px;
-            color: #ddd;
+            color: var(--text-light);
         }
+
         img {
             width: 100%;
             height: 100%;
+            object-fit: cover;
         }
+
         .op {
             position: absolute;
             color: var(--primary);
             top: 80px;
         }
     }
+
     .select-btn {
-        margin-left: 10px;
-        vertical-align: bottom;
+        margin-left: 12px;
+
         .select-button {
-            letter-spacing: 0.5px;
+            letter-spacing: 0.04em;
+        }
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .avatar-upload {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+
+        .select-btn {
+            margin-left: 0;
         }
     }
 }

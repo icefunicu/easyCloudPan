@@ -8,7 +8,7 @@
           ></Icon>
         </div>
         <div class="file-name">{{ fileInfo.fileName }}</div>
-        <div class="tips">该类型的文件暂不支持预览, 请下载后查看</div>
+        <div class="tips">该类型文件暂不支持预览，请下载后查看</div>
         <div class="download-btn">
           <el-button type="primary" @click="download"
             >点击下载{{ proxy.Utils.size2Str(fileInfo.fileSize) }}</el-button
@@ -48,16 +48,28 @@ const download = async () => {
     align-items: center;
     justify-content: center;
     width: 100%;
+
     .body-content {
+        width: min(460px, 100%);
+        padding: 24px;
+        border-radius: 18px;
+        border: 1px solid rgba(189, 208, 202, 0.8);
+        background: rgba(255, 255, 255, 0.84);
+        box-shadow: var(--shadow-sm);
         text-align: center;
+
         .file-name {
-            font-weight: bold;
+            margin-top: 10px;
+            font-weight: 700;
+            color: var(--text-main);
         }
+
         .tips {
-            color: #999898;
-            margin-top: 5px;
+            color: var(--text-secondary);
+            margin-top: 6px;
             font-size: 13px;
         }
+
         .download-btn {
             margin-top: 20px;
         }

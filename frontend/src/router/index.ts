@@ -98,6 +98,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/webshare/Share.vue")
   },
   {
+    path: '/preview/:fileId',
+    name: '文件预览',
+    component: () => import("@/views/FilePreview.vue")
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import("@/views/NotFound.vue")

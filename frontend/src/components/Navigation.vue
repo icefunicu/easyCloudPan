@@ -12,17 +12,45 @@
         >
           全部文件
         </span>
-        <template v-for="(item, index) in folderList" :key="item.fileId || index">
-            <span class="iconfont icon-right"></span>
-            <span
-              v-if="index < folderList.length - 1"
-              class="link"
-              @click="setCurrentFolder(index)"
-              >{{ item.fileName }}</span
-            >
-            <span v-if="index == folderList.length - 1" class="text">{{
-              item.fileName
-            }}</span>
+        
+        <!-- 短路径：直接显示 -->
+        <template v-if="folderList.length <= 4">
+          <template v-for="(item, index) in folderList" :key="item.fileId || index">
+              <span class="iconfont icon-right"></span>
+              <span
+                v-if="index < folderList.length - 1"
+                class="link"
+                @click="setCurrentFolder(index)"
+                >{{ item.fileName }}</span
+              >
+              <span v-if="index == folderList.length - 1" class="text">{{
+                item.fileName
+              }}</span>
+          </template>
+        </template>
+        
+        <!-- 长路径：折叠中间 -->
+        <template v-else>
+          <span class="iconfont icon-right"></span>
+          <el-dropdown trigger="click" @command="setCurrentFolder">
+            <span class="link collapsed">
+              <span class="iconfont icon-more"></span>
+              <span class="collapsed-count">{{ folderList.length - 1 }}级</span>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-for="(item, index) in folderList.slice(0, -1)"
+                  :key="item.fileId"
+                  :command="index"
+                >
+                  {{ item.fileName }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <span class="iconfont icon-right"></span>
+          <span class="text">{{ folderList[folderList.length - 1].fileName }}</span>
         </template>
     </div>
 </template>
@@ -139,7 +167,7 @@ const doCallback = () => {
 
 watch(
     () => [route.query.path, route.params.category, route.path],
-    (newValues, oldValues) => {
+    (newValues, _oldValues) => {
         if (!props.watchPath) {
             return;
         }
@@ -169,14 +197,22 @@ watch(
 
 <style lang="scss" scoped>
 .top-navigation {
-    font-size: 14px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(189, 208, 202, 0.72);
+    background: rgba(255, 255, 255, 0.72);
+    font-size: 13px;
     display: flex;
     align-items: center;
-    line-height: 40px;
+    line-height: 1.6;
+    min-height: 40px;
+    flex-wrap: wrap;
     color: var(--text-secondary);
     
     .all-file {
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: 0.02em;
         color: var(--text-main);
     }
     
@@ -186,21 +222,44 @@ watch(
         transition: var(--transition-fast);
         
         &:hover {
-            color: var(--primary-light);
+            color: var(--primary-dark);
             text-decoration: underline;
+            text-underline-offset: 3px;
         }
     }
     
     .icon-right {
         color: var(--text-light);
-        padding: 0px 8px;
-        font-size: 12px;
+        padding: 0 7px;
+        font-size: 11px;
     }
     
     .text {
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
         cursor: default;
+    }
+    
+    .collapsed {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: rgba(31, 79, 104, 0.08);
+        
+        .icon-more {
+            font-size: 12px;
+        }
+        
+        .collapsed-count {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        
+        &:hover {
+            background: rgba(31, 79, 104, 0.14);
+        }
     }
 }
 </style>

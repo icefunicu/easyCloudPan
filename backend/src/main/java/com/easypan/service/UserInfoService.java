@@ -205,10 +205,18 @@ public interface UserInfoService {
     SessionWebUserDto qqLogin(String code);
 
     /**
-     * 更改用户空间.
+     * 更改用户空间（增量）.
      *
      * @param userId 用户ID
-     * @param changeSpace 变更空间大小
+     * @param changeSpace 变更空间大小（MB），正数增加，负数减少
      */
     void changeUserSpace(String userId, Integer changeSpace);
+
+    /**
+     * 设置用户空间（绝对值）.
+     *
+     * @param userId 用户ID
+     * @param totalSpaceMB 总空间大小（MB）
+     */
+    void setUserSpace(String userId, Long totalSpaceMB);
 }

@@ -118,6 +118,10 @@ export async function updatePassword(password: string): Promise<ResponseVO<null>
   return request({ url: api.updatePassword, params: { password } }) as Promise<ResponseVO<null> | null>
 }
 
+export async function updateNickName(nickName: string): Promise<ResponseVO<null> | null> {
+  return request({ url: api.updateNickName, params: { nickName } }) as Promise<ResponseVO<null> | null>
+}
+
 export async function updateUserAvatar(avatar: File): Promise<ResponseVO<null> | null> {
   return request({
     url: api.updateUserAvatar,

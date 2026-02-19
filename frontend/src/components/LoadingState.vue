@@ -1,29 +1,23 @@
 <template>
   <div class="loading-state-container">
-    <!-- Loading 状态 -->
     <div v-if="state === 'loading'" class="state-loading">
       <div class="loading-spinner"></div>
-      <p class="loading-text">{{ loadingText || '加载中...' }}</p>
+      <p class="loading-text">{{ loadingText || "加载中..." }}</p>
     </div>
 
-    <!-- Empty 状态 -->
     <div v-else-if="state === 'empty'" class="state-empty">
-      <div class="empty-icon">📭</div>
-      <p class="empty-text">{{ emptyText || '暂无数据' }}</p>
+      <p class="empty-text">{{ emptyText || "暂无数据" }}</p>
       <slot name="empty-action"></slot>
     </div>
 
-    <!-- Error 状态 -->
     <div v-else-if="state === 'error'" class="state-error">
-      <div class="error-icon">⚠️</div>
-      <p class="error-text">{{ errorText || '加载失败' }}</p>
+      <p class="error-text">{{ errorText || "加载失败" }}</p>
       <button v-if="showRetry" class="retry-button" @click="handleRetry">
         重试
       </button>
       <slot name="error-action"></slot>
     </div>
 
-    <!-- Success 状态 - 显示内容 -->
     <div v-else-if="state === 'success'" class="state-success">
       <slot></slot>
     </div>
@@ -31,43 +25,43 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits } from 'vue';
+import { defineEmits, defineProps } from "vue";
 
-const props = defineProps({
+defineProps({
   state: {
     type: String,
     required: true,
-    validator: (value) => ['loading', 'empty', 'error', 'success'].includes(value)
+    validator: value => ["loading", "empty", "error", "success"].includes(value),
   },
   loadingText: {
     type: String,
-    default: '加载中...'
+    default: "加载中...",
   },
   emptyText: {
     type: String,
-    default: '暂无数据'
+    default: "暂无数据",
   },
   errorText: {
     type: String,
-    default: '加载失败，请稍后重试'
+    default: "加载失败，请重试",
   },
   showRetry: {
     type: Boolean,
-    default: true
-  }
+    default: true,
+  },
 });
 
-const emit = defineEmits(['retry']);
+const emit = defineEmits(["retry"]);
 
 const handleRetry = () => {
-  emit('retry');
+  emit("retry");
 };
 </script>
 
 <style lang="scss" scoped>
 .loading-state-container {
   width: 100%;
-  min-height: 200px;
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,67 +70,46 @@ const handleRetry = () => {
   .state-empty,
   .state-error {
     text-align: center;
-    padding: 40px 20px;
+    padding: 32px 20px;
   }
 
-  .state-loading {
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      margin: 0 auto 16px;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #409eff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    .loading-text {
-      color: #909399;
-      font-size: 14px;
-    }
+  .loading-spinner {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    border: 3px solid rgba(31, 79, 104, 0.2);
+    border-top-color: var(--primary);
+    animation: spin 1s linear infinite;
   }
 
-  .state-empty {
-    .empty-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-
-    .empty-text {
-      color: #909399;
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
+  .loading-text,
+  .empty-text {
+    color: var(--text-secondary);
+    font-size: 13px;
+    letter-spacing: 0.03em;
   }
 
-  .state-error {
-    .error-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
+  .error-text {
+    color: var(--danger);
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
 
-    .error-text {
-      color: #f56c6c;
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
+  .retry-button {
+    padding: 8px 18px;
+    border-radius: var(--btn-radius-pill);
+    border: 1px solid var(--btn-primary-bg);
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
 
-    .retry-button {
-      padding: 8px 20px;
-      background-color: #409eff;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-
-      &:hover {
-        background-color: #66b1ff;
-      }
-
-      &:active {
-        background-color: #3a8ee6;
-      }
+    &:hover {
+      background: var(--btn-primary-hover-bg);
+      border-color: var(--btn-primary-hover-bg);
+      box-shadow: 0 8px 14px rgba(31, 79, 104, 0.18);
     }
   }
 
@@ -146,11 +119,12 @@ const handleRetry = () => {
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
+  from {
+    transform: rotate(0);
   }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
 </style>
+

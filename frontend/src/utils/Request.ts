@@ -17,8 +17,38 @@ let refreshSubscribers: ((token: string) => void)[] = []
 // 请求取消相关
 const pendingRequests = new Map<string, AbortController>();
 
+const normalizeKeyPart = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (typeof value === 'string') {
+    return value
+  }
+  if (value instanceof URLSearchParams) {
+    return value.toString()
+  }
+  if (value instanceof FormData) {
+    // FormData 包含文件对象，避免序列化引发高开销或异常
+    const keys: string[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(value as any).forEach((_: unknown, key: string) => keys.push(key))
+    return `__FORMDATA__:${keys.join(',')}`
+  }
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return String(value)
+  }
+}
+
 const getRequestKey = (config: InternalAxiosRequestConfig) => {
-  return [config.method, config.url].join("&");
+  return [
+    config.method,
+    config.baseURL || '',
+    config.url,
+    normalizeKeyPart(config.params),
+    normalizeKeyPart(config.data),
+  ].join('&')
 };
 
 const addPendingRequest = (config: InternalAxiosRequestConfig) => {
@@ -89,6 +119,7 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   uploadProgressCallback?: (event: ProgressEvent) => void
   dataType?: string
   skipAuthRefresh?: boolean
+  enableRequestDedup?: boolean
 }
 
 function subscribeTokenRefresh(callback: (token: string) => void) {
@@ -152,7 +183,9 @@ instance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    addPendingRequest(config);
+    if (customConfig.enableRequestDedup !== false) {
+      addPendingRequest(config)
+    }
 
     if (customConfig.showLoading) {
       startLoading()
@@ -173,7 +206,9 @@ instance.interceptors.response.use(
     if (showLoading) {
       endLoading()
     }
-    removePendingRequest(config);
+    if (config.enableRequestDedup !== false) {
+      removePendingRequest(config)
+    }
     const responseData = response.data
     if (responseType == 'arraybuffer' || responseType == 'blob') {
       return responseData
@@ -247,11 +282,14 @@ instance.interceptors.response.use(
     }
   },
   (error: any) => {
+    if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') {
+      return Promise.reject({ showError: false, msg: '请求已取消' })
+    }
     if (error.config && error.config.showLoading) {
       endLoading()
     }
-    if (error.config) {
-      removePendingRequest(error.config);
+    if (error.config && error.config.enableRequestDedup !== false) {
+      removePendingRequest(error.config)
     }
     return Promise.reject({ showError: true, msg: '网络异常' })
   }
@@ -266,6 +304,7 @@ const request = (config: {
   errorCallback?: (errorMsg: string) => void
   showError?: boolean
   uploadProgressCallback?: (event: ProgressEvent) => void
+  enableRequestDedup?: boolean
 }) => {
   const { url, params, dataType, showLoading = true, responseType = responseTypeJson } = config
   let contentType = contentTypeForm
@@ -304,6 +343,7 @@ const request = (config: {
         config.uploadProgressCallback(event)
       }
     },
+    enableRequestDedup: config.enableRequestDedup,
   } as any
 
   return instance.post(url, requestData, axiosConfig).catch(error => {
@@ -311,6 +351,9 @@ const request = (config: {
       const status = (error as any)?.response?.status
       const message = (error as any)?.message ? String((error as any).message) : 'Request error'
       console.error('[Request]', { url, status, message })
+    }
+    if (error?.msg === '请求已取消') {
+      return null
     }
     if (error && error.showError) {
       Message.error(error.msg)

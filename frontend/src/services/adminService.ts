@@ -8,6 +8,7 @@ const api = {
   loadUserList: '/admin/loadUserList',
   updateUserStatus: '/admin/updateUserStatus',
   updateUserSpace: '/admin/updateUserSpace',
+  setUserSpace: '/admin/setUserSpace',
   getSysSettings: '/admin/getSysSettings',
   saveSysSettings: '/admin/saveSysSettings',
   loadFileList: '/admin/loadFileList',
@@ -28,6 +29,11 @@ export interface UpdateUserStatusParams {
 export interface UpdateUserSpaceParams {
   userId: string
   changeSpace: number
+}
+
+export interface SetUserSpaceParams {
+  userId: string
+  totalSpaceMB: number
 }
 
 export interface SaveSysSettingsParams {
@@ -68,6 +74,10 @@ export async function updateUserStatus(params: UpdateUserStatusParams): Promise<
 
 export async function updateUserSpace(params: UpdateUserSpaceParams): Promise<ResponseVO<null> | null> {
   return request({ url: api.updateUserSpace, params }) as Promise<ResponseVO<null> | null>
+}
+
+export async function setUserSpace(params: SetUserSpaceParams): Promise<ResponseVO<null> | null> {
+  return request({ url: api.setUserSpace, params }) as Promise<ResponseVO<null> | null>
 }
 
 export async function getSysSettings(): Promise<SysSettingsDto | null> {

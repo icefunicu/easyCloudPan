@@ -186,7 +186,7 @@ const cancelShareDone = async () => {
         .file-name {
             span {
                 &:hover {
-                    color: #494944;
+                    color: var(--primary-dark);
                 }
             }
         }

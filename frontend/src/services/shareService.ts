@@ -1,8 +1,8 @@
 import request from '@/utils/Request'
 import type { ResponseVO, PaginationResultVO } from '@/types'
-import { adaptFileSharePagination, adaptShareInfo } from '@/adapters'
+import { adaptFileSharePagination, adaptShareInfo } from '@/adapters/shareAdapter'
 import type { FileShare, ShareInfoVO, ShareFileParams, SaveShareParams } from '@/types'
-import { adaptFileInfoPagination } from '@/adapters'
+import { adaptFileInfoPagination, adaptFolderList } from '@/adapters/fileAdapter'
 
 const api = {
   loadShareList: '/share/loadShareList',
@@ -142,7 +142,6 @@ export async function getFolderInfo(shareId: string, path: string): Promise<impo
     showLoading: false,
   })) as ResponseVO<unknown[]> | null
   if (result && result.code === 200) {
-    const { adaptFolderList } = await import('@/adapters')
     return adaptFolderList(result.data)
   }
   return null

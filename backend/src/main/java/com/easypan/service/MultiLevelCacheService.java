@@ -28,6 +28,8 @@ public class MultiLevelCacheService {
     private FileInfoMapper fileInfoMapper;
 
     private static final String FILE_INFO_KEY_PREFIX = "file:info:";
+    private static final String NULL_MARKER = "NULL_MARKER";
+    private static final int NULL_CACHE_TTL = 300; // 5 minutes for null cache
 
     /**
      * 获取文件信息（多级缓存）.
@@ -57,6 +59,12 @@ public class MultiLevelCacheService {
             return cached;
         }
 
+        // Check for null marker (cache penetration protection)
+        if (redisUtils.isNullMarker(redisKey)) {
+            log.debug("L2 Null Marker Hit: {}", cacheKey);
+            return null;
+        }
+
         // L3: 数据库
         cached = fileInfoMapper.selectByFileIdAndUserId(fileId, userId);
         if (cached != null) {
@@ -64,6 +72,10 @@ public class MultiLevelCacheService {
             // 回写 L2 & L1
             redisUtils.setex(redisKey, cached, 3600); // 1小时
             fileInfoCache.put(cacheKey, cached);
+        } else {
+            // Cache null marker to prevent cache penetration
+            log.debug("L3 DB Miss, caching null marker: {}", cacheKey);
+            redisUtils.setNullMarker(redisKey, NULL_CACHE_TTL);
         }
 
         return cached;

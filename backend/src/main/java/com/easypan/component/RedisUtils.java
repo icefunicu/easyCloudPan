@@ -151,4 +151,57 @@ public class RedisUtils<V> {
         }
         return redisTemplate.opsForValue().increment(key, delta);
     }
+
+    /**
+     * 缓存空值标记（用于防止缓存穿透）.
+     *
+     * @param key   键
+     * @param time  过期时间（秒）
+     * @return 是否成功
+     */
+    public boolean setNullMarker(String key, long time) {
+        try {
+            redisTemplate.opsForValue().set(key, null, time, TimeUnit.SECONDS);
+            return true;
+        } catch (Exception e) {
+            logger.error("设置空值标记失败 key:{}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * 检查是否为空值标记.
+     *
+     * @param key 键
+     * @return 是否存在空值标记
+     */
+    public boolean isNullMarker(String key) {
+        try {
+            Boolean hasKey = redisTemplate.hasKey(key);
+            if (Boolean.TRUE.equals(hasKey)) {
+                V value = redisTemplate.opsForValue().get(key);
+                return value == null;
+            }
+            return false;
+        } catch (Exception e) {
+            logger.error("检查空值标记失败 key:{}", key, e);
+            return false;
+        }
+    }
+
+    /**
+     * 获取缓存值，支持空值标记检查.
+     *
+     * @param key           键
+     * @param nullMarkerKey 空值标记键
+     * @return 值（如果存在空值标记返回特殊的 NULL_MARKER）
+     */
+    @SuppressWarnings("unchecked")
+    public V getWithNullMarker(String key, String nullMarkerKey) {
+        // 先检查空值标记
+        if (isNullMarker(nullMarkerKey)) {
+            return (V) "NULL_MARKER";
+        }
+        return get(key);
+    }
 }

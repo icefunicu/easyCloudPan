@@ -61,7 +61,9 @@ onMounted(() => {
 .progressive-image {
     position: relative;
     overflow: hidden;
-    background-color: #f5f5f5;
+    background: rgba(246, 249, 252, 0.9);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 
     img {
         position: absolute;
@@ -99,13 +101,13 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: #f0f0f0;
+        background: rgba(246, 249, 252, 0.9);
 
         .loading-spinner {
             width: 24px;
             height: 24px;
-            border: 2px solid #e0e0e0;
-            border-top-color: #409eff;
+            border: 2px solid rgba(31, 79, 104, 0.18);
+            border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -118,3 +120,4 @@ onMounted(() => {
     }
 }
 </style>
+

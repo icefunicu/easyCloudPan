@@ -8,6 +8,7 @@ export {
   logout,
   getUseSpace,
   updatePassword,
+  updateNickName,
   updateUserAvatar,
   getAvatarUrl,
   refreshTokenRequest,
@@ -81,6 +82,7 @@ export {
   loadUserList,
   updateUserStatus,
   updateUserSpace,
+  setUserSpace,
   getSysSettings,
   saveSysSettings,
   loadFileList as loadAdminFileList,
@@ -96,6 +98,7 @@ export {
 export type {
   UpdateUserStatusParams,
   UpdateUserSpaceParams,
+  SetUserSpaceParams,
   SaveSysSettingsParams,
   LoadFileListParams as AdminLoadFileListParams,
   DelFileParams as AdminDelFileParams,

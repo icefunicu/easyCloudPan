@@ -138,4 +138,25 @@ const copy = async () => {
 }
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+:deep(.el-radio-group) {
+  gap: 10px;
+}
+
+:deep(.el-radio) {
+  margin-right: 0;
+}
+
+:deep(.el-form-item__label) {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+:deep(.el-input) {
+  width: 100%;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+</style>

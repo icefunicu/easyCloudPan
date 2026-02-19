@@ -86,4 +86,6 @@ public class Constants {
 
     public static final String REDIS_KEY_USER_INFO = "easypan:user:info:";
 
+    public static final String REDIS_KEY_TENANT_STORAGE = "easypan:tenant:storage:";
+
 }

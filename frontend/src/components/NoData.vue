@@ -18,17 +18,18 @@ const props = defineProps({
 <style lang="scss" scoped>
 .no-data {
     text-align: center;
-    padding: 20px 0;
+    padding: 30px 0;
     
     .icon-empty {
-        font-size: 50px;
-        color: var(--text-light);
+        font-size: 56px;
+        color: var(--primary-light);
     }
     
     .msg {
-        margin-top: 15px;
+        margin-top: 12px;
         color: var(--text-secondary);
-        font-size: 14px;
+        font-size: 13px;
+        letter-spacing: 0.03em;
     }
 }
 </style>

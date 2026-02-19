@@ -148,6 +148,7 @@ export async function uploadFile(
     showLoading: false,
     showError: false,
     uploadProgressCallback: onProgress,
+    enableRequestDedup: false,
   })) as ResponseVO<unknown> | null
   if (result && result.code === 200) {
     return adaptUploadResult(result.data)
@@ -171,6 +172,7 @@ export async function uploadFileWithError(
     dataType: 'file',
     showLoading: false,
     showError: false,
+    enableRequestDedup: false,
     errorCallback: msg => {
       errorMsg = msg
     },
@@ -230,4 +232,15 @@ export function getFileUrl(fileId: string): string {
 
 export function getVideoUrl(fileId: string): string {
   return `/api${api.getVideoInfo}/${fileId}`
+}
+
+export async function getFileInfoById(fileId: string): Promise<FileInfoVO | null> {
+  const result = (await request({
+    url: `/file/getFileInfo/${fileId}`,
+    showLoading: false,
+  })) as ResponseVO<unknown> | null
+  if (result && result.code === 200) {
+    return adaptFileInfo(result.data)
+  }
+  return null
 }

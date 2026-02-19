@@ -3,7 +3,7 @@
         <div class="body-content">
             <div class="logo">
                 <span class="iconfont icon-pan"></span>
-                <span class="name">Easy云盘</span>
+                <span class="name">易云盘</span>
             </div>
             <div class="code-panel">
                 <div class="file-info">
@@ -103,80 +103,106 @@ const checkShare = async () => {
 <style lang="scss" scoped>
 .share {
     min-height: 100vh;
-    background-color: var(--bg-body);
-    background-image:
-      radial-gradient(1200px 300px at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%),
-      url("../../assets/share_bg.png");
-    background-repeat: no-repeat, repeat-x;
-    background-position: 0 0, 0 bottom;
     display: flex;
     justify-content: center;
+    background:
+      radial-gradient(620px 420px at 10% 0%, rgba(43, 137, 169, 0.2), rgba(43, 137, 169, 0)),
+      radial-gradient(620px 420px at 96% 100%, rgba(58, 115, 145, 0.14), rgba(58, 115, 145, 0)),
+      linear-gradient(180deg, #f7f8fb 0%, #f1f3f8 100%);
+
     .body-content {
-        margin-top: 12vh;
-        width: min(520px, calc(100% - 32px));
+        margin-top: 10vh;
+        width: min(560px, calc(100% - 32px));
+        animation: riseIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+
         .logo {
             display: flex;
             align-items: center;
             justify-content: center;
             user-select: none;
+
             .icon-pan {
-                font-size: 60px;
-                color: var(--primary);
+                width: 62px;
+                height: 62px;
+                border-radius: 18px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 34px;
+                color: #fff;
+                background: var(--primary);
+                box-shadow: 0 16px 28px rgba(31, 79, 104, 0.24);
             }
+
             .name {
-                font-weight: bold;
-                margin-left: 5px;
-                font-size: 25px;
+                margin-left: 10px;
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
                 color: var(--text-main);
+                font-family: var(--font-heading);
             }
         }
+
         .code-panel {
             margin-top: 20px;
-            background: var(--bg-card);
-            border-radius: var(--border-radius-lg);
+            border-radius: 24px;
             overflow: hidden;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(194, 204, 220, 0.78);
+            background: rgba(255, 255, 255, 0.82);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(8px);
+
             .file-info {
-                padding: 10px 20px;
-                background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.06));
-                color: var(--text-main);
+                padding: 14px 20px;
                 display: flex;
                 align-items: center;
+                color: var(--text-main);
+                background: linear-gradient(100deg, rgba(31, 79, 104, 0.14) 0%, rgba(58, 115, 145, 0.1) 100%);
+
                 .avatar {
-                    margin-right: 5px;
+                    margin-right: 8px;
                 }
+
                 .share-info {
                     .user-info {
                         display: flex;
                         align-items: center;
                         flex-wrap: wrap;
+
                         .nick-name {
                             font-size: 15px;
-                            color: var(--text-main);
-                            font-weight: 600;
+                            font-weight: 700;
                         }
+
                         .share-time {
-                            margin-left: 20px;
+                            margin-left: 16px;
                             font-size: 12px;
-                            color: var(--text-light);
+                            color: var(--text-secondary);
                         }
                     }
+
                     .file-name {
-                        color: var(--text-secondary);
-                        margin-top: 10px;
+                        margin-top: 8px;
                         font-size: 12px;
+                        color: var(--text-secondary);
                     }
                 }
             }
+
             .code-body {
-                padding: 30px 20px 60px 20px;
+                padding: 24px 20px 28px;
+
                 .tips {
-                    font-weight: bold;
+                    font-size: 13px;
+                    font-weight: 700;
+                    letter-spacing: 0.06em;
                     color: var(--text-main);
                 }
+
                 .input-area {
-                    margin-top: 15px;
+                    margin-top: 14px;
+
                     .input {
                         flex: 1;
                         margin-right: 10px;
@@ -189,8 +215,9 @@ const checkShare = async () => {
 
 @media screen and (max-width: 768px) {
     .share .body-content {
-        margin-top: 10vh;
+        margin-top: 8vh;
     }
+
     .share .body-content .code-panel .file-info .share-info .user-info .share-time {
         margin-left: 0;
         width: 100%;
@@ -198,3 +225,4 @@ const checkShare = async () => {
     }
 }
 </style>
+

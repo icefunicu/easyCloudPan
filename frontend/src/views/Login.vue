@@ -1,9 +1,22 @@
 <template>
   <div class="login-body">
     <div class="bg"></div>
-    <div class="login-panel">
+    <div class="login-shell">
+      <div class="brand-panel">
+        <div class="brand-icon">
+          <span class="iconfont icon-pan"></span>
+        </div>
+        <div class="brand-name">云盘账号服务</div>
+        <div class="brand-desc">统一管理账号、文件与分享，保证多端体验一致。</div>
+        <div class="brand-list">
+          <div class="brand-item">分片上传与断点续传</div>
+          <div class="brand-item">提取码分享与访问控制</div>
+          <div class="brand-item">回收站与管理端协同</div>
+        </div>
+      </div>
+      <div class="login-panel">
       <el-form ref="formDataRef" class="login-register" :model="formData" :rules="rules" @submit.prevent>
-        <div class="login-title">Easy云盘</div>
+        <div class="login-title">云盘登录</div>
         <!-- input输入 -->
         <el-form-item prop="email">
           <el-input v-model.trim="formData.email" size="large" clearable placeholder="请输入邮箱" maxlength="150">
@@ -41,10 +54,10 @@
               <div>
                 <p>1.在垃圾箱中查找邮箱验证码</p>
                 <p>2.在邮箱中头像->设置->反垃圾->白名单->设置邮件地址白名单</p>
-                <p>3.将邮箱【3503201604@qq.com】添加到白名单不知道怎么设置?</p>
+                <p>3.将邮箱【3503201604@qq.com】添加到白名单，不知道怎么设置？</p>
               </div>
               <template #reference>
-                <span class="a-link" :style="{ 'font-size': '14px' }">未收到邮箱验证码?</span>
+                <span class="a-link" :style="{ 'font-size': '14px' }">未收到邮箱验证码？</span>
               </template>
             </el-popover>
           </el-form-item>
@@ -111,16 +124,16 @@
             <el-checkbox v-model="formData.rememberMe">记住我</el-checkbox>
           </div>
           <div class="no-account">
-            <a href="javascript:void(0)" class="a-link" @click="showPanel(2)">忘记密码?</a>
-            <a href="javascript:void(0)" class="a-link" @click="showPanel(0)">没有账号?</a>
+            <a href="javascript:void(0)" class="a-link" @click="showPanel(2)">忘记密码？</a>
+            <a href="javascript:void(0)" class="a-link" @click="showPanel(0)">没有账号？</a>
           </div>
         </el-form-item>
         <!-- 找回密码 -->
         <el-form-item v-if="opType == 2">
-          <a href="javascript:void(0)" class="a-link" @click="showPanel(1)">去登录?</a>
+          <a href="javascript:void(0)" class="a-link" @click="showPanel(1)">去登录？</a>
         </el-form-item>
         <el-form-item v-if="opType == 0">
-          <a href="javascript:void(0)" class="a-link" @click="showPanel(1)">已有账号?</a>
+          <a href="javascript:void(0)" class="a-link" @click="showPanel(1)">已有账号？</a>
         </el-form-item>
         <!-- 登录按钮 -->
         <el-form-item>
@@ -131,7 +144,7 @@
           </el-button>
         </el-form-item>
         <div v-if="opType == 1" class="quick-login-panel">
-          <div class="quick-login-title">选择其他方式登录</div>
+          <div class="quick-login-title">其他登录方式</div>
           <div class="oauth-buttons">
             <!-- GitHub -->
             <div class="oauth-btn github" @click="oauthLogin('github')" title="GitHub登录">
@@ -170,12 +183,9 @@
               </svg>
             </div>
           </div>
-          <!-- QQ (Keep Old) -->
-          <div class="oauth-btn qq" @click="qqLogin" title="QQ登录" style="display: none">
-            <!-- Hidden old qq login to use new style if needed, or just keep it simple -->
-          </div>
         </div>
       </el-form>
+    </div>
     </div>
     <Dialog
       :show="dialogConfig4SendMailCode.show"
@@ -340,7 +350,7 @@ const sendEmailCode = () => {
       changeCheckCode(1)
       return
     }
-    proxy.Message.success('验证码发送成功,请登录邮箱查看')
+    proxy.Message.success('验证码发送成功，请登录邮箱查看')
     dialogConfig4SendMailCode.show = false
   })
 }
@@ -402,7 +412,7 @@ const doSubmit = () => {
         changeCheckCode(0)
         return
       }
-      proxy.Message.success('注册成功,请登录')
+      proxy.Message.success('注册成功，请登录')
       showPanel(1)
     } else if (opType.value == 1) {
       const loginResult = await loginService({
@@ -442,7 +452,7 @@ const doSubmit = () => {
         return
       }
       // 重置密码
-      proxy.Message.success('重置密码成功,请登录')
+      proxy.Message.success('重置密码成功，请登录')
       showPanel(1)
     }
     } catch (error) {
@@ -468,123 +478,156 @@ const qqLogin = async () => {
 <style lang="scss" scoped>
 
 .login-body {
-  height: 100vh;
+  min-height: 100vh;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(47, 109, 140, 0.18) 0%, rgba(47, 109, 140, 0) 46%),
+    linear-gradient(180deg, #f5f8fa 0%, #eef3f6 100%);
 
-  /* New Gradient Background */
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(249, 115, 22, 0.1) 0%, transparent 50%),
-    linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
-  
-  /* Abstract Shapes for "Geometric" feel */
-  &::before, &::after {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
-    z-index: 0;
-  }
-  
   &::before {
-    top: -10%;
-    right: -5%;
-    width: 50vw;
-    height: 50vw;
-    background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
-  }
-  
-  &::after {
-    bottom: -10%;
-    left: -5%;
-    width: 40vw;
-    height: 40vw;
-    background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, transparent 70%);
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(110deg, rgba(120, 145, 164, 0.08) 0%, rgba(120, 145, 164, 0) 64%);
   }
 
   .bg {
-    display: none; 
+    display: none;
+  }
+
+  .login-shell {
+    width: min(1120px, 100%);
+    display: grid;
+    grid-template-columns: minmax(320px, 1.05fr) minmax(340px, 0.95fr);
+    gap: 18px;
+    position: relative;
+    z-index: 1;
+    animation: riseIn 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .brand-panel {
+    padding: 34px;
+    border-radius: 28px;
+    background:
+      linear-gradient(155deg, rgba(31, 79, 104, 0.94) 0%, rgba(39, 95, 124, 0.92) 62%, rgba(55, 123, 156, 0.9) 100%);
+    color: #f6fffe;
+    box-shadow: var(--shadow-xl);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    position: relative;
+    overflow: hidden;
+
+    .brand-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(6px);
+
+      .iconfont {
+        font-size: 34px;
+      }
+    }
+
+    .brand-name {
+      margin-top: 20px;
+      font-family: var(--font-heading);
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      line-height: 1.1;
+      max-width: 460px;
+    }
+
+    .brand-desc {
+      margin-top: 10px;
+      max-width: 420px;
+      font-size: 15px;
+      line-height: 1.6;
+      color: rgba(246, 255, 254, 0.9);
+    }
+
+    .brand-list {
+      margin-top: 20px;
+      display: grid;
+      gap: 10px;
+
+      .brand-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(2px);
+        font-size: 13px;
+        letter-spacing: 0.01em;
+      }
+    }
   }
 
   .login-panel {
-    width: min(480px, calc(100vw - 24px));
     position: relative;
     z-index: 1;
+  }
 
-    .login-register {
-      padding: 40px;
-      /* Glassmorphism */
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-radius: var(--border-radius-xl);
-      box-shadow: var(--shadow-xl), var(--shadow-glow); /* Enhanced shadow */
-      border: 1px solid rgba(255, 255, 255, 0.6);
+  .login-register {
+    padding: 34px;
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(194, 204, 216, 0.82);
+    box-shadow: var(--shadow-lg);
+    min-height: 100%;
+  }
 
-      .login-title {
-        text-align: center;
-        font-size: 28px;
-        font-weight: 700;
-        color: var(--primary);
-        letter-spacing: 0.5px;
-        margin-bottom: 30px;
-        font-family: var(--font-heading);
-        text-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
-      }
+  .login-title {
+    text-align: center;
+    margin-bottom: 26px;
+    font-size: 28px;
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text-main);
+    font-family: var(--font-heading);
+  }
 
-      .send-email-panel {
-        display: flex;
-        width: 100%;
-        gap: 10px;
+  .send-email-panel {
+    display: flex;
+    width: 100%;
+    gap: 10px;
 
-        .send-mail-btn {
-          /* Using global button styles, just ensuring layout */
-          white-space: nowrap;
-        }
-      }
-
-      .rememberme-panel {
-        width: 100%;
-        margin-bottom: 5px;
-      }
-
-      .no-account {
-        width: 100%;
-        display: flex;
-        justify-content: space-between;
-        margin-top: 10px;
-        font-size: 14px;
-      }
-
-      .op-btn {
-        width: 100%;
-        background: var(--primary-gradient); /* Use gradient */
-        border: 0;
-        color: #fff;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        margin-top: 10px;
-        height: 44px;
-        border-radius: var(--border-radius-md);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        transition: var(--transition-fast);
-
-        &:hover {
-          opacity: 0.95;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
-        }
-        
-        &:active {
-            transform: translateY(0);
-        }
-      }
+    .send-mail-btn {
+      white-space: nowrap;
     }
+  }
+
+  .rememberme-panel {
+    width: 100%;
+    margin-bottom: 6px;
+  }
+
+  .no-account {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+
+  .op-btn {
+    width: 100%;
+    height: 46px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
   }
 
   .check-code-panel {
@@ -594,87 +637,101 @@ const qqLogin = async () => {
 
     .check-code {
       height: 40px;
-      cursor: pointer;
-      border-radius: var(--border-radius-sm);
+      border-radius: 10px;
       border: 1px solid var(--border-color);
-      transition: transform 0.3s ease;
-      
+      cursor: pointer;
+      transition: var(--transition-fast);
+
       &:hover {
-        transform: scale(1.05);
+        transform: translateY(-0.5px);
         box-shadow: var(--shadow-sm);
       }
     }
   }
 
+  .password-strength-bar {
+    margin-top: 6px;
+  }
+
   .quick-login-panel {
-    margin-top: 24px;
+    margin-top: 22px;
     text-align: center;
 
     .quick-login-title {
-      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      letter-spacing: 0.03em;
       color: var(--text-light);
       margin-bottom: 12px;
-      display: block;
-      position: relative;
-      
-      &::before, &::after {
-          content: '';
-          position: absolute;
-          top: 50%;
-          width: 30px;
-          height: 1px;
-          background: var(--border-color);
+
+      &::before,
+      &::after {
+        content: "";
+        width: 36px;
+        height: 1px;
+        background: var(--border-color);
       }
-      &::before { right: 55%; }
-      &::after { left: 55%; }
     }
 
     .oauth-buttons {
       display: flex;
       justify-content: center;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     .oauth-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 1px solid var(--border-color);
-      background: rgba(255, 255, 255, 0.8);
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: 1px solid rgba(194, 204, 220, 0.84);
+      background: rgba(255, 255, 255, 0.92);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s ease;
+      box-shadow: var(--shadow-xs);
+      transition: var(--transition-fast);
 
       &:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-md);
-        background: #fff;
+        transform: translateY(-0.5px);
         border-color: var(--primary-light);
+        box-shadow: 0 6px 12px rgba(31, 79, 104, 0.16);
       }
 
       svg {
         width: 22px;
         height: 22px;
-        display: block;
-        transition: transform 0.2s;
-      }
-      
-      &:hover svg {
-          transform: scale(1.1);
       }
     }
   }
 
+  @media screen and (max-width: 980px) {
+    .login-shell {
+      grid-template-columns: 1fr;
+      max-width: 560px;
+    }
+
+    .brand-panel {
+      display: none;
+    }
+  }
+
   @media screen and (max-width: 768px) {
-    .login-panel {
-      .login-register {
-        padding: 28px 20px;
-      }
+    padding: 12px;
+
+    .login-register {
+      padding: 26px 18px;
+      border-radius: 20px;
+    }
+
+    .login-title {
+      margin-bottom: 20px;
+      font-size: 24px;
     }
   }
 }
 </style>
+

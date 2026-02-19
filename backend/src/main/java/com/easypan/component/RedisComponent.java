@@ -36,6 +36,10 @@ public class RedisComponent {
     @Qualifier("fileMd5BloomFilter")
     private BloomFilter<String> fileMd5BloomFilter;
 
+    @Resource
+    @Qualifier("fileIdBloomFilter")
+    private BloomFilter<String> fileIdBloomFilter;
+
     /**
      * 获取系统设置.
      *
@@ -288,6 +292,54 @@ public class RedisComponent {
         fileMd5BloomFilter.put(fileMd5);
     }
 
+    /**
+     * 检查文件 ID 是否可能存在（布隆过滤器）.
+     * 用于防止对不存在文件的缓存穿透查询.
+     *
+     * @param fileId 文件 ID
+     * @return 是否可能存在
+     */
+    public boolean mightContainFileId(String fileId) {
+        if (fileId == null) {
+            return false;
+        }
+        return fileIdBloomFilter.mightContain(fileId);
+    }
+
+    /**
+     * 将新的文件 ID 加入布隆过滤器.
+     *
+     * @param fileId 文件 ID
+     */
+    public void addFileIdToBloom(String fileId) {
+        if (fileId == null) {
+            return;
+        }
+        fileIdBloomFilter.put(fileId);
+    }
+
+    /**
+     * 缓存空值标记（防止缓存穿透）.
+     *
+     * @param keyPrefix 键前缀
+     * @param id        标识符
+     * @param ttlSeconds 过期时间（秒）
+     */
+    public void cacheNullMarker(String keyPrefix, String id, long ttlSeconds) {
+        redisUtils.setNullMarker(keyPrefix + id + ":null", ttlSeconds);
+    }
+
+    /**
+     * 检查是否存在空值标记.
+     *
+     * @param keyPrefix 键前缀
+     * @param id        标识符
+     * @return 是否存在空值标记
+     */
+    public boolean hasNullMarker(String keyPrefix, String id) {
+        return redisUtils.isNullMarker(keyPrefix + id + ":null");
+    }
+
     public void saveOAuthTempUser(String key, Object info, long expire) {
         redisUtils.setex(key, info, expire);
     }
@@ -326,5 +378,62 @@ public class RedisComponent {
      */
     public void deleteUserInfo(String userId) {
         redisUtils.delete(Constants.REDIS_KEY_USER_INFO + userId);
+    }
+
+    /**
+     * 获取租户已用存储空间.
+     *
+     * @param tenantId 租户ID
+     * @return 已用存储空间（字节），null 表示未缓存
+     */
+    public Long getTenantUsedStorage(String tenantId) {
+        Object value = redisUtils.get(Constants.REDIS_KEY_TENANT_STORAGE + tenantId);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Long) {
+            return (Long) value;
+        } else if (value instanceof Integer) {
+            return ((Integer) value).longValue();
+        }
+        return null;
+    }
+
+    /**
+     * 保存租户已用存储空间.
+     *
+     * @param tenantId    租户ID
+     * @param usedStorage 已用存储空间（字节）
+     */
+    public void saveTenantUsedStorage(String tenantId, Long usedStorage) {
+        redisUtils.setex(Constants.REDIS_KEY_TENANT_STORAGE + tenantId, 
+                usedStorage, CacheTTL.WARM_DATA);
+    }
+
+    /**
+     * 增量更新租户已用存储空间.
+     *
+     * @param tenantId  租户ID
+     * @param deltaSize 变化大小（正数增加，负数减少）
+     * @return 更新后的值
+     */
+    public Long incrementTenantUsedStorage(String tenantId, Long deltaSize) {
+        String key = Constants.REDIS_KEY_TENANT_STORAGE + tenantId;
+        Long current = getTenantUsedStorage(tenantId);
+        if (current == null) {
+            return null;
+        }
+        Long newValue = Math.max(0, current + deltaSize);
+        redisUtils.setex(key, newValue, CacheTTL.WARM_DATA);
+        return newValue;
+    }
+
+    /**
+     * 删除租户存储缓存.
+     *
+     * @param tenantId 租户ID
+     */
+    public void deleteTenantUsedStorage(String tenantId) {
+        redisUtils.delete(Constants.REDIS_KEY_TENANT_STORAGE + tenantId);
     }
 }

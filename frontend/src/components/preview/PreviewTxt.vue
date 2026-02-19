@@ -13,16 +13,18 @@
         <el-button type="primary" @click="copy">复制</el-button>
       </div>
     </div>
+    <!-- eslint-disable-next-line vue/no-v-html -- Content is escaped or highlighted, safe -->
     <pre class="hljs code-pre"><code v-html="highlightedHtml"></code></pre>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import useClipboard from 'vue-clipboard3'
 const { toClipboard } = useClipboard()
 
 import { ref, getCurrentInstance, onMounted } from 'vue'
-const { proxy } = getCurrentInstance()
+const instance = getCurrentInstance()
+const proxy = instance!.proxy!
 import { fetchBlob } from '@/services'
 
 const props = defineProps({
@@ -33,22 +35,26 @@ const props = defineProps({
 
 const txtContent = ref('')
 const highlightedHtml = ref('')
-const blobResult = ref()
+const blobResult = ref<Blob | null>(null)
 const encode = ref('utf8')
 
-let hljs = null
-const ensureHljs = async () => {
+interface HljsType {
+  highlightAuto(text: string): { value: string }
+}
+
+let hljs: HljsType | null = null
+const ensureHljs = async (): Promise<HljsType> => {
   if (hljs) {
     return hljs
   }
   const mod = await import('highlight.js/lib/common')
-  hljs = mod.default
+  hljs = mod.default as HljsType
   // Load CSS only when preview is opened.
   await import('highlight.js/styles/atom-one-light.css')
   return hljs
 }
 
-const escapeHtml = text => {
+const escapeHtml = (text: string): string => {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
@@ -63,11 +69,12 @@ const renderHighlight = async () => {
   try {
     const hl = await ensureHljs()
     highlightedHtml.value = hl.highlightAuto(text).value
-  } catch (e) {
+  } catch {
     highlightedHtml.value = escapeHtml(text)
   }
 }
 const readTxt = async () => {
+  if (!props.url) return
   const result = await fetchBlob(props.url)
   if (!result) {
     return
@@ -76,15 +83,16 @@ const readTxt = async () => {
   showTxt()
 }
 
-const changeEncode = e => {
+const changeEncode = (e: string) => {
   encode.value = e
   showTxt()
 }
 
 const showTxt = () => {
+  if (!blobResult.value) return
   const reader = new FileReader()
   reader.onload = () => {
-    const txt = reader.result
+    const txt = reader.result as string
     txtContent.value = txt
     renderHighlight()
   }
@@ -104,32 +112,42 @@ const copy = async () => {
 <style lang="scss" scoped>
 .code {
   width: 100%;
+
   .top-op {
     display: flex;
     align-items: center;
-    justify-content: space-around;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
   }
+
   .encode-select {
     flex: 1;
     display: flex;
     align-items: center;
-    margin: 5px 10px;
+    margin: 0;
+
     .tips {
       margin-left: 10px;
-      color: #828282;
+      color: var(--text-light);
+      font-size: 12px;
     }
   }
+
   .copy-btn {
-    margin-right: 10px;
+    margin-right: 0;
   }
+
   pre {
-    margin: 0px;
+    margin: 0;
   }
+
   .code-pre {
-    background: #fff;
-    padding: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 12px;
     border-radius: var(--border-radius-md);
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(189, 208, 202, 0.78);
+    box-shadow: var(--shadow-xs);
     overflow: auto;
   }
 }
