@@ -1,218 +1,278 @@
 <template>
-    <PreviewImage
-      v-if="fileInfo.fileCategory == 3"
-      ref="imageViewRef"
-      :image-list="[imageUrl]"
-    >
-    </PreviewImage>
-    <Window
-      v-else
-      :show="windowShow"
-      :width="fileInfo.fileCategory == 1 ? 1000 : 900"
-      :title="fileInfo.fileName"
-      :align="fileInfo.fileCategory == 1 ? 'center' : 'top'"
-      @close="closeWindow"
-    >
-      <div class="preview-shell">
-        <div class="preview-toolbar">
-          <div class="meta">
-            <span class="type">{{ previewTypeLabel }}</span>
-            <span v-if="fileInfo.fileSize">大小 {{ proxy.Utils.size2Str(fileInfo.fileSize) }}</span>
-            <span v-if="fileInfo.lastUpdateTime">更新于 {{ fileInfo.lastUpdateTime }}</span>
-          </div>
-          <div class="actions">
-            <el-button v-if="canOpenInNewTab" size="small" @click="openInNewTab">新窗口打开</el-button>
-            <el-button v-if="canDownload" size="small" type="primary" @click="downloadCurrent">下载</el-button>
-          </div>
+  <PreviewImage v-if="fileInfo.fileCategory == 3" ref="imageViewRef" :image-list="[imageUrl]"></PreviewImage>
+  <Window
+    v-else
+    :show="windowShow"
+    :width="fileInfo.fileCategory == 1 ? 1000 : 900"
+    :title="fileInfo.fileName"
+    :align="fileInfo.fileCategory == 1 ? 'center' : 'top'"
+    @close="closeWindow"
+  >
+    <div class="preview-shell">
+      <div class="preview-toolbar">
+        <div class="meta">
+          <span class="type">{{ previewTypeLabel }}</span>
+          <span v-if="fileInfo.fileSize">大小 {{ proxy.Utils.size2Str(fileInfo.fileSize) }}</span>
+          <span v-if="fileInfo.lastUpdateTime">更新于 {{ fileInfo.lastUpdateTime }}</span>
         </div>
-        <div v-if="previewLoading" class="preview-loading">
-          <span class="loading-dot"></span>
-          正在加载预览...
+        <div class="actions">
+          <el-button v-if="canOpenInNewTab" size="small" @click="openInNewTab">新窗口打开</el-button>
+          <el-button v-if="canDownload" size="small" type="primary" @click="downloadCurrent">下载</el-button>
         </div>
-        <template v-else>
-          <PreviewVideo v-if="fileInfo.fileCategory == 1" :url="url"></PreviewVideo>
-          <PreviewDoc v-if="fileInfo.fileType == 5" :url="url"></PreviewDoc>
-          <PreviewExcel v-if="fileInfo.fileType == 6" :url="url"></PreviewExcel>
-          <PreviewPdf v-if="fileInfo.fileType == 4" :url="url"></PreviewPdf>
-          <PreviewTxt
-            v-if="fileInfo.fileType == 7 || fileInfo.fileType == 8"
-            :url="url"
-          ></PreviewTxt>
-          <PreviewMusic
-            v-if="fileInfo.fileCategory == 2"
-            :url="url"
-            :file-name="fileInfo.fileName"
-          ></PreviewMusic>
-
-          <PreviewDownload
-            v-if="fileInfo.fileCategory == 5 && fileInfo.fileType != 8"
-            :create-download-url="createDownloadUrl"
-            :download-url="downloadUrl"
-            :file-info="fileInfo"
-          ></PreviewDownload>
-        </template>
       </div>
-    </Window>
+      <div v-if="previewLoading" class="preview-loading">
+        <span class="loading-dot"></span>
+        正在加载预览...
+      </div>
+      <template v-else>
+        <PreviewVideo v-if="fileInfo.fileCategory == 1" :url="url"></PreviewVideo>
+        <PreviewDoc v-if="fileInfo.fileType == 5" :url="url"></PreviewDoc>
+        <PreviewExcel v-if="fileInfo.fileType == 6" :url="url"></PreviewExcel>
+        <PreviewPdf v-if="fileInfo.fileType == 4" :url="url"></PreviewPdf>
+        <PreviewTxt v-if="fileInfo.fileType == 7 || fileInfo.fileType == 8" :url="url"></PreviewTxt>
+        <PreviewMusic v-if="fileInfo.fileCategory == 2" :url="url" :file-name="fileInfo.fileName"></PreviewMusic>
+
+        <PreviewDownload
+          v-if="fileInfo.fileCategory == 5 && fileInfo.fileType != 8"
+          :create-download-url="createDownloadUrl"
+          :download-url="downloadUrl"
+          :file-info="fileInfo"
+        ></PreviewDownload>
+      </template>
+    </div>
+  </Window>
 </template>
 
 <script setup>
-import { ref, getCurrentInstance, computed, nextTick, defineAsyncComponent, onUnmounted } from "vue";
-import { createDownloadCode } from "@/services";
-const PreviewVideo = defineAsyncComponent(() => import("@/components/preview/PreviewVideo.vue"));
-const PreviewDoc = defineAsyncComponent(() => import("@/components/preview/PreviewDoc.vue"));
-const PreviewExcel = defineAsyncComponent(() => import("@/components/preview/PreviewExcel.vue"));
-const PreviewPdf = defineAsyncComponent(() => import("@/components/preview/PreviewPdf.vue"));
-const PreviewTxt = defineAsyncComponent(() => import("@/components/preview/PreviewTxt.vue"));
-const PreviewMusic = defineAsyncComponent(() => import("@/components/preview/PreviewMusic.vue"));
-const PreviewDownload = defineAsyncComponent(() => import("@/components/preview/PreviewDownload.vue"));
+import { computed, defineAsyncComponent, getCurrentInstance, h, nextTick, onUnmounted, ref } from 'vue'
+import { createDownloadCode } from '@/services'
+import { resolveDownloadTarget } from '@/utils/url'
+import PreviewImage from './PreviewImage.vue'
 
-import PreviewImage from "./PreviewImage.vue";
+const AsyncLoading = {
+  render() {
+    return h(
+      'div',
+      {
+        style: 'display:flex;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);gap:8px;',
+      },
+      [
+        h('span', {
+          class: 'loading-dot',
+          style:
+            'width:8px;height:8px;border-radius:50%;background:var(--primary);animation:previewDot 0.9s ease-in-out infinite;',
+        }),
+        '加载组件中...',
+      ]
+    )
+  },
+}
 
-const { proxy } = getCurrentInstance();
+const AsyncError = {
+  render() {
+    return h(
+      'div',
+      {
+        style:
+          'display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;color:var(--text-secondary);gap:12px;',
+      },
+      [h('span', { style: 'font-size:24px;' }, '!'), '组件加载失败，请刷新页面重试']
+    )
+  },
+}
 
-const imageUrl = computed( () => {
-    return (
-        proxy.globalInfo.imageUrl + fileInfo.value.fileCover.replaceAll("_.", ".")
-    );
-});
+const asyncComponentOptions = {
+  loadingComponent: AsyncLoading,
+  errorComponent: AsyncError,
+  delay: 200,
+  timeout: 30000,
+}
 
-const windowShow = ref(false);
-const previewLoading = ref(false);
-let previewLoadingTimer = null;
-const closeWindow = () => {
-    windowShow.value = false;
-    previewLoading.value = false;
-    if (previewLoadingTimer) {
-        clearTimeout(previewLoadingTimer);
-    }
-};
+const PreviewVideo = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewVideo.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewDoc = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewDoc.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewExcel = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewExcel.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewPdf = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewPdf.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewTxt = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewTxt.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewMusic = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewMusic.vue'),
+  ...asyncComponentOptions,
+})
+const PreviewDownload = defineAsyncComponent({
+  loader: () => import('@/components/preview/PreviewDownload.vue'),
+  ...asyncComponentOptions,
+})
+
+const { proxy } = getCurrentInstance()
+
+const fileInfo = ref({})
+const imageViewRef = ref()
+const windowShow = ref(false)
+const previewLoading = ref(false)
+let previewLoadingTimer = null
 
 const FILE_URL_MAP = {
-    0: {
-        fileUrl: "/file/getFile",
-        videoUrl: "/file/ts/getVideoInfo",
-        createDownloadUrl: "/file/createDownloadUrl",
-        downloadUrl: "/api/file/download",
-    },
-    1: {
-        fileUrl: "/admin/getFile",
-        videoUrl: "/admin/ts/getVideoInfo",
-        createDownloadUrl: "/admin/createDownloadUrl",
-        downloadUrl: "/api/admin/download",
-    },
-    2: {
-        fileUrl: "/showShare/getFile",
-        videoUrl: "/showShare/ts/getVideoInfo",
-        createDownloadUrl: "/showShare/createDownloadUrl",
-        downloadUrl: "/api/showShare/download",
-    },
-};
+  0: {
+    fileUrl: '/file/getFile',
+    videoUrl: '/file/ts/getVideoInfo',
+    createDownloadUrl: '/file/createDownloadUrl',
+    downloadUrl: '/api/file/download',
+  },
+  1: {
+    fileUrl: '/admin/getFile',
+    videoUrl: '/admin/ts/getVideoInfo',
+    createDownloadUrl: '/admin/createDownloadUrl',
+    downloadUrl: '/api/admin/download',
+  },
+  2: {
+    fileUrl: '/showShare/getFile',
+    videoUrl: '/showShare/ts/getVideoInfo',
+    createDownloadUrl: '/showShare/createDownloadUrl',
+    downloadUrl: '/api/showShare/download',
+  },
+}
 
-const url = ref(null);
-const createDownloadUrl = ref(null);
-const downloadUrl = ref(null);
+const url = ref(null)
+const createDownloadUrl = ref(null)
+const downloadUrl = ref(null)
+
+const imageUrl = computed(() => {
+  const cover = fileInfo.value.fileCover
+  if (!cover) {
+    return ''
+  }
+  return proxy.globalInfo.imageUrl + cover.replaceAll('_.', '.')
+})
+
 const canOpenInNewTab = computed(() => {
-    return !!url.value && fileInfo.value.fileCategory !== 2;
-});
+  return !!url.value && fileInfo.value.fileCategory !== 2
+})
+
 const canDownload = computed(() => {
-    return !!createDownloadUrl.value && !!downloadUrl.value && fileInfo.value.folderType === 0;
-});
+  return !!createDownloadUrl.value && !!downloadUrl.value && fileInfo.value.folderType === 0
+})
+
 const previewTypeLabel = computed(() => {
-    if (fileInfo.value.folderType === 1) {
-        return "文件夹";
-    }
-    if (fileInfo.value.fileCategory == 1) {
-        return "视频预览";
-    }
-    if (fileInfo.value.fileCategory == 2) {
-        return "音频预览";
-    }
-    if (fileInfo.value.fileCategory == 3) {
-        return "图片预览";
-    }
-    if (fileInfo.value.fileType == 4) {
-        return "PDF 文档";
-    }
-    if (fileInfo.value.fileType == 5) {
-        return "Word 文档";
-    }
-    if (fileInfo.value.fileType == 6) {
-        return "Excel 表格";
-    }
-    if (fileInfo.value.fileType == 7 || fileInfo.value.fileType == 8) {
-        return "文本预览";
-    }
-    return "文件预览";
-});
+  if (fileInfo.value.folderType === 1) {
+    return '文件夹'
+  }
+  if (fileInfo.value.fileCategory == 1) {
+    return '视频预览'
+  }
+  if (fileInfo.value.fileCategory == 2) {
+    return '音频预览'
+  }
+  if (fileInfo.value.fileCategory == 3) {
+    return '图片预览'
+  }
+  if (fileInfo.value.fileType == 4) {
+    return 'PDF 文档'
+  }
+  if (fileInfo.value.fileType == 5) {
+    return 'Word 文档'
+  }
+  if (fileInfo.value.fileType == 6) {
+    return 'Excel 表格'
+  }
+  if (fileInfo.value.fileType == 7 || fileInfo.value.fileType == 8) {
+    return '文本预览'
+  }
+  return '文件预览'
+})
+
+const closeWindow = () => {
+  windowShow.value = false
+  previewLoading.value = false
+  if (previewLoadingTimer) {
+    clearTimeout(previewLoadingTimer)
+  }
+}
 
 const openInNewTab = () => {
-    if (!fileInfo.value.fileId) {
-        return;
-    }
-    // Open the dedicated preview page in new tab
-    window.open(`/preview/${fileInfo.value.fileId}`, "_blank");
-};
+  if (!fileInfo.value.fileId) {
+    return
+  }
+  window.open(`/preview/${fileInfo.value.fileId}`, '_blank')
+}
 
 const downloadCurrent = async () => {
-    if (!canDownload.value) {
-        return;
-    }
-    const code = await createDownloadCode(createDownloadUrl.value);
-    if (!code) {
-        return;
-    }
-    window.location.href = `${downloadUrl.value}/${code}`;
-};
+  if (!canDownload.value) {
+    return
+  }
+  const codeOrUrl = await createDownloadCode(createDownloadUrl.value)
+  if (!codeOrUrl) {
+    return
+  }
+  const target = resolveDownloadTarget(downloadUrl.value, codeOrUrl)
+  if (!target) {
+    return
+  }
+  window.location.href = target
+}
 
-const fileInfo = ref({});
-const imageViewRef = ref();
 const showPreview = (data, showPart) => {
-    previewLoading.value = true;
-    if (previewLoadingTimer) {
-        clearTimeout(previewLoadingTimer);
-    }
-    previewLoadingTimer = setTimeout(() => {
-        previewLoading.value = false;
-    }, 260);
-    fileInfo.value = data;
-    if (data.fileCategory == 3) {
-        nextTick( () => {
-            imageViewRef.value.show(0);
-        });
-    } else {
-        windowShow.value = true;
-        let _url = FILE_URL_MAP[showPart].fileUrl;
-        let _createDownloadUrl = FILE_URL_MAP[showPart].createDownloadUrl;
-        const _downloadUrl = FILE_URL_MAP[showPart].downloadUrl;
+  previewLoading.value = true
+  if (previewLoadingTimer) {
+    clearTimeout(previewLoadingTimer)
+  }
+  previewLoadingTimer = setTimeout(() => {
+    previewLoading.value = false
+  }, 260)
 
-        if (data.fileCategory == 1) {
-            _url = FILE_URL_MAP[showPart].videoUrl;
-        }
-        if (showPart == 0) {
-            _url = _url + "/" + data.fileId;
-            _createDownloadUrl = _createDownloadUrl + "/" + data.fileId;
-        } else if (showPart == 1) {
-            _url = _url + "/" + data.userId + "/" + data.fileId;
-            _createDownloadUrl =
-              _createDownloadUrl + "/" + data.userId + "/" + data.fileId;
-        } else if (showPart == 2) {
-            _url = _url + "/" + data.shareId + "/" + data.fileId;
-            _createDownloadUrl =
-              _createDownloadUrl + "/" + data.shareId + "/" + data.fileId;
-        }
-        url.value = _url;
-        createDownloadUrl.value = _createDownloadUrl;
-        downloadUrl.value = _downloadUrl;
-    }
-};
+  fileInfo.value = data
+  if (data.fileCategory == 3) {
+    nextTick(() => {
+      imageViewRef.value.show(0)
+    })
+    return
+  }
 
-defineExpose({ showPreview });
+  windowShow.value = true
+  let currentUrl = FILE_URL_MAP[showPart].fileUrl
+  let currentCreateDownloadUrl = FILE_URL_MAP[showPart].createDownloadUrl
+  const currentDownloadUrl = FILE_URL_MAP[showPart].downloadUrl
+
+  if (data.fileCategory == 1) {
+    currentUrl = FILE_URL_MAP[showPart].videoUrl
+  }
+
+  if (showPart == 0) {
+    currentUrl = `${currentUrl}/${data.fileId}`
+    currentCreateDownloadUrl = `${currentCreateDownloadUrl}/${data.fileId}`
+  } else if (showPart == 1) {
+    currentUrl = `${currentUrl}/${data.userId}/${data.fileId}`
+    currentCreateDownloadUrl = `${currentCreateDownloadUrl}/${data.userId}/${data.fileId}`
+  } else if (showPart == 2) {
+    currentUrl = `${currentUrl}/${data.shareId}/${data.fileId}`
+    currentCreateDownloadUrl = `${currentCreateDownloadUrl}/${data.shareId}/${data.fileId}`
+  }
+
+  url.value = currentUrl
+  createDownloadUrl.value = currentCreateDownloadUrl
+  downloadUrl.value = currentDownloadUrl
+}
+
+defineExpose({ showPreview })
 
 onUnmounted(() => {
-    if (previewLoadingTimer) {
-        clearTimeout(previewLoadingTimer);
-    }
-});
+  if (previewLoadingTimer) {
+    clearTimeout(previewLoadingTimer)
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -292,7 +352,6 @@ onUnmounted(() => {
   }
 }
 
-// Mobile responsive
 @media screen and (max-width: 768px) {
   .preview-shell {
     height: calc(100vh - 100px);

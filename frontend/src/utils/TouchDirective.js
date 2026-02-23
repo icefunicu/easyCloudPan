@@ -15,7 +15,7 @@ export default {
       startY = touch.clientY
       startTime = Date.now()
 
-      // Long Press Detection
+      // 长按检测
       longPressTimer = setTimeout(() => {
         if (value && value.onLongPress) {
           value.onLongPress(e)
@@ -25,10 +25,9 @@ export default {
 
     const onTouchMove = e => {
       const touch = e.touches[0]
-      const diffX = touch.clientX - startX
       const diffY = touch.clientY - startY
 
-      // If user scrolls vertically, cancel long press and potentially swipe
+      // 若用户纵向滑动，则取消长按（避免误触发）
       if (Math.abs(diffY) > scrollThreshold) {
         clearTimeout(longPressTimer)
       }
@@ -42,7 +41,7 @@ export default {
       const diffY = touch.clientY - startY
       const duration = Date.now() - startTime
 
-      // Swipe Detection (only if not a long press duration and horizontal movement dominates)
+      // 滑动检测（非长按且横向位移主导时触发）
       if (duration < longPressDuration && Math.abs(diffX) > swipeThreshold && Math.abs(diffX) > Math.abs(diffY)) {
         if (diffX < 0) {
           if (value && value.onSwipeLeft) value.onSwipeLeft(e)
@@ -56,7 +55,7 @@ export default {
     el.addEventListener('touchmove', onTouchMove, { passive: true })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
   },
-  unmounted(el) {
-    // Clean up listeners if necessary, though elements are usually destroyed
+  unmounted(_el) {
+    // 兜底清理监听器（通常元素销毁时已自动释放）
   },
 }

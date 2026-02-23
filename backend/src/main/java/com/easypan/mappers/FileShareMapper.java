@@ -25,11 +25,11 @@ public interface FileShareMapper extends BaseMapper<FileShare> {
             + "VALUES (#{item.shareId}, #{item.userId}, #{item.fileId}, "
             + "#{item.shareTime}, #{item.expireTime}, #{item.code}, #{item.showCount}, #{item.fileName}, "
             + "#{item.folderType}, #{item.fileCategory}, #{item.fileType}, #{item.fileCover}) "
-            + "ON DUPLICATE KEY UPDATE "
-            + "expire_time = VALUES(expire_time), code = VALUES(code), "
-            + "show_count = VALUES(show_count), file_name = VALUES(file_name), "
-            + "folder_type = VALUES(folder_type), file_category = VALUES(file_category), "
-            + "file_type = VALUES(file_type), file_cover = VALUES(file_cover)"
+            + "ON CONFLICT (share_id) DO UPDATE SET "
+            + "expire_time = EXCLUDED.expire_time, code = EXCLUDED.code, "
+            + "show_count = EXCLUDED.show_count, file_name = EXCLUDED.file_name, "
+            + "folder_type = EXCLUDED.folder_type, file_category = EXCLUDED.file_category, "
+            + "file_type = EXCLUDED.file_type, file_cover = EXCLUDED.file_cover"
             + "</foreach>"
             + "</script>")
     int insertOrUpdateBatch(@Param("list") java.util.List<FileShare> list);

@@ -1,6 +1,7 @@
 package com.easypan.service.impl;
 
 import com.easypan.component.RedisComponent;
+import com.easypan.component.TenantContextHolder;
 import com.easypan.entity.config.AppConfig;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.QQInfoDto;
@@ -253,6 +254,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         sessionWebUserDto.setUserId(userInfo.getUserId());
         // 提供头像信息以便前端立即显示
         sessionWebUserDto.setAvatar(userInfo.getAvatar());
+        sessionWebUserDto.setTenantId(userInfo.getTenantId());
         if ((userInfo.getIsAdmin() != null && userInfo.getIsAdmin())
                 || ArrayUtils.contains(appConfig.getAdminEmails().split(","), email)) {
             sessionWebUserDto.setAdmin(true);
@@ -263,7 +265,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         userSpaceDto.setUseSpace(fileInfoService.getUserUseSpace(userInfo.getUserId()));
         userSpaceDto.setTotalSpace(userInfo.getTotalSpace());
         redisComponent.saveUserSpaceUse(userInfo.getUserId(), userSpaceDto);
-        // Force refresh user info in cache (or delete to lazy load)
+        // 主动刷新用户缓存（或删除后走懒加载）
         redisComponent.deleteUserInfo(userInfo.getUserId());
         return sessionWebUserDto;
     }
@@ -291,6 +293,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         userInfo.setPassword(passwordEncoder.encode(password));
         userInfo.setJoinTime(new Date());
         userInfo.setStatus(UserStatusEnum.ENABLE.getStatus());
+        userInfo.setTenantId(TenantContextHolder.getTenantId());
         SysSettingsDto sysSettingsDto = redisComponent.getSysSettingsDto();
         userInfo.setTotalSpace(sysSettingsDto.getUserInitUseSpace() * Constants.MB);
         userInfo.setUseSpace(0L);
@@ -353,6 +356,7 @@ public class UserInfoServiceImpl implements UserInfoService {
             user.setStatus(UserStatusEnum.ENABLE.getStatus());
             user.setUseSpace(0L);
             user.setTotalSpace(redisComponent.getSysSettingsDto().getUserInitUseSpace() * Constants.MB);
+            user.setTenantId(TenantContextHolder.getTenantId());
             this.userInfoMapper.insert(user);
             user = this.userInfoMapper.selectOneByQuery(
                     QueryWrapper.create().where(USER_INFO.QQ_OPEN_ID.eq(openId)));
@@ -362,8 +366,8 @@ public class UserInfoServiceImpl implements UserInfoService {
             avatar = user.getQqAvatar();
             this.userInfoMapper.updateByQuery(updateInfo,
                     QueryWrapper.create().where(USER_INFO.QQ_OPEN_ID.eq(openId)));
-            // user object here is stale, but we need userId to clear cache.
-            // user was fetched at line 319.
+            // 这里的 user 可能是旧对象，但仍可安全使用 userId 做缓存失效.
+            // 当前 user 在上文登录流程中已查询得到.
             redisComponent.deleteUserInfo(user.getUserId());
         }
         if (UserStatusEnum.DISABLE.getStatus().equals(user.getStatus())) {
@@ -373,6 +377,7 @@ public class UserInfoServiceImpl implements UserInfoService {
         sessionWebUserDto.setUserId(user.getUserId());
         sessionWebUserDto.setNickName(user.getNickName());
         sessionWebUserDto.setAvatar(avatar);
+        sessionWebUserDto.setTenantId(user.getTenantId());
         if ((user.getIsAdmin() != null && user.getIsAdmin())
                 || ArrayUtils.contains(appConfig.getAdminEmails().split(","),
                         user.getEmail() == null ? "" : user.getEmail())) {

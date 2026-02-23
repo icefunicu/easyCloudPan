@@ -49,7 +49,7 @@ const ensureHljs = async (): Promise<HljsType> => {
   }
   const mod = await import('highlight.js/lib/common')
   hljs = mod.default as HljsType
-  // Load CSS only when preview is opened.
+  // 仅在打开预览时加载 CSS.
   await import('highlight.js/styles/atom-one-light.css')
   return hljs
 }
@@ -60,7 +60,7 @@ const escapeHtml = (text: string): string => {
 
 const renderHighlight = async () => {
   const text = txtContent.value || ''
-  // Avoid heavy highlight work for very large files.
+  // 超大文件跳过高亮，避免主线程阻塞.
   if (text.length > 200000) {
     highlightedHtml.value = escapeHtml(text)
     return

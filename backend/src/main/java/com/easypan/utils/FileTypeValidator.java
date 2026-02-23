@@ -67,7 +67,7 @@ public class FileTypeValidator {
         FILE_TYPE_MAP.put("flac", Arrays.asList("664C6143"));
 
         // 文本类型
-        FILE_TYPE_MAP.put("txt", Arrays.asList("EFBBBF", "FFFE", "FEFF")); // UTF-8 BOM, UTF-16
+        FILE_TYPE_MAP.put("txt", Arrays.asList("EFBBBF", "FFFE", "FEFF")); // UTF-8 BOM、UTF-16
     }
 
     /**
@@ -90,13 +90,13 @@ public class FileTypeValidator {
             return false;
         }
 
-        // Plain text files may not have BOM; avoid false negatives.
+        // 纯文本文件可能不包含 BOM，直接放行以避免误判.
         if ("txt".equals(ext)) {
             return true;
         }
 
-        // ISO Base Media File Format (mp4/mov) headers vary by box size.
-        // Common pattern: [size:4][ftyp:4][brand:4]...
+        // ISO Base Media File Format（mp4/mov）头部随 box 大小变化.
+        // 常见模式为 [size:4][ftyp:4][brand:4]...
         if ("mp4".equals(ext) || "mov".equals(ext)) {
             try {
                 String header = getFileHeader(inputStream, 12);
@@ -111,7 +111,7 @@ public class FileTypeValidator {
             }
         }
 
-        // TAR magic ("ustar") is not at offset 0; avoid false negatives.
+        // TAR 魔数 "ustar" 不在偏移 0 位置，直接放行避免误判.
         if ("tar".equals(ext)) {
             return true;
         }
@@ -150,8 +150,8 @@ public class FileTypeValidator {
      * @throws IOException IO 异常
      */
     private static String getFileHeader(InputStream inputStream, int length) throws IOException {
-        // Some InputStream implementations (e.g. servlet multipart streams) do not support mark/reset.
-        // Wrap to make header probing reliable and non-destructive.
+        // 部分 InputStream（如 servlet multipart 流）不支持 mark/reset.
+        // 这里包一层 BufferedInputStream，保证头部探测可回退且不破坏后续读取.
         InputStream in = inputStream;
         if (!in.markSupported()) {
             in = new java.io.BufferedInputStream(in);
@@ -168,7 +168,7 @@ public class FileTypeValidator {
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < readLength; i++) {
-            // byte is signed in Java; mask to avoid sign-extension (e.g. 0x89 -> FFFFFF89)
+            // Java 的 byte 为有符号值，按位与 0xFF 可避免符号扩展（例如 0x89 -> FFFFFF89）
             sb.append(String.format("%02X", bytes[i] & 0xFF));
         }
         return sb.toString();

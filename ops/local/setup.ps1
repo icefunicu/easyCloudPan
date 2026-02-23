@@ -11,9 +11,9 @@ $RepoRoot = (Get-Item $PSScriptRoot).Parent.Parent.FullName
 
 function Print-Header {
     param([string]$Title)
-    Write-Host "=" * 74
+    Write-Host ("=" * 74)
     Write-Host $Title
-    Write-Host "=" * 74
+    Write-Host ("=" * 74)
 }
 
 function Test-Command {
@@ -111,9 +111,35 @@ if (-not (Test-Path $envFile)) {
     Write-Host "[INFO] ops\docker\.env already exists. Skipping creation."
 }
 
-Write-Host "=" * 74
+$requiredEnvDefaults = @{
+    "GRAFANA_ADMIN_USER" = "admin"
+    "GRAFANA_ADMIN_PASSWORD" = "ChangeThisLocalGrafanaPassword_123!"
+    "LOG_ROOT_LEVEL" = "info"
+    "LOG_MAX_FILE_SIZE" = "50MB"
+    "LOG_MAX_HISTORY" = "30"
+    "LOG_TOTAL_SIZE_CAP" = "5GB"
+    "LOG_CLEAN_HISTORY_ON_START" = "false"
+    "SPRING_MAIL_DEBUG" = "false"
+}
+
+$envLines = Get-Content -Path $envFile
+foreach ($key in $requiredEnvDefaults.Keys) {
+    $hasKey = $false
+    foreach ($line in $envLines) {
+        if ($line -match "^\s*$([Regex]::Escape($key))\s*=") {
+            $hasKey = $true
+            break
+        }
+    }
+    if (-not $hasKey) {
+        Add-Content -Path $envFile -Value "$key=$($requiredEnvDefaults[$key])"
+        Write-Host "[WARN] Added missing $key into ops\docker\.env (local default)." -ForegroundColor Yellow
+    }
+}
+
+Write-Host ("=" * 74)
 Write-Host "Setup finished." -ForegroundColor Green
 Write-Host "Next step:"
 Write-Host "  1) .\ops\local\startup.ps1          (local dev one-click start)"
 Write-Host "  2) .\ops\docker\deploy_docker.ps1   (full docker deployment)"
-Write-Host "=" * 74
+Write-Host ("=" * 74)

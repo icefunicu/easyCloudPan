@@ -14,6 +14,8 @@ import com.easypan.utils.StringTools;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpSession;
@@ -75,6 +77,12 @@ public class OAuthController extends ABaseController {
             // 已有用户，直接登录
             SessionWebUserDto sessionWebUserDto = callbackDto.getSessionWebUserDto();
             session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+            // T4: 同步 request attribute
+            ServletRequestAttributes requestAttributes =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (requestAttributes != null) {
+                requestAttributes.getRequest().setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+            }
 
             String token = jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null);
             String refreshToken = jwtTokenProvider.generateRefreshToken(sessionWebUserDto.getUserId(), null);
@@ -126,6 +134,12 @@ public class OAuthController extends ABaseController {
         SessionWebUserDto sessionWebUserDto = oauthLoginService.register(
                 oauthUser.getProvider(), oauthUser, password);
         session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        // T4: 同步 request attribute
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            requestAttributes.getRequest().setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        }
 
         // 生成 Token
         String token = jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null);
@@ -141,3 +155,4 @@ public class OAuthController extends ABaseController {
         return getSuccessResponseVO(result);
     }
 }
+

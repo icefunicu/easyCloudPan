@@ -95,7 +95,7 @@
 
 <script setup>
 import { ref, getCurrentInstance, onUnmounted, computed, watch } from 'vue'
-import { getUploadedChunks, getTransferStatus, uploadFileWithError } from '@/services'
+import { getUploadedChunks, uploadFileWithError } from '@/services'
 import EventBus from '@/utils/EventBus'
 
 const { proxy } = getCurrentInstance()
@@ -184,6 +184,7 @@ const STATUS = {
 //将文件分块，设置每个分块的大小为 10MB，而不是写死的 5MB 以提升大文件的并发传输效能
 const chunkSize = 10 * 1024 * 1024
 const maxConcurrentUploads = 3
+const uploadWindowSize = maxConcurrentUploads
 const fileList = ref([])
 const delList = ref([])
 
@@ -251,6 +252,44 @@ const createMd5Worker = () => {
     type: 'module',
   })
 }
+
+// ----------------------------------------------------
+// 【优化】Worker 线程池与并发调度器
+// ----------------------------------------------------
+const maxComputeWorkers = 3 // 允许同时活跃的最大 MD5 Worker 数量
+let activeWorkersCount = 0
+const workerWaitQueue = [] // 等待分配 Worker 的计算任务队列
+
+/**
+ * 调度下一个排队中的 MD5 计算任务
+ */
+const scheduleNextWorker = () => {
+  if (workerWaitQueue.length > 0 && activeWorkersCount < maxComputeWorkers) {
+    const nextTask = workerWaitQueue.shift()
+    activeWorkersCount++
+    nextTask()
+  }
+}
+
+/**
+ * 包装为 Promise 队列任务执行
+ */
+const executeWithWorkerPool = taskFn => {
+  return new Promise(resolve => {
+    const taskWrapper = () => {
+      // 执行真实的计算任务
+      taskFn().finally(() => {
+        // 完成后释放池子配额并调度下一个
+        activeWorkersCount--
+        scheduleNextWorker()
+      }).then(resolve)
+    }
+
+    workerWaitQueue.push(taskWrapper)
+    scheduleNextWorker()
+  })
+}
+// ----------------------------------------------------
 
 const createUploadFileId = () => {
   const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -320,10 +359,10 @@ const handleTerminalStatus = (uid, uploadData) => {
   currentFile.chunkIndex = Math.ceil(currentFile.totalSize / chunkSize)
 
   if (statusCode === STATUS.upload_finish.value) {
-    // Start polling for transfer status
+    // 开始轮询转码状态
     startTransferPolling(uid)
   } else {
-    // UPLOAD_SECONDS or other done states
+    // 秒传或其他已完成状态
     emit('uploadCallback')
     EventBus.emit('reload_data')
   }
@@ -405,52 +444,50 @@ const checkUploadedChunks = async uid => {
   }
 }
 
-// 轮询转码状态
+// 轮询转码状态 (现已被替换为极低开销的后端虚拟线程 SSE)
 const startTransferPolling = uid => {
   const currentFile = getFileByUid(uid)
   if (!currentFile) return
-
   currentFile.status = STATUS.transferring.value
-  let pollCount = 0
-  const maxPolls = 60 // 3 minutes timeout
 
-  const poll = async () => {
-    if (pollCount >= maxPolls) {
-      // Timeout, but don't mark as fail, just stop polling
-      return
-    }
+  const source = new EventSource(`/api/file/transferStatusSse?fileId=${encodeURIComponent(currentFile.fileId)}`)
+  currentFile.transferEventSource = source
 
-    // Check if component unmounted or file removed
-    const latestFile = getFileByUid(uid)
-    if (!latestFile || latestFile.status !== STATUS.transferring.value) {
-      return
-    }
-
+  source.onmessage = (event) => {
     try {
-      const status = await getTransferStatus(latestFile.fileId)
-      // FileStatusEnums: USING(2), TRANSFER_FAIL(1)
-      if (status === 2) {
+      const data = JSON.parse(event.data)
+      const latestFile = getFileByUid(uid)
+      if (!latestFile || latestFile.status !== STATUS.transferring.value) {
+        source.close()
+        return
+      }
+      // FileStatusEnums：USING(2)、TRANSFER_FAIL(1)，用于判断转码是否完成
+      if (data.status === 2) {
         latestFile.status = STATUS.transfer_done.value
         emit('uploadCallback')
         EventBus.emit('reload_data')
-        return
-      } else if (status === 1) {
+        source.close()
+      } else if (data.status === 1) {
         latestFile.status = STATUS.transfer_fail.value
-        return
+        source.close()
       }
-    } catch (e) {
-      console.error('Poll transfer status failed', e)
+    } catch {
+      console.error("SSE parse error")
     }
-
-    pollCount++
-    latestFile.transferTimer = setTimeout(poll, 3000)
   }
 
-  poll()
+  source.onerror = () => {
+    console.warn('SSE connection warning or ended.')
+    source.close()
+  }
 }
 
 const stopTransferPolling = uid => {
   const currentFile = getFileByUid(uid)
+  if (currentFile && currentFile.transferEventSource) {
+    currentFile.transferEventSource.close()
+    currentFile.transferEventSource = null
+  }
   if (currentFile && currentFile.transferTimer) {
     clearTimeout(currentFile.transferTimer)
     currentFile.transferTimer = null
@@ -493,66 +530,68 @@ onUnmounted(() => {
 })
 
 const computeMd5 = fileItem => {
-  return new Promise(resolve => {
-    const worker = createMd5Worker()
-    fileItem.md5Worker = worker
+  return executeWithWorkerPool(() => {
+    return new Promise(resolve => {
+      const worker = createMd5Worker()
+      fileItem.md5Worker = worker
 
-    const finish = result => {
-      clearMd5Worker(fileItem)
-      resolve(result)
-    }
-
-    worker.onmessage = event => {
-      const data = event.data || {}
-      if (data.uid !== fileItem.uid) {
-        return
+      const finish = result => {
+        clearMd5Worker(fileItem)
+        resolve(result)
       }
 
-      const latestFile = getFileByUid(fileItem.uid)
-      if (!latestFile) {
-        finish(null)
-        return
-      }
+      worker.onmessage = event => {
+        const data = event.data || {}
+        if (data.uid !== fileItem.uid) {
+          return
+        }
 
-      if (data.type === 'progress') {
-        latestFile.md5Progress = data.progress
-        return
-      }
+        const latestFile = getFileByUid(fileItem.uid)
+        if (!latestFile) {
+          finish(null)
+          return
+        }
 
-      if (data.type === 'done') {
-        latestFile.md5Progress = 100
-        latestFile.status = STATUS.uploading.value
-        latestFile.md5 = data.md5
-        finish(fileItem.uid)
-        return
-      }
+        if (data.type === 'progress') {
+          latestFile.md5Progress = data.progress
+          return
+        }
 
-      if (data.type === 'cancelled') {
-        finish(null)
-        return
-      }
+        if (data.type === 'done') {
+          latestFile.md5Progress = 100
+          latestFile.status = STATUS.uploading.value
+          latestFile.md5 = data.md5
+          finish(fileItem.uid)
+          return
+        }
 
-      latestFile.md5Progress = -1
-      latestFile.status = STATUS.fail.value
-      latestFile.errorMsg = data.errorMsg || 'MD5 计算失败'
-      finish(null)
-    }
+        if (data.type === 'cancelled') {
+          finish(null)
+          return
+        }
 
-    worker.onerror = () => {
-      const latestFile = getFileByUid(fileItem.uid)
-      if (latestFile) {
         latestFile.md5Progress = -1
         latestFile.status = STATUS.fail.value
-        latestFile.errorMsg = 'MD5 计算失败'
+        latestFile.errorMsg = data.errorMsg || 'MD5 计算失败'
+        finish(null)
       }
-      finish(null)
-    }
 
-    worker.postMessage({
-      type: 'compute',
-      uid: fileItem.uid,
-      file: fileItem.file,
-      chunkSize,
+      worker.onerror = () => {
+        const latestFile = getFileByUid(fileItem.uid)
+        if (latestFile) {
+          latestFile.md5Progress = -1
+          latestFile.status = STATUS.fail.value
+          latestFile.errorMsg = 'MD5 计算失败'
+        }
+        finish(null)
+      }
+
+      worker.postMessage({
+        type: 'compute',
+        uid: fileItem.uid,
+        file: fileItem.file,
+        chunkSize,
+      })
     })
   })
 }
@@ -926,7 +965,7 @@ const uploadFile = async (uid, chunkIndex) => {
   }
 }
 
-// Mobile responsive styles
+// 移动端响应式样式
 @media screen and (max-width: 768px) {
   .uploader-panel {
     .uploader-title {

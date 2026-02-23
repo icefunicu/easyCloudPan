@@ -58,7 +58,7 @@ public class FileCleanTask {
             totalCleaned += cleanBatch(fileInfoList);
             rounds++;
 
-            // If this round returned less than one full batch, no more rows are expected.
+            // 本轮不足一个完整批次，通常表示后续已无可清理数据.
             if (fileInfoList.size() < effectiveBatchSize) {
                 break;
             }

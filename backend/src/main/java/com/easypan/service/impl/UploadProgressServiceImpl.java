@@ -21,15 +21,11 @@ public class UploadProgressServiceImpl implements UploadProgressService {
     @Override
     public void updateProgress(String userId, String fileId, Integer chunkIndex, Integer totalChunks) {
         String key = getProgressKey(userId, fileId);
-        // We use a simple counter for uploaded chunks.
-        // Note: this assumes successful upload of chunk.
-        // For more complex tracking (which chunk is missing), we'd need a BitMap.
-        // Here we just increment a counter.
-        // But since chunks can be re-uploaded, incr might be inaccurate if not careful.
-        // Ideally, we'd use a BitSet or Set to track unique chunks.
-        // Redis Set is good.
+        // 当前使用简单的分片计数策略.
+        // 该实现假设分片上传成功后再记入进度；若需要追踪缺失分片，应使用 BitMap/BitSet 或 Redis Set.
+        // 这里采用 Redis Set 记录唯一分片索引，避免重复上传导致计数失真.
         redisUtils.setSet(key, chunkIndex);
-        redisUtils.expire(key, Constants.REDIS_KEY_EXPIRES_ONE_HOUR); // 1 hour expiry
+        redisUtils.expire(key, Constants.REDIS_KEY_EXPIRES_ONE_HOUR); // 1 小时过期
     }
 
     @Override
@@ -37,10 +33,8 @@ public class UploadProgressServiceImpl implements UploadProgressService {
         String key = getProgressKey(userId, fileId);
         long uploadedCount = redisUtils.getSetSize(key);
 
-        // We don't store totalChunks in Redis usually, unless passed.
-        // But the frontend usually knows the totalChunks or we can store it on first
-        // chunk.
-        // For this simple implementation, we just return the count.
+        // 默认不在 Redis 持久化 totalChunks，通常由前端持有；也可在首片上传时写入.
+        // 当前实现只返回已完成分片数，保持读写链路简单稳定.
         return UploadProgressDto.builder()
                 .completedChunks((int) uploadedCount)
                 .build();

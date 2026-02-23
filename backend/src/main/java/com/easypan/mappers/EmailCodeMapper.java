@@ -18,8 +18,8 @@ public interface EmailCodeMapper extends BaseMapper<EmailCode> {
             + "<foreach collection='list' item='item' separator=';'>"
             + "INSERT INTO email_code (email, code, create_time, status) "
             + "VALUES (#{item.email}, #{item.code}, #{item.createTime}, #{item.status}) "
-            + "ON DUPLICATE KEY UPDATE "
-            + "code = VALUES(code), create_time = VALUES(create_time), status = VALUES(status)"
+            + "ON CONFLICT (email, code) DO UPDATE SET "
+            + "create_time = EXCLUDED.create_time, status = EXCLUDED.status"
             + "</foreach>"
             + "</script>")
     int insertOrUpdateBatch(@Param("list") java.util.List<EmailCode> list);

@@ -9,8 +9,8 @@
           @close="dialogConfig.show = false"
         >
           <el-form
-            class="profile-form"
             ref="formDataRef"
+            class="profile-form"
             :model="formData"
             :rules="rules"
             label-width="80px"

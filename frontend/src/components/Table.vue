@@ -19,6 +19,7 @@
         <el-table
           v-else
           ref="dataTable"
+          v-loading="!skeleton && loading"
           :data="dataSource?.list || []"
           :height="tableHeight"
           :stripe="options.stripe"
@@ -26,7 +27,6 @@
           header-row-class-name="table-header-row"
           highlight-current-row
           v-bind="rowKeyBind"
-          v-loading="!skeleton && loading"
           @row-click="handleRowClick"
           @selection-change="handleSelectionChange"
         >
@@ -211,7 +211,7 @@ const updateTableHeight = () => {
     tableHeight.value = window.innerHeight - topHeight - (props.options.extHeight || 0);
 };
 
-// Debounced resize handler (100ms)
+// 防抖 resize 处理（100ms）
 let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 const debouncedUpdateTableHeight = () => {
     if (resizeTimer) {

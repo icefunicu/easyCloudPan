@@ -18,6 +18,7 @@
               :fetch="loadDataList"
               :init-fetch="true"
               :options="tableOptions"
+              :skeleton="true"
               @row-selected="rowSelected"
             >
             <template #fileName="{ row }">
@@ -161,14 +162,14 @@ const cancelShare = (row) => {
 
 const cancelShareDone = async () => {
     proxy.Confirm(`你确定要取消分享吗?`, async () => {
-        // Optimistic UI
+        // 先行更新（Optimistic UI）
         const ids = cancelShareIdList.value;
         const backupList = [...tableData.value.list];
         tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.shareId));
 
         const result = await shareService.cancelShare(cancelShareIdList.value.join(","));
         if (!result) {
-            tableData.value.list = backupList; // Revert
+            tableData.value.list = backupList; // 回滚
             return;
         }
         proxy.Message.success("取消分享成功");

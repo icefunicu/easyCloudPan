@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -36,6 +37,9 @@ class ChunkUploadServiceTest {
     private SetOperations<String, Object> setOperations;
 
     @Mock
+    private ValueOperations<String, Object> valueOperations;
+
+    @Mock
     private MultipartFile chunkFile;
 
     @Mock
@@ -52,6 +56,7 @@ class ChunkUploadServiceTest {
         userId = "user123";
         fileMd5 = "abc123def456";
         lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         ReflectionTestUtils.setField(chunkUploadService, "virtualThreadExecutor", virtualThreadExecutor);
     }
 

@@ -5,7 +5,7 @@
                 <Transition name="mask-fade">
                     <div v-if="show" class="window-mask" @click="close"></div>
                 </Transition>
-                <button type="button" class="close" @click="close" aria-label="关闭">
+                <button type="button" class="close" aria-label="关闭" @click="close">
                     <span class="iconfont icon-close2"></span>
                 </button>
                 <Transition name="window-slide">
@@ -208,7 +208,7 @@ onUnmounted(() => {
     }
 }
 
-// Animations
+// 动画
 .window-fade-enter-active,
 .window-fade-leave-active {
     transition: opacity 0.28s ease;
@@ -244,7 +244,7 @@ onUnmounted(() => {
     transform: translateY(-10px) scale(0.99);
 }
 
-// Mobile styles
+// 移动端样式
 @media screen and (max-width: 768px) {
     .close {
         top: 16px;

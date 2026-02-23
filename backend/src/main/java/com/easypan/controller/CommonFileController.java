@@ -16,6 +16,7 @@ import com.easypan.exception.BusinessException;
 import com.easypan.service.FileInfoService;
 import com.easypan.utils.CopyTools;
 import com.easypan.utils.StringTools;
+import com.github.benmanes.caffeine.cache.Cache;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -23,6 +24,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -39,6 +41,10 @@ public class CommonFileController extends ABaseController {
 
     @Resource
     private RedisComponent redisComponent;
+
+    /** Caffeine 本地缓存（注入已有 Bean），用于视频分片路由加速. */
+    @Resource
+    private Cache<String, FileInfo> fileInfoCache;
 
     /**
      * 获取文件夹信息.
@@ -98,7 +104,7 @@ public class CommonFileController extends ABaseController {
             return false;
         }
 
-        // Check if the file belongs to the current user (fast check)
+        // 快速校验：文件是否属于当前用户
         if (imageNameWithoutSuffix.startsWith(userId)) {
             return true;
         }
@@ -128,7 +134,7 @@ public class CommonFileController extends ABaseController {
         if (StringUtils.isEmpty(imageName)) {
             return null;
         }
-        // Support 32-char UUID or 10-char ID
+        // 兼容 32 位 UUID 或 10 位短 ID
         if (imageName.length() >= Constants.LENGTH_30) {
             return imageName.substring(0, Constants.LENGTH_30);
         }
@@ -161,34 +167,50 @@ public class CommonFileController extends ABaseController {
         if (fileId.endsWith(".ts")) {
             String[] tsAarray = fileId.split("_");
             String realFileId = tsAarray[0];
-            // 根据原文件的id查询出一个文件集合
-            FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(realFileId, userId);
-            if (fileInfo == null) {
-                // 分享的视频，ts路径记录的是原视频的id,这里通过id直接取出原视频
-                FileInfoQuery fileInfoQuery = new FileInfoQuery();
-                fileInfoQuery.setFileId(realFileId);
-                List<FileInfo> fileInfoList = fileInfoService.findListByParam(fileInfoQuery);
-                fileInfo = fileInfoList.get(0);
-                if (fileInfo == null) {
-                    return;
-                }
 
-                // 根据当前用户id和路径去查询当前用户是否有该文件，如果没有直接返回
-                fileInfoQuery = new FileInfoQuery();
-                fileInfoQuery.setFilePath(fileInfo.getFilePath());
-                fileInfoQuery.setUserId(userId);
-                Integer count = fileInfoService.findCountByParam(fileInfoQuery);
-                if (count == 0) {
-                    return;
+            // 优先从 Caffeine 缓存查询文件信息，避免高频 ts 分片请求反复查库
+            String cacheKey = realFileId + "_" + userId;
+            FileInfo fileInfo = fileInfoCache.getIfPresent(cacheKey);
+            if (fileInfo == null) {
+                fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(realFileId, userId);
+                if (fileInfo == null) {
+                    // 分享的视频，ts路径记录的是原视频的id,这里通过id直接取出原视频
+                    FileInfoQuery fileInfoQuery = new FileInfoQuery();
+                    fileInfoQuery.setFileId(realFileId);
+                    List<FileInfo> fileInfoList = fileInfoService.findListByParam(fileInfoQuery);
+                    if (fileInfoList == null || fileInfoList.isEmpty()) {
+                        return;
+                    }
+                    fileInfo = fileInfoList.get(0);
+                    if (fileInfo == null) {
+                        return;
+                    }
+
+                    // 根据当前用户id和路径去查询当前用户是否有该文件，如果没有直接返回
+                    fileInfoQuery = new FileInfoQuery();
+                    fileInfoQuery.setFilePath(fileInfo.getFilePath());
+                    fileInfoQuery.setUserId(userId);
+                    Integer count = fileInfoService.findCountByParam(fileInfoQuery);
+                    if (count == 0) {
+                        return;
+                    }
                 }
+                // 缓存文件信息以加速后续同一视频的 ts 分片请求
+                fileInfoCache.put(cacheKey, fileInfo);
             }
             String fileName = fileInfo.getFilePath();
             fileName = StringTools.getFileNameNoSuffix(fileName) + "/" + fileId;
             filePath = fileName;
         } else {
-            FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, userId);
+            // 对非 ts 请求也使用缓存加速
+            String cacheKey = fileId + "_" + userId;
+            FileInfo fileInfo = fileInfoCache.getIfPresent(cacheKey);
             if (fileInfo == null) {
-                return;
+                fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, userId);
+                if (fileInfo == null) {
+                    return;
+                }
+                fileInfoCache.put(cacheKey, fileInfo);
             }
             // 视频文件读取.m3u8文件
             if (FileCategoryEnums.VIDEO.getCategory().equals(fileInfo.getFileCategory())) {
@@ -219,6 +241,14 @@ public class CommonFileController extends ABaseController {
         if (FileFolderTypeEnums.FOLDER.getType().equals(fileInfo.getFolderType())) {
             throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "文件夹不支持下载，请选择文件");
         }
+
+        String presignedUrl = storageFactory.getStorageStrategy().generatePresignedUrl(fileInfo.getFilePath(),
+                fileInfo.getFileName());
+        if (presignedUrl != null) {
+            log.info("生成预签名直连下载链接成功: fileId={}, url={}", fileId, presignedUrl);
+            return getSuccessResponseVO(presignedUrl);
+        }
+
         String code = StringTools.getRandomString(Constants.LENGTH_50);
         DownloadFileDto downloadFileDto = new DownloadFileDto();
         downloadFileDto.setDownloadCode(code);
@@ -255,16 +285,29 @@ public class CommonFileController extends ABaseController {
 
             response.setContentType("application/octet-stream");
             response.setCharacterEncoding("UTF-8");
-            response.setBufferSize(8192);
+            // 使用与 readFile 一致的 64KB 缓冲区
+            response.setBufferSize(64 * 1024);
 
             String filePath = downloadFileDto.getFilePath();
 
-            if (request.getHeader("User-Agent").toLowerCase().indexOf("msie") > 0) {
-                fileName = URLEncoder.encode(fileName, "UTF-8");
-            } else {
-                fileName = new String(fileName.getBytes("UTF-8"), "ISO8859-1");
+            // 使用 RFC 5987 标准编码文件名，兼容所有现代浏览器
+            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+            response.setHeader("Content-Disposition",
+                    "attachment; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
+
+            // 尝试设置 Content-Length，使浏览器能显示下载进度
+            try {
+                FileInfoQuery sizeQuery = new FileInfoQuery();
+                sizeQuery.setFilePath(filePath);
+                List<FileInfo> sizeResults = fileInfoService.findListByParam(sizeQuery);
+                if (sizeResults != null && !sizeResults.isEmpty()
+                        && sizeResults.get(0).getFileSize() != null) {
+                    response.setContentLengthLong(sizeResults.get(0).getFileSize());
+                }
+            } catch (Exception ignored) {
+                // Content-Length 是可选优化，获取失败不影响下载
             }
-            response.setHeader("Content-Disposition", "attachment;filename=\"" + fileName + "\"");
 
             readFile(response, filePath);
 

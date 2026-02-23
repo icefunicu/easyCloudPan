@@ -37,12 +37,8 @@ public class GitHubOAuthStrategy implements OAuthProviderStrategy {
                 appConfig.getGithubClientId(), appConfig.getGithubClientSecret(), code,
                 appConfig.getGithubRedirectUri());
         String response = OKHttpUtils.getRequest(url);
-        // GitHub returns: access_token=...&scope=...&token_type=bearer
-        // We need to parse this. Ideally we should send Accept: application/json
-        // header, but OKHttpUtils might just do GET.
-        // Let's handle the x-www-form-urlencoded response manually if needed, or check
-        // if OKHttpUtils supports headers.
-        // Assuming simple GET, we parse the string.
+        // GitHub 默认返回 access_token=...&scope=...&token_type=bearer 格式字符串。
+        // 这里按 x-www-form-urlencoded 结果手动解析 access_token。
         if (response != null && response.contains("access_token=")) {
             String[] parts = response.split("&");
             for (String part : parts) {
@@ -75,17 +71,10 @@ public class GitHubOAuthStrategy implements OAuthProviderStrategy {
         userInfo.setNickname((String) userInfoMap.getOrDefault("name", userInfoMap.get("login")));
         userInfo.setAvatarUrl((String) userInfoMap.get("avatar_url"));
 
-        // GitHub email might be private, if so we need another call to /user/emails,
-        // but for now let's try to get it from the profile or use a fallback.
+        // GitHub 邮箱可能是私密字段；当前先读基础资料，不存在时使用兜底邮箱。
         String email = (String) userInfoMap.get("email");
         if (email == null) {
-            // Try to use a dummy email or handle it.
-            // For this implementation plan, we'll leave it null or use
-            // providerId@github.com as fallback if needed by business logic.
-            // But UserInfoService usually requires email.
-            // Let's set a placeholder if null: id + "@github.com" to avoid registration
-            // failure,
-            // although real email is better.
+            // 业务注册链路通常要求邮箱，这里使用 login@github.com 占位避免注册失败。
             email = userInfoMap.get("login") + "@github.com";
         }
         userInfo.setEmail(email);

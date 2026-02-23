@@ -17,6 +17,9 @@ export const useUserInfoStore = defineStore('userInfo', {
     getToken() {
       return this.userInfo?.token ?? null
     },
+    getTenantId() {
+      return this.userInfo?.tenantId ?? null
+    },
   },
   persist: {
     storage: sessionStorage,

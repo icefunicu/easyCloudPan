@@ -1,4 +1,5 @@
-import { onCLS, onINP, onLCP, onTTFB, onFCP } from 'web-vitals'
+﻿import { onCLS, onINP, onLCP, onTTFB, onFCP } from 'web-vitals'
+import { logger } from './logger'
 
 interface WebVitalMetric {
   name: string
@@ -50,12 +51,12 @@ function sendToAnalytics(metric: WebVitalMetric) {
       keepalive: true,
       headers: { 'Content-Type': 'application/json' },
     }).catch(() => {
-      // Silently fail
+      // 静默失败，避免影响主流程
     })
   }
 
   if (import.meta.env.DEV) {
-    console.log(`[Web Vitals] ${metric.name}: ${metric.value.toFixed(2)}ms (${metric.rating})`)
+    logger.info('WebVitals', `${metric.name}: ${metric.value.toFixed(2)}ms (${metric.rating})`)
   }
 }
 
@@ -86,11 +87,11 @@ function handleMetric(name: string, metric: { value: number; delta: number; id: 
 }
 
 export function initWebVitals() {
-  onLCP(metric => handleMetric('LCP', metric))
-  onINP(metric => handleMetric('INP', metric))
-  onCLS(metric => handleMetric('CLS', metric))
-  onTTFB(metric => handleMetric('TTFB', metric))
-  onFCP(metric => handleMetric('FCP', metric))
+  onLCP((metric) => handleMetric('LCP', metric))
+  onINP((metric) => handleMetric('INP', metric))
+  onCLS((metric) => handleMetric('CLS', metric))
+  onTTFB((metric) => handleMetric('TTFB', metric))
+  onFCP((metric) => handleMetric('FCP', metric))
 }
 
 export { VITALS_THRESHOLD }

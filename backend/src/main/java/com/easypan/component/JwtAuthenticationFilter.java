@@ -25,8 +25,8 @@ import java.util.ArrayList;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+    private static final String QUERY_TOKEN_SUNSET = "Tue, 30 Jun 2026 00:00:00 GMT";
 
     @Resource
     private JwtTokenProvider tokenProvider;
@@ -42,7 +42,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String jwt = getJwtFromRequest(request);
+            TokenExtractionResult tokenResult = getJwtFromRequest(request);
+            String jwt = tokenResult.token();
+
+            if (tokenResult.fromQueryParam()) {
+                logger.warn("[TOKEN_DEPRECATION] Query token is deprecated: path={}, ip={}",
+                        request.getRequestURI(), getClientIp(request));
+                response.setHeader("Deprecation", "true");
+                response.setHeader("Sunset", QUERY_TOKEN_SUNSET);
+            }
 
             if (StringUtils.hasText(jwt)) {
                 if (jwtBlacklistService.isBlacklisted(jwt)) {
@@ -53,9 +61,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 } else if (tokenProvider.validateToken(jwt)) {
                     String userId = tokenProvider.getUserIdFromJWT(jwt);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userId, null, new ArrayList<>());
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userId, null, new ArrayList<>());
                     authentication.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request));
 
@@ -78,12 +85,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String getJwtFromRequest(HttpServletRequest request) {
+    private TokenExtractionResult getJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+            return new TokenExtractionResult(bearerToken.substring(7), false);
+        } else if (StringUtils.hasText(bearerToken)) {
+            return new TokenExtractionResult(bearerToken, false);
         }
-        return null;
+
+        String tokenParam = request.getParameter("token");
+        if (StringUtils.hasText(tokenParam)) {
+            return new TokenExtractionResult(tokenParam, true);
+        }
+
+        return new TokenExtractionResult(null, false);
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -101,5 +116,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    private record TokenExtractionResult(String token, boolean fromQueryParam) {
     }
 }

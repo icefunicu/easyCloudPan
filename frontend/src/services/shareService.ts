@@ -128,6 +128,9 @@ export async function createDownloadUrl(shareId: string, fileId: string): Promis
 }
 
 export function getDownloadUrl(code: string): string {
+  if (code.startsWith('http://') || code.startsWith('https://')) {
+    return code
+  }
   return `${api.download}/${code}`
 }
 

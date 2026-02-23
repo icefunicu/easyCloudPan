@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <Transition name="slide-down">
     <div v-if="visible && selectedCount > 0" class="batch-toolbar">
       <div class="batch-info">
@@ -38,61 +38,61 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
-import type { CheckboxValueType } from 'element-plus';
+import { computed, onMounted, onUnmounted } from 'vue'
+import type { CheckboxValueType } from 'element-plus'
 
 const props = defineProps<{
-  selectedCount: number;
-  totalCount: number;
-  isAllSelected: boolean;
-  isPartialSelected: boolean;
-}>();
+  selectedCount: number
+  totalCount: number
+  isAllSelected: boolean
+  isPartialSelected: boolean
+}>()
 
 const emit = defineEmits<{
-  (e: 'select-all', value: boolean): void;
-  (e: 'invert-select'): void;
-  (e: 'move'): void;
-  (e: 'delete'): void;
-  (e: 'share'): void;
-  (e: 'download'): void;
-  (e: 'clear'): void;
-}>();
+  (e: 'select-all', value: boolean): void
+  (e: 'invert-select'): void
+  (e: 'move'): void
+  (e: 'delete'): void
+  (e: 'share'): void
+  (e: 'download'): void
+  (e: 'clear'): void
+}>()
 
-const visible = computed(() => props.selectedCount > 0);
+const visible = computed(() => props.selectedCount > 0)
 
 const handleSelectAll = (value: CheckboxValueType) => {
-  emit('select-all', !!value);
-};
+  emit('select-all', !!value)
+}
 
 const handleInvertSelect = () => {
-  emit('invert-select');
-};
+  emit('invert-select')
+}
 
 // 键盘快捷键
-const handleKeydown = (e: KeyboardEvent) => {
-  if (e.ctrlKey || e.metaKey) {
-    switch (e.key.toLowerCase()) {
+const handleKeydown = (event: KeyboardEvent) => {
+  if (event.ctrlKey || event.metaKey) {
+    switch (event.key.toLowerCase()) {
       case 'a':
-        e.preventDefault();
-        if (e.shiftKey) {
+        event.preventDefault()
+        if (event.shiftKey) {
           // Ctrl+Shift+A: 反选
-          handleInvertSelect();
+          handleInvertSelect()
         } else {
           // Ctrl+A: 全选
-          handleSelectAll(true);
+          handleSelectAll(true)
         }
-        break;
+        break
     }
   }
-};
+}
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
-});
+  window.addEventListener('keydown', handleKeydown)
+})
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
-});
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -135,7 +135,7 @@ onUnmounted(() => {
 
   .selected-count {
     font-size: 14px;
-    
+
     b {
       font-size: 16px;
       font-weight: 700;
@@ -145,7 +145,7 @@ onUnmounted(() => {
 
   .el-button {
     color: rgba(255, 255, 255, 0.85);
-    
+
     &:hover {
       color: #fff;
       background: rgba(255, 255, 255, 0.15);
@@ -173,7 +173,7 @@ onUnmounted(() => {
     --el-button-text-color: #fff;
     --el-button-hover-bg-color: rgba(255, 255, 255, 0.2);
     --el-button-hover-border-color: rgba(255, 255, 255, 0.3);
-    
+
     &.el-button--danger {
       --el-button-bg-color: rgba(178, 81, 81, 0.85);
       --el-button-border-color: rgba(178, 81, 81, 0.85);

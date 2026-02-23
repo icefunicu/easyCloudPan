@@ -88,12 +88,19 @@
 
 #### 性能问题排查
 1. 查看 Prometheus 指标：`http://localhost:7090/api/actuator/prometheus`
-2. 检查慢查询日志：`backend/file/logs/easypan.log`
+2. 检查应用日志：`backend/file/logs/easypan.log`
+3. 检查访问日志：`backend/file/logs/easypan-access.log`
+4. 检查错误日志：`backend/file/logs/easypan-error.log`
+5. 检查结构化日志：`backend/file/logs/easypan-json.log`
 3. 检查缓存命中率：Grafana 性能仪表板
 4. 检查虚拟线程状态：`/api/actuator/health/custom`
 
 ### 日志查看
-- 后端日志：`backend/file/logs/easypan.log`
+- 应用日志：`backend/file/logs/easypan.log`
+- 访问日志：`backend/file/logs/easypan-access.log`
+- 错误日志：`backend/file/logs/easypan-error.log`
+- 结构化日志：`backend/file/logs/easypan-json.log`
+- 历史归档：`backend/file/logs/archive/`
 - Docker 日志：`docker compose logs <service>`
 - 实时日志：`docker compose logs -f --tail=100 backend`
 

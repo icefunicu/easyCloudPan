@@ -1,5 +1,6 @@
 package com.easypan.entity.config;
 
+import com.easypan.entity.constants.Constants;
 import com.easypan.utils.StringTools;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
@@ -109,6 +110,29 @@ public class AppConfig {
             projectFolder = projectFolder + "/";
         }
         return projectFolder;
+    }
+
+    /**
+     * 获取文件存储根目录，兼容以下两种配置：
+     * 1) PROJECT_FOLDER=/data/easypan/  -> /data/easypan/file
+     * 2) PROJECT_FOLDER=.../backend/file/ -> .../backend/file
+     *
+     * @return 规范化后的文件根目录（不带结尾斜杠）
+     */
+    public String getFileRootPath() {
+        String folder = getProjectFolder();
+        if (StringTools.isEmpty(folder)) {
+            return "/file";
+        }
+        String normalized = folder.replace("\\", "/");
+        if (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        String fileSegment = Constants.FILE_FOLDER_FILE.substring(0, Constants.FILE_FOLDER_FILE.length() - 1);
+        if (normalized.endsWith(fileSegment)) {
+            return normalized;
+        }
+        return normalized + fileSegment;
     }
 
 }

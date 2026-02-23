@@ -1,8 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="10 minutes">
-    <springProperty scope="context" name="log.path" source="project.folder"/>
-    <springProperty scope="context" name="log.root.level" source="log.root.level"/>
     <springProperty scope="context" name="spring.application.name" source="spring.application.name" defaultValue="easypan"/>
+    <springProperty scope="context" name="log.root.level" source="log.root.level" defaultValue="INFO"/>
+    <springProperty scope="context" name="log.file.dir" source="log.file.dir" defaultValue="./logs"/>
+    <springProperty scope="context" name="log.archive.dir" source="log.archive.dir" defaultValue="./logs/archive"/>
+    <springProperty scope="context" name="log.max.file.size" source="log.max.file.size" defaultValue="50MB"/>
+    <springProperty scope="context" name="log.max.history" source="log.max.history" defaultValue="30"/>
+    <springProperty scope="context" name="log.total.size.cap" source="log.total.size.cap" defaultValue="5GB"/>
+    <springProperty scope="context" name="log.clean.history.on.start" source="log.clean.history.on.start" defaultValue="false"/>
+
+    <contextName>${spring.application.name}</contextName>
 
     <turboFilter class="com.easypan.config.LogSamplingFilter">
         <sampleRate>0.1</sampleRate>
@@ -10,43 +17,83 @@
         <maxDuplicatesPerWindow>5</maxDuplicatesPerWindow>
     </turboFilter>
 
-    <property name="LOG_FOLDER" value="logs"/>
-    <property name="LOG_FILE_NAME" value="easypan.log"/>
-    <property name="LOG_JSON_FILE_NAME" value="easypan-json.log"/>
+    <property name="CONSOLE_PATTERN"
+              value="%d{HH:mm:ss.SSS} %-5level [%X{traceId:-SYSTEM}] %logger{36} - %msg%n"/>
+    <property name="APP_FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %-5level | trace=%X{traceId:-SYSTEM} | tenant=%X{tenantId:-default} | thread=%thread | %logger{40} | %msg%n%ex{full}"/>
+    <property name="ACCESS_FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} | %-5level | trace=%X{traceId:-SYSTEM} | %msg%n"/>
 
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%highlight(%-5level)] [%cyan(%logger{36})] [%thread] - %msg%n</pattern>
             <charset>UTF-8</charset>
+            <pattern>${CONSOLE_PATTERN}</pattern>
         </encoder>
     </appender>
 
-    <appender name="file" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}</file>
+    <appender name="app-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.file.dir}/easypan.log</file>
+        <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
-            <MaxFileSize>50MB</MaxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <fileNamePattern>${log.archive.dir}/easypan.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${log.max.file.size}</maxFileSize>
+            <maxHistory>${log.max.history}</maxHistory>
+            <totalSizeCap>${log.total.size.cap}</totalSizeCap>
+            <cleanHistoryOnStart>${log.clean.history.on.start}</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder>
             <charset>UTF-8</charset>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%logger{36}] [%thread] [%X{traceId:-}] - %msg%n</pattern>
+            <pattern>${APP_FILE_PATTERN}</pattern>
         </encoder>
+    </appender>
+
+    <appender name="error-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.file.dir}/easypan-error.log</file>
         <append>true</append>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.archive.dir}/easypan-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${log.max.file.size}</maxFileSize>
+            <maxHistory>${log.max.history}</maxHistory>
+            <totalSizeCap>${log.total.size.cap}</totalSizeCap>
+            <cleanHistoryOnStart>${log.clean.history.on.start}</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${APP_FILE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="access-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.file.dir}/easypan-access.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.archive.dir}/easypan-access.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>${log.max.file.size}</maxFileSize>
+            <maxHistory>${log.max.history}</maxHistory>
+            <totalSizeCap>${log.total.size.cap}</totalSizeCap>
+            <cleanHistoryOnStart>${log.clean.history.on.start}</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>${ACCESS_FILE_PATTERN}</pattern>
+        </encoder>
     </appender>
 
     <appender name="json-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}</file>
+        <file>${log.file.dir}/easypan-json.log</file>
+        <append>true</append>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <FileNamePattern>${log.path}/${LOG_FOLDER}/${LOG_JSON_FILE_NAME}.%d{yyyyMMdd}.%i</FileNamePattern>
-            <MaxFileSize>50MB</MaxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
-            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+            <fileNamePattern>${log.archive.dir}/easypan-json.%d{yyyy-MM-dd}.%i.json.gz</fileNamePattern>
+            <maxFileSize>${log.max.file.size}</maxFileSize>
+            <maxHistory>${log.max.history}</maxHistory>
+            <totalSizeCap>${log.total.size.cap}</totalSizeCap>
+            <cleanHistoryOnStart>${log.clean.history.on.start}</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <charset>UTF-8</charset>
             <layout class="ch.qos.logback.contrib.json.classic.JsonLayout">
                 <timestampFormat>yyyy-MM-dd'T'HH:mm:ss.SSSX</timestampFormat>
                 <timestampFormatTimezoneId>Asia/Shanghai</timestampFormatTimezoneId>
@@ -60,28 +107,56 @@
                 <includeLevel>true</includeLevel>
                 <includeException>true</includeException>
             </layout>
-            <charset>UTF-8</charset>
         </encoder>
-        <append>true</append>
     </appender>
 
-    <appender name="async-file" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="file"/>
-        <queueSize>512</queueSize>
+    <appender name="async-app-file" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="app-file"/>
+        <queueSize>2048</queueSize>
         <discardingThreshold>0</discardingThreshold>
-        <includeCallerData>true</includeCallerData>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <appender name="async-error-file" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="error-file"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <appender name="async-access-file" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="access-file"/>
+        <queueSize>2048</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
     </appender>
 
     <appender name="async-json-file" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="json-file"/>
-        <queueSize>512</queueSize>
+        <queueSize>2048</queueSize>
         <discardingThreshold>0</discardingThreshold>
-        <includeCallerData>true</includeCallerData>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
     </appender>
 
     <logger name="com.easypan" level="${log.root.level}" additivity="false">
         <appender-ref ref="console"/>
-        <appender-ref ref="async-file"/>
+        <appender-ref ref="async-app-file"/>
+        <appender-ref ref="async-error-file"/>
+        <appender-ref ref="async-json-file"/>
+    </logger>
+
+    <logger name="com.easypan.sql" level="DEBUG" additivity="false">
+        <appender-ref ref="console"/>
+        <appender-ref ref="async-app-file"/>
+    </logger>
+
+    <logger name="com.easypan.filter.RequestLogFilter" level="INFO" additivity="false">
+        <appender-ref ref="console"/>
+        <appender-ref ref="async-access-file"/>
         <appender-ref ref="async-json-file"/>
     </logger>
 
@@ -96,9 +171,14 @@
     <logger name="io.netty" level="WARN"/>
     <logger name="org.apache.http" level="WARN"/>
     <logger name="software.amazon.awssdk" level="WARN"/>
+    <logger name="jakarta.mail" level="WARN"/>
+    <logger name="javax.mail" level="WARN"/>
+    <logger name="org.springframework.mail" level="WARN"/>
+    <logger name="com.sun.mail" level="WARN"/>
+    <logger name="org.eclipse.angus" level="WARN"/>
+    <logger name="org.eclipse.angus.mail" level="WARN"/>
 
     <root level="INFO">
         <appender-ref ref="console"/>
     </root>
-
 </configuration>

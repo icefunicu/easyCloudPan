@@ -1,6 +1,7 @@
 package com.easypan.controller;
 
 import com.easypan.annotation.GlobalInterceptor;
+import com.easypan.annotation.RateLimit;
 import com.easypan.annotation.VerifyParam;
 import com.easypan.component.RedisComponent;
 import com.easypan.entity.config.AppConfig;
@@ -26,6 +27,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
@@ -69,10 +72,18 @@ public class AccountController extends ABaseController {
     @Resource
     private com.easypan.service.JwtBlacklistService jwtBlacklistService;
 
+    @Resource
+    private io.micrometer.core.instrument.Counter loginSuccessCounter;
+
+    @Resource
+    private io.micrometer.core.instrument.Counter loginFailureCounter;
+
+    @Resource
+    private io.micrometer.core.instrument.Counter registrationCounter;
+
     /**
-     * Local-only convenience for automation: when enabled, /checkCode responds with
-     * the captcha code in a header.
-     * Default is disabled for security.
+     * 本地联调用便捷开关：启用后 `/checkCode` 会在响应头返回验证码.
+     * 出于安全考虑默认关闭.
      */
     @Value("${captcha.debug.header:false}")
     private boolean captchaDebugHeader;
@@ -92,7 +103,7 @@ public class AccountController extends ABaseController {
         response.setHeader("Pragma", "no-cache");
         response.setHeader("Cache-Control", "no-cache");
         response.setDateHeader("Expires", 0);
-        // CreateImageCode.write() outputs PNG bytes.
+        // CreateImageCode.write() 输出 PNG 字节流.
         response.setContentType("image/png");
         String code = verifyCode.getCode();
         if (type == null || type == 0) {
@@ -147,6 +158,7 @@ public class AccountController extends ABaseController {
      */
     @RequestMapping("/register")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
+    @RateLimit(key = "register", time = 60, count = 3)
     @Operation(summary = "Register", description = "User registration")
     public ResponseVO<Void> register(HttpSession session,
             @VerifyParam(required = true, regex = VerifyRegexEnum.EMAIL, max = 150) String email,
@@ -159,6 +171,8 @@ public class AccountController extends ABaseController {
                 throw new BusinessException("图片验证码不正确");
             }
             userInfoService.register(email, nickName, password, emailCode);
+            // T9: 记录注册指标
+            registrationCounter.increment();
             return getSuccessResponseVO(null);
         } finally {
             session.removeAttribute(Constants.CHECK_CODE_KEY);
@@ -177,6 +191,7 @@ public class AccountController extends ABaseController {
      */
     @RequestMapping("/login")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
+    @RateLimit(key = "login", time = 60, count = 5)
     @Operation(summary = "Login", description = "User login")
     public ResponseVO<Map<String, Object>> login(HttpSession session, HttpServletRequest request,
             @VerifyParam(required = true) String email,
@@ -188,13 +203,14 @@ public class AccountController extends ABaseController {
             }
             SessionWebUserDto sessionWebUserDto = userInfoService.login(email, password);
 
+            // T9: 记录登录成功指标
+            loginSuccessCounter.increment();
+
             // 会话固定防护：登录后使原会话失效，创建新会话
             // 防止攻击者利用固定会话 ID 劫持用户会话
             session.invalidate();
             HttpSession newSession = request.getSession(true);
             newSession.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
-
-            String token = jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null);
             String refreshToken = jwtTokenProvider.generateRefreshToken(sessionWebUserDto.getUserId(), null);
 
             long refreshExpirationSeconds = 2592000L;
@@ -202,7 +218,7 @@ public class AccountController extends ABaseController {
 
             Map<String, Object> result = new HashMap<>();
             result.put("userInfo", sessionWebUserDto);
-            result.put("token", token);
+            result.put("token", jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null));
             result.put("refreshToken", refreshToken);
 
             return getSuccessResponseVO(result);
@@ -223,6 +239,7 @@ public class AccountController extends ABaseController {
      */
     @RequestMapping("/resetPwd")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
+    @RateLimit(key = "resetPwd", time = 60, count = 3)
     @Operation(summary = "Reset Password", description = "Reset user password")
     public ResponseVO<Void> resetPwd(HttpSession session,
             @VerifyParam(required = true, regex = VerifyRegexEnum.EMAIL, max = 150) String email,
@@ -252,7 +269,7 @@ public class AccountController extends ABaseController {
     public void getAvatar(HttpServletResponse response,
             @VerifyParam(required = true) @PathVariable("userId") String userId) {
         String avatarFolderName = Constants.FILE_FOLDER_AVATAR_NAME;
-        String avatarRootPath = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + avatarFolderName;
+        String avatarRootPath = appConfig.getFileRootPath() + "/" + avatarFolderName;
         File folder = new File(avatarRootPath);
         if (!folder.exists() && !folder.mkdirs()) {
             logger.error("Failed to create avatar folder: {}", folder.getAbsolutePath());
@@ -397,7 +414,7 @@ public class AccountController extends ABaseController {
             logger.error("Failed to create avatar folder: {}", targetFileFolder.getAbsolutePath());
         }
         File targetFile = new File(targetFileFolder.getPath() + "/" + webUserDto.getUserId() + Constants.AVATAR_SUFFIX);
-        // basic validation for avatar upload
+        // 头像上传基础校验
         if (avatar == null || avatar.isEmpty()) {
             throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请选择头像文件");
         }
@@ -424,6 +441,11 @@ public class AccountController extends ABaseController {
         String avatarUrl = "/api/getAvatar/" + webUserDto.getUserId() + "?v=" + System.currentTimeMillis();
         webUserDto.setAvatar(avatarUrl);
         session.setAttribute(Constants.SESSION_KEY, webUserDto);
+        // T4: 同步设置 request attribute，保持 JWT 路径一致
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            requestAttributes.getRequest().setAttribute(Constants.SESSION_KEY, webUserDto);
+        }
         return getSuccessResponseVO(null);
     }
 
@@ -483,9 +505,22 @@ public class AccountController extends ABaseController {
             @VerifyParam(required = true) String state) {
         SessionWebUserDto sessionWebUserDto = userInfoService.qqLogin(code);
         session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        // T4: 同步 request attribute
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            requestAttributes.getRequest().setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        }
+
+        // 生成 JWT token，与普通登录保持一致
+        String refreshToken = jwtTokenProvider.generateRefreshToken(sessionWebUserDto.getUserId(), null);
+        long refreshExpirationSeconds = 2592000L;
+        redisComponent.saveRefreshToken(sessionWebUserDto.getUserId(), refreshToken, refreshExpirationSeconds);
+
         Map<String, Object> result = new HashMap<>();
         result.put("callbackUrl", session.getAttribute(state));
         result.put("userInfo", sessionWebUserDto);
+        result.put("token", jwtTokenProvider.generateToken(sessionWebUserDto.getUserId(), null));
+        result.put("refreshToken", refreshToken);
         return getSuccessResponseVO(result);
     }
 
@@ -508,6 +543,12 @@ public class AccountController extends ABaseController {
 
         sessionWebUserDto.setNickName(nickName);
         session.setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        // T4: 同步 request attribute
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            requestAttributes.getRequest().setAttribute(Constants.SESSION_KEY, sessionWebUserDto);
+        }
         return getSuccessResponseVO(null);
     }
 }
+

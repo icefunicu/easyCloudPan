@@ -1,7 +1,6 @@
 package com.easypan.strategy.impl;
 
 import com.easypan.entity.config.AppConfig;
-import com.easypan.entity.constants.Constants;
 import com.easypan.exception.BusinessException;
 import com.easypan.strategy.StorageStrategy;
 import jakarta.annotation.Resource;
@@ -111,13 +110,13 @@ public class LocalStorageStrategy implements StorageStrategy {
 
     @Override
     public String getUrl(String path) {
-        // Return local path or relative path, controller handles serving
+        // 返回本地/相对路径，实际文件输出由 Controller 统一处理
         return path;
     }
 
     @Override
     public void init() {
-        String root = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
+        String root = appConfig.getFileRootPath();
         File rootFile = new File(root);
         if (!rootFile.exists() && !rootFile.mkdirs()) {
             logger.error("Failed to create root directory: {}", root);
@@ -125,7 +124,14 @@ public class LocalStorageStrategy implements StorageStrategy {
     }
 
     private String getFullPath(String path) {
-        // Basic path verification to prevent directory traversal could be added here
-        return appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE + path;
+        if (path == null) {
+            return appConfig.getFileRootPath();
+        }
+        String normalizedPath = path.replace("\\", "/");
+        while (normalizedPath.startsWith("/")) {
+            normalizedPath = normalizedPath.substring(1);
+        }
+        // 可在此补充目录穿越防护的路径校验逻辑
+        return appConfig.getFileRootPath() + "/" + normalizedPath;
     }
 }

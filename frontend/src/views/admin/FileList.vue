@@ -37,6 +37,7 @@
           :fetch="loadDataList"
           :init-fetch="false"
           :options="tableOptions"
+          :skeleton="true"
           @row-selected="rowSelected"
         >
         <template #fileName="{ row }">
@@ -210,7 +211,7 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除后不可还原`,
     async () => {
-      // Optimistic UI
+      // 先行更新（Optimistic UI）
       const index = tableData.value.list.findIndex(item => item.fileId === row.fileId && item.userId === row.userId);
       if (index !== -1) {
           tableData.value.list.splice(index, 1);
@@ -218,7 +219,7 @@ const delFile = (row) => {
 
       const result = await adminService.delFile(row.userId + "_" + row.fileId);
       if (!result) {
-        loadDataList(); // Revert
+        loadDataList(); // 失败时回滚
         return;
       }
     }
@@ -232,7 +233,7 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除后不可还原`,
     async () => {
-      // Optimistic UI
+      // 先行更新（Optimistic UI）
       const ids = selectFileIdList.value;
       const backupList = [...tableData.value.list];
       tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.userId + "_" + item.fileId));

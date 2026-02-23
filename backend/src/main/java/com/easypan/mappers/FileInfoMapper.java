@@ -28,11 +28,11 @@ public interface FileInfoMapper extends BaseMapper<FileInfo> {
             + "#{item.fileName}, #{item.filePath}, #{item.fileSize}, #{item.fileCover}, "
             + "#{item.fileCategory}, #{item.fileType}, #{item.folderType}, #{item.status}, "
             + "#{item.delFlag}, #{item.recoveryTime}, #{item.createTime}, #{item.lastUpdateTime}) "
-            + "ON DUPLICATE KEY UPDATE "
-            + "file_pid = VALUES(file_pid), file_name = VALUES(file_name), file_path = VALUES(file_path), "
-            + "file_size = VALUES(file_size), file_cover = VALUES(file_cover), file_category = VALUES(file_category), "
-            + "file_type = VALUES(file_type), folder_type = VALUES(folder_type), status = VALUES(status), "
-            + "del_flag = VALUES(del_flag), recovery_time = VALUES(recovery_time), last_update_time = VALUES(last_update_time)"
+            + "ON CONFLICT (file_id) DO UPDATE SET "
+            + "file_pid = EXCLUDED.file_pid, file_name = EXCLUDED.file_name, file_path = EXCLUDED.file_path, "
+            + "file_size = EXCLUDED.file_size, file_cover = EXCLUDED.file_cover, file_category = EXCLUDED.file_category, "
+            + "file_type = EXCLUDED.file_type, folder_type = EXCLUDED.folder_type, status = EXCLUDED.status, "
+            + "del_flag = EXCLUDED.del_flag, recovery_time = EXCLUDED.recovery_time, last_update_time = EXCLUDED.last_update_time"
             + "</foreach>"
             + "</script>")
     int insertOrUpdateBatch(@Param("list") List<FileInfo> list);

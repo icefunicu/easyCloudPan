@@ -28,7 +28,11 @@ const login = async () => {
   if (redirectUrl === '/login') {
     redirectUrl = '/'
   }
-  userInfoStore.setUserInfo(data.userInfo)
+  userInfoStore.setUserInfo({
+    ...data.userInfo,
+    token: data.token,
+    refreshToken: data.refreshToken,
+  })
   router.push(redirectUrl)
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="virtual-table" ref="containerRef" @scroll="handleScroll">
+  <div ref="containerRef" class="virtual-table" @scroll="handleScroll">
     <div class="virtual-table-header" :style="{ height: headerHeight + 'px' }">
       <div
         v-for="(col, idx) in columns"
@@ -257,7 +257,7 @@ watch(() => props.dataSource?.list, () => {
   if (containerRef.value) {
     containerRef.value.scrollTop = 0
   }
-  // Reset selection when data changes
+  // 数据源变化时重置选择态
   selectedRows.value.clear()
   selectedCount.value = 0
 })

@@ -3,6 +3,7 @@ export interface SessionWebUserDto {
   userId: string
   admin: boolean
   avatar: string
+  tenantId?: string
 }
 
 export interface UserSpaceDto {

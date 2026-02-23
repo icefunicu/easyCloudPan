@@ -10,8 +10,8 @@
           @close="dialogConfig.show = false"
           >
         <el-form
-          class="profile-form"
           ref="formDataRef"
+          class="profile-form"
           :model="formData"
           label-width="80px"
           @submit.prevent
@@ -31,10 +31,9 @@
 
 <script setup>
 import AvatarUpload from "@/components/AvatarUpload.vue";
-import { ref, getCurrentInstance } from "vue";
+import { ref } from "vue";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 import * as accountService from "@/services/accountService";
-const { proxy } = getCurrentInstance();
 const userInfoStore = useUserInfoStore();
 
 const formData = ref({});

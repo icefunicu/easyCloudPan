@@ -28,75 +28,91 @@
         </div>
         <div v-else class="unsupported-preview">
           <span class="iconfont icon-file"></span>
-          <p>此文件类型不支持在线预览</p>
+          <p>该文件类型不支持在线预览</p>
           <el-button type="primary" @click="downloadFile">下载文件</el-button>
         </div>
       </div>
     </template>
     <div v-else class="preview-error">
       <span class="iconfont icon-error"></span>
-      <p>文件不存在或已被删除</p>
+      <p>{{ loadError || '文件不存在或已被删除' }}</p>
+      <el-button size="small" @click="retryLoad">重试</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, getCurrentInstance, defineAsyncComponent } from 'vue';
-import { useRoute } from 'vue-router';
-import { getFileInfoById, getFileUrl, getVideoUrl } from '@/services/fileService';
-import type { FileInfoVO } from '@/types/file';
-import { createDownloadCode } from '@/services';
+import { ref, computed, onMounted, getCurrentInstance, defineAsyncComponent } from 'vue'
+import { useRoute } from 'vue-router'
+import { getFileInfoById } from '@/services/fileService'
+import type { FileInfoVO } from '@/types/file'
+import { createFileDownloadUrl, getFileDownloadUrl } from '@/services'
 
-const PreviewVideo = defineAsyncComponent(() => import('@/components/preview/PreviewVideo.vue'));
-const PreviewDoc = defineAsyncComponent(() => import('@/components/preview/PreviewDoc.vue'));
-const PreviewExcel = defineAsyncComponent(() => import('@/components/preview/PreviewExcel.vue'));
-const PreviewPdf = defineAsyncComponent(() => import('@/components/preview/PreviewPdf.vue'));
-const PreviewTxt = defineAsyncComponent(() => import('@/components/preview/PreviewTxt.vue'));
-const PreviewMusic = defineAsyncComponent(() => import('@/components/preview/PreviewMusic.vue'));
+const PreviewVideo = defineAsyncComponent(() => import('@/components/preview/PreviewVideo.vue'))
+const PreviewDoc = defineAsyncComponent(() => import('@/components/preview/PreviewDoc.vue'))
+const PreviewExcel = defineAsyncComponent(() => import('@/components/preview/PreviewExcel.vue'))
+const PreviewPdf = defineAsyncComponent(() => import('@/components/preview/PreviewPdf.vue'))
+const PreviewTxt = defineAsyncComponent(() => import('@/components/preview/PreviewTxt.vue'))
+const PreviewMusic = defineAsyncComponent(() => import('@/components/preview/PreviewMusic.vue'))
 
 const instance = getCurrentInstance()
 const proxy = instance!.proxy!
-const route = useRoute();
+const route = useRoute()
 
-const loading = ref(true);
-const fileInfo = ref<FileInfoVO | null>(null);
-const fileUrl = ref('');
-const videoUrl = ref('');
-const imageUrl = ref('');
+const loading = ref(true)
+const loadError = ref('')
+const fileInfo = ref<FileInfoVO | null>(null)
+const fileUrl = ref('')
+const videoUrl = ref('')
+const imageUrl = ref('')
 
-const fileId = computed(() => route.params.fileId);
+const fileId = computed(() => route.params.fileId)
 
 const loadFileInfo = async () => {
   if (!fileId.value) {
-    loading.value = false;
-    return;
+    loading.value = false
+    return
   }
-  
+
   try {
-    const result = await getFileInfoById(fileId.value as string);
+    const currentFileId = String(fileId.value)
+    const result = await getFileInfoById(currentFileId)
     if (result) {
-      fileInfo.value = result;
-      fileUrl.value = getFileUrl(fileId.value as string);
-      videoUrl.value = getVideoUrl(fileId.value as string);
-      imageUrl.value = proxy.globalInfo.imageUrl + (result.fileCover?.replaceAll('_.', '.') || '');
+      fileInfo.value = result
+      fileUrl.value = `/file/getFile/${currentFileId}`
+      videoUrl.value = `/file/ts/getVideoInfo/${currentFileId}`
+      imageUrl.value = proxy.globalInfo.imageUrl + (result.fileCover?.replaceAll('_.', '.') || '')
+      document.title = `${result.fileName} - 文件预览`
     }
   } catch (e) {
-    console.error('Failed to load file info:', e);
+    console.error('Failed to load file info:', e)
+    loadError.value = '文件信息加载失败，请检查网络后重试'
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
+
+const retryLoad = () => {
+  loading.value = true
+  loadError.value = ''
+  fileInfo.value = null
+  loadFileInfo()
+}
 
 const downloadFile = async () => {
-  const code = await createDownloadCode(`/file/createDownloadUrl/${fileId.value}`);
-  if (code) {
-    window.location.href = `/api/file/download/${code}`;
+  if (!fileId.value) {
+    return
   }
-};
+  const codeOrUrl = await createFileDownloadUrl(String(fileId.value))
+  if (!codeOrUrl) {
+    return
+  }
+  window.location.href = getFileDownloadUrl(codeOrUrl)
+}
 
 onMounted(() => {
-  loadFileInfo();
-});
+  loadFileInfo()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -177,7 +193,7 @@ onMounted(() => {
 .image-preview {
   max-width: 100%;
   max-height: calc(100vh - 100px);
-  
+
   img {
     max-width: 100%;
     max-height: calc(100vh - 100px);

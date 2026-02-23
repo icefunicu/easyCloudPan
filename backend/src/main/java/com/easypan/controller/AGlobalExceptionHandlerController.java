@@ -53,7 +53,7 @@ public class AGlobalExceptionHandlerController extends ABaseController {
     /**
      * 业务异常处理，处理应用中主动抛出的业务异常，支持国际化错误消息.
      *
-     * @param e 业务异常
+     * @param e       业务异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -80,21 +80,21 @@ public class AGlobalExceptionHandlerController extends ABaseController {
             suggestion = codeEnum.getSuggestion();
         }
 
-        log.warn("[BUSINESS_EXCEPTION] {} {} - Code: {}, Message: {}",
+        log.warn("⚠️ [业务异常] {} {} - 错误码: {}, 消息: {}",
                 method, requestUrl, code, message);
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(code)
-            .info(message)
-            .suggestion(suggestion)
-            .build();
+                .status(STATUC_ERROR)
+                .code(code)
+                .info(message)
+                .suggestion(suggestion)
+                .build();
     }
 
     /**
      * 参数校验异常处理，处理 Valid 和 Validated 注解触发的参数校验异常.
      *
-     * @param e 参数校验异常
+     * @param e       参数校验异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -108,22 +108,22 @@ public class AGlobalExceptionHandlerController extends ABaseController {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
-        log.warn("[VALIDATION_EXCEPTION] {} - Validation failed: {}", requestUrl, message);
+        log.warn("❌ [参数校验失败] {} - 详情: {}", requestUrl, message);
 
         String errorMessage = getMessage("error.600", null) + ": " + message;
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_600.getCode())
-            .info(errorMessage)
-            .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_600.getCode())
+                .info(errorMessage)
+                .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
+                .build();
     }
 
     /**
      * 文件上传大小超限异常处理，处理文件上传时超过配置的最大文件大小限制.
      *
-     * @param e 文件上传异常
+     * @param e       文件上传异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -135,23 +135,23 @@ public class AGlobalExceptionHandlerController extends ABaseController {
         long maxSize = e.getMaxUploadSize();
         long maxSizeMB = maxSize / (1024 * 1024);
 
-        log.warn("[FILE_UPLOAD_EXCEPTION] {} - File size exceeded: max {}MB",
+        log.warn("📦 [文件过大] {} - 超出限制: 最大 {}MB",
                 requestUrl, maxSizeMB);
 
-        String message = getMessage("error.file.size.exceeded", new Object[]{maxSizeMB});
+        String message = getMessage("error.file.size.exceeded", new Object[] { maxSizeMB });
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_600.getCode())
-            .info(message)
-            .suggestion("请压缩文件后重试上传")
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_600.getCode())
+                .info(message)
+                .suggestion("请压缩文件后重试上传")
+                .build();
     }
 
     /**
      * 404 异常处理，处理请求的资源不存在的情况.
      *
-     * @param e 404 异常
+     * @param e       404 异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -160,22 +160,22 @@ public class AGlobalExceptionHandlerController extends ABaseController {
             NoHandlerFoundException e, HttpServletRequest request) {
         String requestUrl = request.getRequestURI();
 
-        log.warn("[NOT_FOUND_EXCEPTION] {} - Resource not found", requestUrl);
+        log.warn("🔍 [资源不存在] {} - 未找到对应处理器", requestUrl);
 
         String message = getMessage("error.not.found", null);
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_404.getCode())
-            .info(message)
-            .suggestion(ResponseCodeEnum.CODE_404.getSuggestion())
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_404.getCode())
+                .info(message)
+                .suggestion(ResponseCodeEnum.CODE_404.getSuggestion())
+                .build();
     }
 
     /**
      * 权限不足异常处理.
      *
-     * @param e 权限异常
+     * @param e       权限异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -184,47 +184,47 @@ public class AGlobalExceptionHandlerController extends ABaseController {
             AccessDeniedException e, HttpServletRequest request) {
         String requestUrl = request.getRequestURI();
 
-        log.warn("[ACCESS_DENIED_EXCEPTION] {} - Access denied", requestUrl);
+        log.warn("🔒 [权限不足] {} - 拒绝访问", requestUrl);
 
         String message = getMessage("error.permission.denied", null);
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_901.getCode())
-            .info(message)
-            .suggestion(ResponseCodeEnum.CODE_901.getSuggestion())
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_901.getCode())
+                .info(message)
+                .suggestion(ResponseCodeEnum.CODE_901.getSuggestion())
+                .build();
     }
 
     /**
      * 参数类型错误异常处理.
      *
-     * @param e 参数异常
+     * @param e       参数异常
      * @param request HTTP 请求
      * @return 错误响应
      */
-    @ExceptionHandler({BindException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({ BindException.class, MethodArgumentTypeMismatchException.class })
     public ResponseVO<Void> handleParameterException(
             Exception e, HttpServletRequest request) {
         String requestUrl = request.getRequestURI();
 
-        log.warn("[PARAMETER_EXCEPTION] {} - Invalid parameter type: {}",
+        log.warn("🔧 [参数类型错误] {} - 详情: {}",
                 requestUrl, e.getMessage());
 
         String message = getMessage("error.600", null);
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_600.getCode())
-            .info(message)
-            .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_600.getCode())
+                .info(message)
+                .suggestion(ResponseCodeEnum.CODE_600.getSuggestion())
+                .build();
     }
 
     /**
      * 数据库主键冲突异常处理.
      *
-     * @param e 主键冲突异常
+     * @param e       主键冲突异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -233,23 +233,45 @@ public class AGlobalExceptionHandlerController extends ABaseController {
             DuplicateKeyException e, HttpServletRequest request) {
         String requestUrl = request.getRequestURI();
 
-        log.warn("[DUPLICATE_KEY_EXCEPTION] {} - Duplicate key: {}", requestUrl, e.getMessage());
+        log.warn("🔑 [主键冲突] {} - 详情: {}", requestUrl, e.getMessage());
 
         String message = getMessage("error.601", null);
 
         return ResponseVO.<Void>builder()
-            .status(STATUC_ERROR)
-            .code(ResponseCodeEnum.CODE_601.getCode())
-            .info(message)
-            .suggestion(ResponseCodeEnum.CODE_601.getSuggestion())
-            .build();
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_601.getCode())
+                .info(message)
+                .suggestion(ResponseCodeEnum.CODE_601.getSuggestion())
+                .build();
+    }
+
+    /**
+     * T20: 数据访问异常处理（连接池耗尽、SQL 超时等）.
+     *
+     * @param e       数据访问异常
+     * @param request HTTP 请求
+     * @return 错误响应
+     */
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseVO<Void> handleDataAccessException(
+            org.springframework.dao.DataAccessException e, HttpServletRequest request) {
+        String requestUrl = request.getRequestURI();
+
+        log.error("🗄️ [数据访问异常] {} - 详情: {}", requestUrl, e.getMessage(), e);
+
+        return ResponseVO.<Void>builder()
+                .status(STATUC_ERROR)
+                .code(ResponseCodeEnum.CODE_500.getCode())
+                .info("数据库服务暂时不可用，请稍后再试")
+                .suggestion("如果问题持续，请联系管理员")
+                .build();
     }
 
     /**
      * 系统异常处理（兜底），处理所有未被特定处理器捕获的异常.
      * 生产环境下会脱敏，不暴露详细错误信息。
      *
-     * @param e 异常
+     * @param e       异常
      * @param request HTTP 请求
      * @return 错误响应
      */
@@ -258,7 +280,7 @@ public class AGlobalExceptionHandlerController extends ABaseController {
         String requestUrl = request.getRequestURI();
         String method = request.getMethod();
 
-        log.error("[SYSTEM_EXCEPTION] {} {} - Error: {}", method, requestUrl, e.getMessage(), e);
+        log.error("💥 [系统异常] {} {} - 错误: {}", method, requestUrl, e.getMessage(), e);
 
         // 生产环境脱敏，不暴露堆栈信息和详细错误
         String message;
@@ -290,9 +312,9 @@ public class AGlobalExceptionHandlerController extends ABaseController {
     /**
      * 构建详细错误信息（仅用于开发/测试环境）.
      *
-     * @param e 异常
+     * @param e          异常
      * @param requestUrl 请求 URL
-     * @param method 请求方法
+     * @param method     请求方法
      * @return 详细错误信息
      */
     private DetailedErrorInfo buildDetailedErrorInfo(

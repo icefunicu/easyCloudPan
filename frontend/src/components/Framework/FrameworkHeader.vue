@@ -51,14 +51,14 @@
         <template #reference>
           <div class="uploader-trigger">
             <span class="iconfont icon-transfer"></span>
-            <span class="count-tag" v-if="activeTaskCount > 0">{{ activeTaskCount }}</span>
+            <span v-if="activeTaskCount > 0" class="count-tag">{{ activeTaskCount }}</span>
           </div>
         </template>
         <template #default>
           <Uploader
             ref="uploaderRef"
             @upload-callback="uploadCallbackHandler"
-            @update:activeTaskCount="updateActiveTaskCount"
+            @update:active-task-count="updateActiveTaskCount"
         ></Uploader>
         </template>
       </el-popover>
@@ -107,7 +107,7 @@ import UpdateNickName from "@/views/UpdateNickName.vue";
 import UpdatePassword from "@/views/UpdatePassword.vue";
 import { useSpaceMonitor } from "@/composables/useSpaceMonitor";
 
-const props = defineProps({
+defineProps({
   mobileMenuOpen: Boolean
 });
 const emit = defineEmits(['update:mobileMenuOpen']);
@@ -150,7 +150,7 @@ const uploadCallbackHandler = () => {
     });
 };
 
-// EventBus Listener
+// 事件总线监听
 const handleGlobalReload = () => {
     getUseSpace();
 };
@@ -184,7 +184,7 @@ const updateAvatar = () => {
 };
 
 const reloadAvatar = () => {
-    // Already reactive via store, but can trigger timestamp update to flush cached image
+    // 状态仓库已具备响应式；这里通过更新时间戳强制刷新头像缓存
     timestamp.value = new Date().getTime();
 };
 
@@ -195,7 +195,7 @@ const updateNickName = () => {
 };
 
 const reloadNickName = () => {
-    // Reactive via store
+    // 由 Store 响应式更新，无需额外逻辑
 };
 
 // 修改密码
@@ -216,7 +216,7 @@ const logout = async () => {
     });
 };
 
-// Mobile detection
+// 移动端检测
 const windowWidth = ref(window.innerWidth);
 const isMobileDevice = computed(() => windowWidth.value < 768);
 const uploaderPopoverWidth = computed(() => {

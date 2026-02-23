@@ -168,6 +168,11 @@ copy ops\docker\.env.example ops\docker\.env
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`
 - `QQ_APP_ID`, `QQ_APP_KEY`
 - `SPRING_MAIL_PASSWORD`
+- `LOG_ROOT_LEVEL`
+- `LOG_FILE_DIR`（默认：`${PROJECT_FOLDER}logs`）
+- `LOG_ARCHIVE_DIR`（默认：`${LOG_FILE_DIR}/archive`）
+- `LOG_MAX_FILE_SIZE`, `LOG_MAX_HISTORY`, `LOG_TOTAL_SIZE_CAP`
+- `LOG_CLEAN_HISTORY_ON_START`
 
 ## 项目结构
 
@@ -271,9 +276,13 @@ docker compose ps
 ### 性能问题排查
 
 1. 检查监控指标：访问 `http://localhost:7090/api/actuator/metrics`
-2. 查看慢查询日志：`backend/file/logs/easypan.log`
-3. 检查缓存命中率：Grafana 仪表板
-4. 查看虚拟线程状态：`/api/actuator/health/custom`
+2. 查看应用日志：`backend/file/logs/easypan.log`
+3. 查看访问日志：`backend/file/logs/easypan-access.log`
+4. 查看错误日志：`backend/file/logs/easypan-error.log`
+5. 查看结构化日志：`backend/file/logs/easypan-json.log`
+6. 查看归档目录：`backend/file/logs/archive/`
+7. 检查缓存命中率：Grafana 仪表板
+8. 查看虚拟线程状态：`/api/actuator/health/custom`
 
 ### 安全配置
 

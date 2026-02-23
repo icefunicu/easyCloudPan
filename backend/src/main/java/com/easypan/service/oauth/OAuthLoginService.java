@@ -1,6 +1,7 @@
 package com.easypan.service.oauth;
 
 import com.easypan.component.RedisComponent;
+import com.easypan.component.TenantContextHolder;
 import com.easypan.entity.config.AppConfig;
 import com.easypan.entity.constants.Constants;
 import com.easypan.entity.dto.SessionWebUserDto;
@@ -94,18 +95,18 @@ public class OAuthLoginService {
 
         String accessToken = strategy.getAccessToken(code);
         OAuthUserInfo oauthUser = strategy.getUserInfo(accessToken);
-        oauthUser.setProvider(provider); // Ensure provider is set in OAuthUserInfo if possible, or carry it
+        oauthUser.setProvider(provider); // 兜底写入 provider，确保后续注册链路可用。
 
-        // 1. Find by provider + providerId
+        // 1. 先按 provider + providerId 查找绑定用户
         UserInfo user = userInfoMapper.selectOneByQuery(QueryWrapper.create()
                 .where(USER_INFO.OAUTH_PROVIDER.eq(provider))
                 .and(USER_INFO.OAUTH_PROVIDER_ID.eq(oauthUser.getProviderId())));
 
-        // 2. If not found, try to find by email if available to auto-link
+        // 2. 若未找到，且 OAuth 返回邮箱，则尝试按邮箱自动关联
         if (user == null && !StringTools.isEmpty(oauthUser.getEmail())) {
             user = userInfoMapper.selectOneByQuery(QueryWrapper.create()
                     .where(USER_INFO.EMAIL.eq(oauthUser.getEmail())));
-            // If found by email, we link it
+            // 按邮箱命中后补齐 OAuth 绑定关系
             if (user != null) {
                 UserInfo updateInfo = new UserInfo();
                 updateInfo.setOauthProvider(provider);
@@ -120,14 +121,14 @@ public class OAuthLoginService {
 
         OAuthCallbackDto result = new OAuthCallbackDto();
 
-        // 3. If user exists (either found by providerId or linked by email), login
+        // 3. 命中用户（直接命中或邮箱关联）则直接登录
         if (user != null) {
             checkUserStatus(user);
             SessionWebUserDto sessionWebUserDto = createSessionUser(user);
             result.setLoginSuccess(true);
             result.setSessionWebUserDto(sessionWebUserDto);
         } else {
-            // 4. If user not found, return info for registration
+            // 4. 未命中用户则返回 OAuth 信息，交给前端注册流程
             result.setLoginSuccess(false);
             result.setOauthUserInfo(oauthUser);
         }
@@ -144,7 +145,7 @@ public class OAuthLoginService {
      */
     @Transactional(rollbackFor = Exception.class)
     public SessionWebUserDto register(String provider, OAuthUserInfo oauthUser, String password) {
-        // Double check if user exists (concurrency)
+        // 并发场景二次校验，避免重复注册
         UserInfo existing = userInfoMapper.selectOneByQuery(QueryWrapper.create()
                 .where(USER_INFO.EMAIL.eq(oauthUser.getEmail())));
         if (existing != null) {
@@ -164,8 +165,9 @@ public class OAuthLoginService {
         user.setStatus(UserStatusEnum.ENABLE.getStatus());
         user.setUseSpace(0L);
         user.setTotalSpace(redisComponent.getSysSettingsDto().getUserInitUseSpace() * Constants.MB);
+        user.setTenantId(TenantContextHolder.getTenantId());
 
-        // Handle duplicate nickname
+        // 昵称冲突时自动补随机后缀
         UserInfo existingNick = userInfoMapper.selectOneByQuery(
                 QueryWrapper.create().where(USER_INFO.NICK_NAME.eq(user.getNickName())));
         if (existingNick != null) {
@@ -187,6 +189,7 @@ public class OAuthLoginService {
         sessionWebUserDto.setUserId(user.getUserId());
         sessionWebUserDto.setNickName(user.getNickName());
         sessionWebUserDto.setAvatar(user.getAvatar());
+        sessionWebUserDto.setTenantId(user.getTenantId());
         if ((user.getIsAdmin() != null && user.getIsAdmin())
                 || ArrayUtils.contains(appConfig.getAdminEmails().split(","),
                         user.getEmail() == null ? "" : user.getEmail())) {

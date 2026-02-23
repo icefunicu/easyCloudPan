@@ -13,6 +13,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { useUserInfoStore } from "@/stores/userInfoStore";
+import { toApiPath } from "@/utils/url";
+
+const userInfoStore = useUserInfoStore();
 
 const props = defineProps({
   url: {
@@ -37,10 +41,16 @@ const initPdf = async () => {
   fetchController = new AbortController();
   loading.value = true;
   errorMsg.value = "";
-  const response = await fetch(`/api${props.url}`, {
+  const token = userInfoStore.getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetch(toApiPath(props.url), {
     method: "GET",
     credentials: "include",
     signal: fetchController.signal,
+    headers,
   }).catch(() => null);
   if (fetchController.signal.aborted) {
     return;

@@ -34,7 +34,7 @@ public class BatchDataService {
     public List<FileInfo> batchGetFileInfos(List<String> fileIds) {
         List<CompletableFuture<FileInfo>> futures = fileIds.stream()
                 .map(fileId -> CompletableFuture.supplyAsync(() -> {
-                    // Use QueryWrapper to find by file_id
+                    // 使用 QueryWrapper 按 file_id 查询
                     return fileInfoMapper.selectOneByQuery(QueryWrapper.create().eq(FileInfo::getFileId, fileId));
                 }, virtualThreadExecutor))
                 .collect(Collectors.toList());

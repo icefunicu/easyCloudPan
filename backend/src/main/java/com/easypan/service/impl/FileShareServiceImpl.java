@@ -176,7 +176,7 @@ public class FileShareServiceImpl implements FileShareService {
                     cursorTime = new Date(Long.parseLong(parts[0]));
                     cursorId = parts[1];
                 } catch (NumberFormatException e) {
-                    // Ignore invalid cursor
+                    // 忽略非法 cursor
                 }
             }
         }

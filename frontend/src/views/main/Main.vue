@@ -8,8 +8,8 @@
                   v-model="fileNameFuzzy"
                   clearable
                   placeholder="请输入文件名搜索"
-                  @keyup.enter="search"
                   class="glass-input"
+                  @keyup.enter="search"
                 >
                     <template #suffix>
                         <i class="iconfont icon-search" @click="search"></i>
@@ -56,12 +56,12 @@
       <div
         v-if="tableData.list && tableData.list.length > 0"
         class="file-list"
+        :class="{ 'drag-over': isDragOver }"
         @drop="handleDrop"
         @dragover.prevent="isDragOver = true"
         @dragleave="isDragOver = false"
-        :class="{ 'drag-over': isDragOver }"
       >
-        <div class="drop-mask" v-if="isDragOver">
+        <div v-if="isDragOver" class="drop-mask">
             <span class="iconfont icon-upload"></span>
             <div class="text">松开鼠标上传文件</div>
         </div>
@@ -90,6 +90,7 @@
             :init-fetch="false"
             :options="tableOptions"
             :loading="isLoading"
+            :skeleton="true"
             @row-selected="rowSelected"
           >
           <template #fileName="{ index, row }">
@@ -171,60 +172,70 @@
               }}</span>
           </template>
           </Table>
-          <div v-else key="icon" class="file-grid">
-            <div
-              v-for="(row, index) in tableData.list"
-              :key="row.fileId || `${row.fileName}-${index}`"
-              :class="['grid-item', row.showOp ? 'show-op' : '']"
-              @mouseenter="showOp(row)"
-              @mouseleave="cancelShowOp(row)"
-              @contextmenu.prevent="e => contextMenuRef?.show(e, row)"
+          <div v-else key="icon" class="file-grid virtual-grid-wrapper">
+            <RecycleScroller
+              v-slot="{ item: row, index }"
+              class="scroller"
+              :items="tableData.list"
+              :item-size="160"
+              :key-field="'fileId'"
+              :direction="'vertical'"
+              :grid-items="Math.floor((windowWidth || window.innerWidth) / 130)"
+              style="height: 100%; width: 100%;"
             >
-              <div class="grid-check" @click.stop>
-                <el-checkbox
-                  :model-value="isGridSelected(row.fileId)"
-                  @change="value => toggleGridSelect(row.fileId, value)"
-                />
+              <div
+                :class="['grid-item', row.showOp ? 'show-op' : '']"
+                style="height: 120px; width: 120px; margin: 5px;"
+                @mouseenter="showOp(row)"
+                @mouseleave="cancelShowOp(row)"
+                @contextmenu.prevent="e => contextMenuRef?.show(e, row)"
+              >
+                <div class="grid-check" @click.stop>
+                  <el-checkbox
+                    :model-value="isGridSelected(row.fileId)"
+                    @change="value => toggleGridSelect(row.fileId, value)"
+                  />
+                </div>
+                <div class="grid-icon" @click="preview(row)">
+                  <template v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2">
+                    <Icon :cover="row.fileCover" :width="52"></Icon>
+                  </template>
+                  <template v-else>
+                    <Icon v-if="row.folderType == 0" :file-type="row.fileType" :width="52"></Icon>
+                    <Icon v-if="row.folderType == 1" :file-type="0" :width="52"></Icon>
+                  </template>
+                </div>
+                <div class="grid-name" :title="row.fileName" @click="preview(row)">{{ row.fileName }}</div>
+                <div class="grid-meta">
+                  <span>{{ row.folderType == 1 ? "文件夹" : proxy.Utils.size2Str(row.fileSize || 0) }}</span>
+                  <span v-if="row.status == 0" class="transfer-status processing">转码中</span>
+                  <span 
+                    v-if="row.status == 1" 
+                    class="transfer-status transfer-fail"
+                    @click="retryTranscode(row)"
+                  >转码失败</span>
+                </div>
+                <div class="grid-op">
+                  <span v-if="row.status == 2" class="iconfont icon-share1" @click.stop="share(row)">分享</span>
+                  <span v-if="row.folderType == 0 && row.status == 2" class="iconfont icon-download" @click.stop="download(row)">下载</span>
+                  <span class="iconfont icon-del" @click.stop="delFile(row)">删除</span>
+                  <span class="iconfont icon-edit" @click.stop="openRenameFromGrid(index)">重命名</span>
+                  <span class="iconfont icon-move" @click.stop="moveFolder(row)">移动</span>
+                </div>
               </div>
-              <div class="grid-icon" @click="preview(row)">
-                <template v-if="(row.fileType == 3 || row.fileType == 1) && row.status == 2">
-                  <Icon :cover="row.fileCover" :width="52"></Icon>
-                </template>
-                <template v-else>
-                  <Icon v-if="row.folderType == 0" :file-type="row.fileType" :width="52"></Icon>
-                  <Icon v-if="row.folderType == 1" :file-type="0" :width="52"></Icon>
-                </template>
-              </div>
-              <div class="grid-name" :title="row.fileName" @click="preview(row)">{{ row.fileName }}</div>
-              <div class="grid-meta">
-                <span>{{ row.folderType == 1 ? "文件夹" : proxy.Utils.size2Str(row.fileSize || 0) }}</span>
-                <span v-if="row.status == 0" class="transfer-status processing">转码中</span>
-                <span 
-                  v-if="row.status == 1" 
-                  class="transfer-status transfer-fail"
-                  @click="retryTranscode(row)"
-                >转码失败</span>
-              </div>
-              <div class="grid-op">
-                <span v-if="row.status == 2" class="iconfont icon-share1" @click.stop="share(row)">分享</span>
-                <span v-if="row.folderType == 0 && row.status == 2" class="iconfont icon-download" @click.stop="download(row)">下载</span>
-                <span class="iconfont icon-del" @click.stop="delFile(row)">删除</span>
-                <span class="iconfont icon-edit" @click.stop="openRenameFromGrid(index)">重命名</span>
-                <span class="iconfont icon-move" @click.stop="moveFolder(row)">移动</span>
-              </div>
-            </div>
+            </RecycleScroller>
           </div>
         </transition>
       </div>
       <div 
         v-else 
         class="no-data"
+        :class="{ 'drag-over': isDragOver }"
         @drop="handleDrop"
         @dragover.prevent="isDragOver = true"
         @dragleave="isDragOver = false"
-        :class="{ 'drag-over': isDragOver }"
       >
-        <div class="drop-mask" v-if="isDragOver">
+        <div v-if="isDragOver" class="drop-mask">
             <span class="iconfont icon-upload"></span>
             <div class="text">松开鼠标上传文件</div>
         </div>
@@ -314,6 +325,17 @@ const emit = defineEmits(["addFile"]);
 const addFile = (fileData) => {
   emit("addFile", { file: fileData.file, filePid: currentFolder.value.fileId });
 };
+
+const windowWidth = ref(window.innerWidth);
+const handleResize = () => {
+    windowWidth.value = window.innerWidth;
+};
+onMounted(() => {
+    window.addEventListener('resize', handleResize);
+});
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+});
 
 const VIEW_MODE_STORAGE_KEY = "main_file_view_mode";
 const viewMode = ref(localStorage.getItem(VIEW_MODE_STORAGE_KEY) === "icon" ? "icon" : "list");
@@ -520,12 +542,12 @@ const saveNameEdit = async (index) => {
         return;
     }
 
-    // Optimistic UI for Rename
+    // 重命名先行更新（Optimistic UI）
     const oldFileName = tableData.value.list[index].fileName;
     if (fileId != "") {
         tableData.value.list[index].fileName = fileNameReal;
     }
-    // End Optimistic
+    // 先行更新结束
 
     let result;
     try {
@@ -541,7 +563,7 @@ const saveNameEdit = async (index) => {
             });
         }
         if (!result) {
-            // Revert on null result
+            // 返回为空时回滚
             if (fileId != "") {
                 tableData.value.list[index].fileName = oldFileName;
             }
@@ -550,7 +572,7 @@ const saveNameEdit = async (index) => {
         tableData.value.list[index] = result;
         editing.value = false;
     } catch (e) {
-        // Revert on error
+        // 发生异常时回滚
         if (fileId != "") {
              tableData.value.list[index].fileName = oldFileName;
         }
@@ -664,7 +686,7 @@ const delFile = (row) => {
   proxy.Confirm(
     `你确定要删除【${row.fileName}】吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
-      // Optimistic UI Delete
+      // 删除先行更新（Optimistic UI）
       const index = tableData.value.list.findIndex(item => item.fileId === row.fileId);
       if (index !== -1) {
           tableData.value.list.splice(index, 1);
@@ -672,10 +694,10 @@ const delFile = (row) => {
       
       const result = await fileService.delFile(row.fileId);
       if (!result) {
-        loadDataList(); // Revert/Reload if failed
+        loadDataList(); // 失败时回滚并刷新
         return;
       }
-      // loadDataList(); // Removed to avoid reload flash
+      // loadDataList(); // 已移除，避免整表刷新闪烁
     }
   );
 };
@@ -687,17 +709,17 @@ const delFileBatch = () => {
   proxy.Confirm(
     `你确定要删除这些文件吗? 删除的文件可在10天内通过回收站还原`,
     async () => {
-      // Optimistic UI Batch Delete
+      // 批量删除先行更新（Optimistic UI）
       const ids = selectFileIdList.value;
       const backupList = [...tableData.value.list];
       tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.fileId));
 
       const result = await fileService.delFile(selectFileIdList.value.join(","));
       if (!result) {
-        tableData.value.list = backupList; // Revert
+        tableData.value.list = backupList; // 回滚
         return;
       }
-      loadDataList(); // Safe reload to accept server state
+      loadDataList(); // 安全刷新，确保与服务端状态一致
     }
   );
 };
@@ -779,7 +801,7 @@ const share = (row) => {
 // 重试转码
 const retryTranscode = (row) => {
   proxy.Message.info(`正在重新转码 ${row.fileName}，请稍后刷新查看`);
-  // TODO: 调用后端转码重试接口
+  // 待办: 调用后端转码重试接口
 };
 
 // 右键菜单
@@ -812,7 +834,7 @@ const handleContextMenuAction = (action, item) => {
   }
 };
 
-// EventBus Listener
+// 事件总线监听
 const handleReload = () => {
     showLoading.value = false;
     loadDataList();
@@ -1118,4 +1140,3 @@ onUnmounted(() => {
     }
 }
 </style>
-

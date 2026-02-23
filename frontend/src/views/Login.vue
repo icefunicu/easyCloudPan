@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="login-body">
     <div class="bg-aurora"></div>
     <div class="login-shell">
@@ -137,7 +137,7 @@
         </el-form-item>
         <!-- 登录按钮 -->
         <el-form-item>
-          <el-button type="primary" class="op-btn" size="large" @click="doSubmit" :loading="isSubmitting">
+          <el-button type="primary" class="op-btn" size="large" :loading="isSubmitting" @click="doSubmit">
             <span v-if="opType == 0">注册</span>
             <span v-if="opType == 1">登录</span>
             <span v-if="opType == 2">重置密码</span>
@@ -147,7 +147,7 @@
           <div class="quick-login-title">其他登录方式</div>
           <div class="oauth-buttons">
             <!-- GitHub -->
-            <div class="oauth-btn github" @click="oauthLogin('github')" title="GitHub登录">
+            <div class="oauth-btn github" title="GitHub登录" @click="oauthLogin('github')">
               <svg viewBox="0 0 1024 1024" width="24" height="24">
                 <path
                   d="M511.6 76.3C264.3 76.2 64 276.4 64 523.5 64 718.9 189.3 885 363.8 946c23.5 5.9 19.9-10.8 19.9-22.2v-77.5c-135.7 15.9-141.2-73.9-150.3-88.9C215 726 171.5 718 184.5 703c30.9-15.9 62.4 4 98.9 57.9 26.4 39.1 77.9 32.5 104 26 5.7-23.5 17.9-44.5 34.7-60.8-140.6-25.2-199.2-111-199.2-213 0-49.5 16.3-95 48.3-131.7-20.4-60.5 1.9-112.3 4.9-120 58.1-5.2 118.5 41.6 123.2 45.3 33-8.9 70.7-13.6 112.9-13.6 42.4 0 80.2 4.9 113.5 13.9 11.3-8.6 67.3-48.8 121.3-43.9 2.9 7.7 24.7 58.3 5.5 118 32.4 36.8 48.9 82.7 48.9 132.3 0 102.2-59 188.1-200 212.9a127.5 127.5 0 0 1 38.1 91v112.5c0.8 9 0 17.9 15 17.9 177.1-59.7 304.6-227 304.6-424.1 0-247.2-200.4-447.3-447.5-447.3z"
@@ -156,7 +156,7 @@
               </svg>
             </div>
             <!-- Gitee -->
-            <div class="oauth-btn gitee" @click="oauthLogin('gitee')" title="Gitee登录">
+            <div class="oauth-btn gitee" title="Gitee登录" @click="oauthLogin('gitee')">
               <svg viewBox="0 0 1024 1024" width="24" height="24">
                 <path
                   d="M512 1024C230.4 1024 0 793.6 0 512S230.4 0 512 0s512 230.4 512 512-230.4 512-512 512z m259.2-569.6H480c-12.8 0-25.6 12.8-25.6 25.6v64c0 12.8 12.8 25.6 25.6 25.6h176c12.8 0 25.6 12.8 25.6 25.6v12.8c0 41.6-35.2 76.8-76.8 76.8h-240c-12.8 0-25.6-12.8-25.6-25.6V416c0-41.6 35.2-76.8 76.8-76.8h355.2c12.8 0 25.6-12.8 25.6-25.6v-64c0-12.8-12.8-25.6-25.6-25.6H416c-105.6 0-192 86.4-192 192v256c0 105.6 86.4 192 192 192h240c105.6 0 192-86.4 192-192V476.8c0-12.8-12.8-22.4-25.6-22.4z"
@@ -165,7 +165,7 @@
               </svg>
             </div>
             <!-- Google -->
-            <div class="oauth-btn google" @click="oauthLogin('google')" title="Google登录">
+            <div class="oauth-btn google" title="Google登录" @click="oauthLogin('google')">
               <svg viewBox="0 0 1024 1024" width="24" height="24">
                 <path
                   d="M512 426.666667v170.666666h241.066667c-10.666667 59.733333-68.266667 170.666667-241.066667 170.666667-145.066667 0-262.4-117.333333-262.4-262.4s117.333333-262.4 262.4-262.4c68.266667 0 113.066667 29.866667 138.666667 55.466667L742.4 198.4C680.533333 138.666667 603.733333 106.666667 512 106.666667 288 106.666667 106.666667 288 106.666667 512S288 917.333333 512 917.333333c202.666667 0 339.2-142.933333 339.2-345.6 0-23.466667-2.133333-40.533333-6.4-59.733333l-332.8-85.333333z"
@@ -174,7 +174,7 @@
               </svg>
             </div>
             <!-- Microsoft -->
-            <div class="oauth-btn microsoft" @click="oauthLogin('microsoft')" title="Microsoft登录">
+            <div class="oauth-btn microsoft" title="Microsoft登录" @click="oauthLogin('microsoft')">
               <svg viewBox="0 0 23 23" width="24" height="24">
                 <path fill="#f35325" d="M1 1h10v10H1z" />
                 <path fill="#81bc06" d="M12 1h10v10H12z" />
@@ -232,7 +232,6 @@ import {
   register as registerService,
   login as loginService,
   resetPwd as resetPwdService,
-  qqLogin as qqLoginService,
 } from '@/services'
 const { proxy } = getCurrentInstance()
 const router = useRouter()
@@ -456,23 +455,13 @@ const doSubmit = () => {
       showPanel(1)
     }
     } catch (error) {
-    // Error handled by Interceptor usually, but just in case
+    // 通常会由 Interceptor 统一处理错误，这里保底兜底
   } finally {
     isSubmitting.value = false;
   }
   })
 }
 
-// qq登录
-const qqLogin = async () => {
-  const callbackUrl = typeof route.query.redirectUrl === 'string' ? route.query.redirectUrl : ''
-  const loginUrl = await qqLoginService(callbackUrl)
-  if (!loginUrl) {
-    return
-  }
-  userInfoStore.clearUserInfo()
-  document.location.href = loginUrl
-}
 </script>
 
 <style lang="scss" scoped>
@@ -753,4 +742,5 @@ const qqLogin = async () => {
   }
 }
 </style>
+
 

@@ -7,23 +7,28 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 请求签名验证过滤器.
- * 防止重放攻击，确保请求的完整性和唯一性.
+ * 请求签名过滤器.
+ * 对敏感接口执行重放防护与签名校验.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
@@ -34,29 +39,43 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
     private static final String SIGNATURE_HEADER = "X-Signature";
     private static final String TIMESTAMP_HEADER = "X-Timestamp";
     private static final String NONCE_HEADER = "X-Nonce";
-    private static final String APP_KEY_HEADER = "X-App-Key";
+    private static final String SIGNATURE_VERSION_HEADER = "X-Signature-Version";
+    private static final String SIGNATURE_VERSION = "v2";
 
-    // 签名有效期（毫秒），默认 5 分钟
     private static final long SIGNATURE_VALIDITY_MS = 5 * 60 * 1000;
-
-    // 非ce缓存前缀
     private static final String NONCE_CACHE_PREFIX = "easypan:nonce:";
 
-    // 跳过签名验证的路径
     private static final Set<String> SKIP_PATHS = Set.of(
             "/api/login",
             "/api/register",
             "/api/logout",
             "/api/refreshToken",
-            "/api/getImageCode",
+            "/api/checkCode",
             "/api/sendEmailCode",
             "/api/actuator",
             "/api/swagger-ui",
-            "/api/v3/api-docs"
-    );
+            "/api/v3/api-docs");
+
+    private static final Set<String> SENSITIVE_PATH_PREFIXES = Set.of(
+            "/api/file/uploadFile",
+            "/api/file/delFile",
+            "/api/file/changeFileFolder",
+            "/api/file/rename",
+            "/api/file/newFoloder",
+            "/api/share/shareFile",
+            "/api/share/cancelShare",
+            "/api/showShare/saveShare",
+            "/api/recycle/",
+            "/api/admin/",
+            "/api/updatePassword",
+            "/api/updateUserAvatar",
+            "/api/updateNickName");
 
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+
+    @Value("${security.signature.secret:easypan-default-secret}")
+    private String signatureSecret;
 
     public RequestSignatureConfig(RedisTemplate<String, String> redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
@@ -69,15 +88,12 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-        // 跳过 OPTIONS 请求
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String requestPath = request.getRequestURI();
-
-        // 跳过不需要签名验证的路径
         if (shouldSkipSignature(requestPath)) {
             filterChain.doFilter(request, response);
             return;
@@ -86,38 +102,64 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
         String signature = request.getHeader(SIGNATURE_HEADER);
         String timestamp = request.getHeader(TIMESTAMP_HEADER);
         String nonce = request.getHeader(NONCE_HEADER);
+        String signatureVersion = request.getHeader(SIGNATURE_VERSION_HEADER);
+        boolean hasSignatureHeaders = StringUtils.hasText(signature)
+                && StringUtils.hasText(timestamp)
+                && StringUtils.hasText(nonce);
 
-        // 如果没有签名头，跳过验证（兼容现有客户端）
-        if (signature == null || timestamp == null || nonce == null) {
-            logger.debug("Request without signature headers, skipping validation: {}", requestPath);
+        if (!hasSignatureHeaders) {
+            if (requiresSignature(requestPath, request.getMethod())) {
+                sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Missing signature headers");
+                return;
+            }
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 验证时间戳
+        if (StringUtils.hasText(signatureVersion) && !SIGNATURE_VERSION.equals(signatureVersion)) {
+            logger.warn("Unsupported signature version: path={}, version={}", requestPath, signatureVersion);
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Unsupported signature version");
+            return;
+        }
+
         if (!validateTimestamp(timestamp)) {
             logger.warn("Request timestamp expired: path={}, timestamp={}", requestPath, timestamp);
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "请求已过期");
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Request timestamp expired");
             return;
         }
 
-        // 验证 nonce（防止重放）
         if (!validateNonce(nonce)) {
             logger.warn("Request nonce already used: path={}, nonce={}", requestPath, nonce);
-            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "重复的请求");
+            sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, "Duplicate request");
             return;
         }
 
-        // 验证签名
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
-        filterChain.doFilter(wrappedRequest, response);
+        String expectedSignature = generateSignature(
+                timestamp,
+                nonce,
+                request.getMethod(),
+                requestPath,
+                "",
+                signatureSecret);
+        if (!constantTimeEquals(signature, expectedSignature)) {
+            logger.warn("Invalid request signature: path={}", requestPath);
+            sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid signature");
+            return;
+        }
 
-        // 缓存 nonce
         cacheNonce(nonce);
+        filterChain.doFilter(request, response);
     }
 
     private boolean shouldSkipSignature(String path) {
         return SKIP_PATHS.stream().anyMatch(path::startsWith);
+    }
+
+    private boolean requiresSignature(String path, String method) {
+        if ("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method)) {
+            return false;
+        }
+        return SENSITIVE_PATH_PREFIXES.stream().anyMatch(path::startsWith);
     }
 
     private boolean validateTimestamp(String timestamp) {
@@ -140,6 +182,12 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
         redisTemplate.opsForValue().set(key, "1", SIGNATURE_VALIDITY_MS, TimeUnit.MILLISECONDS);
     }
 
+    private boolean constantTimeEquals(String provided, String expected) {
+        return MessageDigest.isEqual(
+                provided.getBytes(StandardCharsets.UTF_8),
+                expected.getBytes(StandardCharsets.UTF_8));
+    }
+
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
@@ -151,16 +199,7 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
     }
 
     /**
-     * 生成签名.
-     * 签名算法：HMAC-SHA256(timestamp + nonce + method + path + body, secret)
-     *
-     * @param timestamp 时间戳
-     * @param nonce     随机字符串
-     * @param method    HTTP 方法
-     * @param path      请求路径
-     * @param body      请求体
-     * @param secret    密钥
-     * @return 签名字符串
+     * 使用 HMAC-SHA256 生成请求签名.
      */
     public static String generateSignature(
             String timestamp,
@@ -170,12 +209,11 @@ public class RequestSignatureConfig extends OncePerRequestFilter {
             String body,
             String secret) {
         try {
-            String data = String.join("&", timestamp, nonce, method, path, body == null ? "" : body);
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            String input = data + secret;
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (NoSuchAlgorithmException e) {
+            String data = String.join("&", timestamp, nonce, method.toUpperCase(), path, body == null ? "" : body);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return bytesToHex(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException e) {
             throw new RuntimeException("Failed to generate signature", e);
         }
     }

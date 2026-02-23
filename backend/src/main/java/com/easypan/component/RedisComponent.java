@@ -115,8 +115,7 @@ public class RedisComponent {
                 totalSpace = userInfo.getTotalSpace();
             }
         } catch (Exception e) {
-            // Keep fallback path to avoid breaking uploads when total_space is
-            // null/corrupted.
+            // 保留兜底路径，避免 total_space 为空或异常时影响上传链路.
         }
         if (totalSpace != null) {
             return totalSpace;

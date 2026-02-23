@@ -59,7 +59,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(["hover"]);
+defineEmits(["hover"]);
 
 const fileTypeMap = {
     0: { desc: "目录", icon: "folder" },
@@ -85,7 +85,6 @@ const getImage = () => {
         if (props.adminUserId) {
             return `/api/admin/getImage/${props.adminUserId}/${props.cover}`;
         }
-        // 获取全局配置需要通过 inject 或其他方式
         return `/api/file/getImage/${props.cover}`;
     }
     let icon = "unknow_icon";

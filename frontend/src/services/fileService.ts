@@ -134,6 +134,9 @@ export async function createDownloadUrl(fileId: string): Promise<string | null> 
 }
 
 export function getDownloadUrl(code: string): string {
+  if (code.startsWith('http://') || code.startsWith('https://')) {
+    return code
+  }
   return `${api.download}/${code}`
 }
 

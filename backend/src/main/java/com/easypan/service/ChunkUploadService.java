@@ -23,9 +23,9 @@ import software.amazon.awssdk.services.s3.model.CompletedPart;
 /**
  * 分片上传服务.
  *
- *<p>实现分片上传并发控制，限制同一文件最大并发数为 5
+ * <p>实现分片上传并发控制，限制同一文件最大并发数为 5
  *
- *<p>需求：2.3.1
+ * <p>需求：2.3.1
  */
 @Service
 @Slf4j
@@ -147,9 +147,14 @@ public class ChunkUploadService {
     }
 
     /**
+     * Redis key 前缀：合并状态.
+     */
+    private static final String MERGE_STATUS_KEY = "easypan:merge:status:";
+
+    /**
      * 合并分片文件.
      *
-     *<p>使用虚拟线程异步合并，合并完成后清理分片文件
+     * <p>使用虚拟线程异步合并，通过 Redis 记录合并状态（T16 增强）
      *
      * @param userId      用户ID
      * @param fileMd5     文件MD5值
@@ -158,6 +163,9 @@ public class ChunkUploadService {
      */
     public UploadResultDto mergeChunks(String userId, String fileMd5, Integer totalChunks) {
         log.info("开始合并分片: userId={}, fileMd5={}, totalChunks={}", userId, fileMd5, totalChunks);
+
+        String statusKey = MERGE_STATUS_KEY + userId + ":" + fileMd5;
+        redisTemplate.opsForValue().set(statusKey, "merging", 30, TimeUnit.MINUTES);
 
         CompletableFuture.runAsync(() -> {
             String finalPath = String.format("files/%s/%s", userId, fileMd5);
@@ -170,17 +178,16 @@ public class ChunkUploadService {
                 // 2. 遍历分片并执行服务端复制
                 for (int i = 0; i < totalChunks; i++) {
                     String chunkPath = String.format("chunks/%s/%s/%d", userId, fileMd5, i);
-
-                    // partNumber 从 1 开始
                     CompletedPart part = s3Component.uploadPartCopy(chunkPath, finalPath, uploadId, i + 1);
                     completedParts.add(part);
-
-                    // log.debug("分片 {} 复制完成", i);
                 }
 
                 // 3. 完成分片上传
                 s3Component.completeMultipartUpload(finalPath, uploadId, completedParts);
                 log.info("文件合并完成 (S3 Multipart): {}", finalPath);
+
+                // T16: 更新合并状态为成功
+                redisTemplate.opsForValue().set(statusKey, "success", 10, TimeUnit.MINUTES);
 
                 // 4. 清理分片
                 for (int i = 0; i < totalChunks; i++) {
@@ -196,6 +203,8 @@ public class ChunkUploadService {
 
             } catch (Exception e) {
                 log.error("文件合并失败: userId={}, fileMd5={}", userId, fileMd5, e);
+                // T16: 更新合并状态为失败
+                redisTemplate.opsForValue().set(statusKey, "failed", 10, TimeUnit.MINUTES);
                 if (uploadId != null) {
                     try {
                         s3Component.abortMultipartUpload(finalPath, uploadId);
@@ -210,4 +219,18 @@ public class ChunkUploadService {
         return new UploadResultDto(fileMd5, "merging");
     }
 
+    /**
+     * 查询合并状态（T16 新增）.
+     *
+     * @param userId  用户ID
+     * @param fileMd5 文件MD5值
+     * @return 合并状态: merging / success / failed / null
+     */
+    public String getMergeStatus(String userId, String fileMd5) {
+        String statusKey = MERGE_STATUS_KEY + userId + ":" + fileMd5;
+        Object status = redisTemplate.opsForValue().get(statusKey);
+        return status != null ? status.toString() : null;
+    }
+
 }
+

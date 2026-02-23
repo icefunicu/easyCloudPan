@@ -51,6 +51,7 @@
             :fetch="loadDataList"
             :init-fetch="true"
             :options="tableOptions"
+            :skeleton="true"
             @row-selected="rowSelected"
           >
             <template #avatar="{ row }">
@@ -257,7 +258,7 @@ const updateUserStatus = (row) => {
     proxy.Confirm(
         `你确定要【${row.status == 0 ? "启用" : "禁用"}】吗?`,
         async () => {
-             // Optimistic UI
+             // 先行更新（Optimistic UI）
              const oldStatus = row.status;
              const newStatus = row.status == 0 ? 1 : 0;
              row.status = newStatus;
@@ -267,11 +268,11 @@ const updateUserStatus = (row) => {
                 status: newStatus,
             });
             if (!result) {
-                // Revert
+                // 回滚
                 row.status = oldStatus;
                 return;
             }
-            // Success, no need to reload
+            // 成功后无需整表刷新
         }
     );
 };

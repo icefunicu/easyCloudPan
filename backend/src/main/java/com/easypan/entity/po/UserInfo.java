@@ -101,4 +101,9 @@ public class UserInfo implements Serializable {
      * 是否管理员.
      */
     private Boolean isAdmin;
+
+    /**
+     * Tenant ID.
+     */
+    private String tenantId;
 }

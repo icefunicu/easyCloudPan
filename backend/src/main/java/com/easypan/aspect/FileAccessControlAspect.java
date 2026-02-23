@@ -83,19 +83,25 @@ public class FileAccessControlAspect {
     }
 
     private SessionWebUserDto getCurrentUser() {
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             return null;
         }
         HttpServletRequest request = attributes.getRequest();
-        HttpSession session = request.getSession();
-        return (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
+        // 优先从 request attribute 读取（由 GlobalOperationAspect.checkLogin 在 JWT 校验后设置）
+        SessionWebUserDto userDto = (SessionWebUserDto) request.getAttribute(Constants.SESSION_KEY);
+        if (userDto != null) {
+            return userDto;
+        }
+        // 兼容回退：从 HttpSession 读取（OAuth 回调等仍写 Session 的场景）
+        HttpSession session = request.getSession(false);
+        return session != null
+                ? (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY)
+                : null;
     }
 
     private SessionShareDto getShareSession(String shareId) {
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             return null;
         }

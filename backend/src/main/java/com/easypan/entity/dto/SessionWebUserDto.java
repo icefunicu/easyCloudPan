@@ -28,4 +28,6 @@ public class SessionWebUserDto implements Serializable {
     private Boolean admin;
     @Schema(description = "User Avatar")
     private String avatar;
+    @Schema(description = "Tenant ID")
+    private String tenantId;
 }

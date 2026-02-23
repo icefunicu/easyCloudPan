@@ -4,7 +4,6 @@ import router from './router'
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 // 引入element plus
-import 'element-plus/dist/index.css'
 // 图标 图标在附件中
 import '@/assets/icon/iconfont.css'
 import '@/assets/base.scss'
@@ -16,6 +15,10 @@ import i18n from '@/locales'
 // 引入图片懒加载
 import VueLazyLoad from 'vue3-lazy'
 import loadingImage from '@/assets/loading_image.png'
+
+// 引入虚拟滚动
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
+import VueVirtualScroller from 'vue-virtual-scroller'
 
 // 引入代码高亮
 
@@ -48,6 +51,8 @@ app.use(VueLazyLoad, {
   error: loadingImage,
 })
 
+app.use(VueVirtualScroller)
+
 app.use(router)
 
 app.component('Dialog', Dialog)
@@ -71,7 +76,7 @@ app.config.globalProperties.globalInfo = {
   avatarUrl: '/api/getAvatar/',
   imageUrl: '/api/file/getImage/',
 }
-// Custom Directives
+// 自定义指令
 // @ts-expect-error Virtual module
 import TouchDirective from '@/utils/TouchDirective'
 app.directive('touch', TouchDirective)
@@ -84,12 +89,11 @@ app.mount('#app')
 // @ts-expect-error Virtual module
 import { registerSW } from 'virtual:pwa-register'
 
-const updateSW = registerSW({
+registerSW({
   onNeedRefresh() {
-    // Optionally show a notification to the user
-    console.log('New content available, click on reload button to update.')
+    // 预留给后续 UX 提示（例如 toast 引导刷新）
   },
   onOfflineReady() {
-    console.log('App ready to work offline')
+    // 预留给 offline-ready 提示
   },
 })

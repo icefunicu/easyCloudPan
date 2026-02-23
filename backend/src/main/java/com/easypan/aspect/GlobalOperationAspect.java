@@ -1,10 +1,10 @@
 package com.easypan.aspect;
 
+import com.easypan.component.TenantContextHolder;
 import com.easypan.entity.dto.SessionWebUserDto;
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -13,15 +13,15 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
- * 全局操作切面，用于处理登录校验和参数校验.
+ * 全局拦截切面，负责登录态校验与参数校验.
  */
 @Aspect
 @Component
@@ -34,11 +34,11 @@ public class GlobalOperationAspect {
     }
 
     /**
-     * 拦截带有 GlobalInterceptor 注解的方法，执行登录校验和参数校验.
+     * 执行全局拦截，统一处理登录校验与参数校验.
      *
-     * @param point 切点
-     * @return 方法执行结果
-     * @throws Throwable 异常
+     * @param point AOP 切点上下文
+     * @return 原始方法执行结果
+     * @throws Throwable 透传执行过程中抛出的异常
      */
     @Around("requestInterceptor()")
     public Object interceptorDo(ProceedingJoinPoint point) throws Throwable {
@@ -55,27 +55,22 @@ public class GlobalOperationAspect {
             return point.proceed();
         }
 
-        // 校验登录
         if (interceptor.checkLogin() || interceptor.checkAdmin()) {
             checkLogin(interceptor.checkAdmin());
         }
 
-        // 校验参数
         if (interceptor.checkParams()) {
             validateParams(method, arguments);
         }
 
         Object result = point.proceed();
 
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-
+        long duration = System.currentTimeMillis() - startTime;
         if (duration > 1000) {
-            logger.warn("Slow API execution: {}.{} took {}ms", target.getClass().getSimpleName(), methodName, duration);
-        } else if (logger.isDebugEnabled()) {
-            logger.debug("API execution: {}.{} took {}ms", target.getClass().getSimpleName(), methodName, duration);
+            logger.warn("Slow API {}.{} cost {}ms", target.getClass().getSimpleName(), methodName, duration);
+        } else if (logger.isInfoEnabled()) {
+            logger.info("API {}.{} cost {}ms", target.getClass().getSimpleName(), methodName, duration);
         }
-
         return result;
     }
 
@@ -91,31 +86,25 @@ public class GlobalOperationAspect {
     @jakarta.annotation.Resource
     private com.easypan.service.UserInfoService userInfoService;
 
+    @jakarta.annotation.Resource
+    private com.easypan.entity.config.AppConfig appConfig;
+
+    @jakarta.annotation.Resource
+    private com.github.benmanes.caffeine.cache.Cache<String, com.easypan.entity.po.UserInfo> userInfoCache;
+
     private void checkLogin(boolean checkAdmin) {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
                 .getRequest();
 
         SessionWebUserDto sessionWebUserDto = null;
-        String bearerToken = request.getHeader("Authorization");
-        String token = null;
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
 
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            token = bearerToken.substring(7);
-        } else {
-            token = bearerToken;
-        }
-
-        if (token != null && jwtTokenProvider.validateToken(token) && !jwtBlacklistService.isBlacklisted(token)) {
-            String userId = jwtTokenProvider.getUserIdFromJWT(token);
-            // 这里为了保证无状态且及时响应空间变化，可以根据 userId 从数据库/Redis中拼装出 Dto。
-            // 但原本系统里可能并没有直接获取 SessionWebUserDto 的原子方法，为了快速修补并解耦，我们从 DB 新查或缓存存取.
-            com.easypan.entity.po.UserInfo userInfo = userInfoService.getUserInfoByUserId(userId);
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            String userId = String.valueOf(authentication.getPrincipal());
+            com.easypan.entity.po.UserInfo userInfo = loadUserInfo(userId);
             if (userInfo != null) {
-                // Spring Context aware bean fetcher or AppConfig instance injection
-                com.easypan.entity.config.AppConfig appConfig = WebApplicationContextUtils
-                        .getRequiredWebApplicationContext(request.getServletContext())
-                        .getBean(com.easypan.entity.config.AppConfig.class);
-
                 sessionWebUserDto = new SessionWebUserDto();
                 sessionWebUserDto.setUserId(userInfo.getUserId());
                 sessionWebUserDto.setNickName(userInfo.getNickName());
@@ -124,27 +113,65 @@ public class GlobalOperationAspect {
                                 appConfig.getAdminEmails().split(","),
                                 userInfo.getEmail()));
                 sessionWebUserDto.setAvatar(userInfo.getQqAvatar());
+                sessionWebUserDto.setTenantId(resolveTenantId(userInfo.getTenantId()));
             }
         }
 
-        // 临时降级回 Session 兜底，以防旧前端的纯 cookie 会话报错
         if (sessionWebUserDto == null) {
-            HttpSession session = request.getSession();
-            sessionWebUserDto = (SessionWebUserDto) session
-                    .getAttribute(com.easypan.entity.constants.Constants.SESSION_KEY);
-        }
-
-        // 把最终的有效用户态挂载到 Request Attribute，供 Controller 通过 ABaseController 获取
-        if (sessionWebUserDto != null) {
-            request.setAttribute(com.easypan.entity.constants.Constants.SESSION_KEY, sessionWebUserDto);
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            if (session != null) {
+                Object sessionObj = session.getAttribute(com.easypan.entity.constants.Constants.SESSION_KEY);
+                if (sessionObj instanceof SessionWebUserDto dto) {
+                    sessionWebUserDto = dto;
+                }
+            }
         }
 
         if (sessionWebUserDto == null) {
             throw new BusinessException(ResponseCodeEnum.CODE_901);
         }
-        if (checkAdmin && !sessionWebUserDto.getAdmin()) {
+
+        bindTenantContext(request, sessionWebUserDto);
+        request.setAttribute(com.easypan.entity.constants.Constants.SESSION_KEY, sessionWebUserDto);
+        if (checkAdmin && !Boolean.TRUE.equals(sessionWebUserDto.getAdmin())) {
             throw new BusinessException(ResponseCodeEnum.CODE_404);
         }
+    }
+
+    private com.easypan.entity.po.UserInfo loadUserInfo(String userId) {
+        com.easypan.entity.po.UserInfo userInfo = userInfoCache.getIfPresent(userId);
+        if (userInfo == null) {
+            userInfo = userInfoService.getUserInfoByUserId(userId);
+            if (userInfo != null) {
+                userInfoCache.put(userId, userInfo);
+            }
+        }
+        return userInfo;
+    }
+
+    private void bindTenantContext(HttpServletRequest request, SessionWebUserDto sessionWebUserDto) {
+        String userTenantId = sessionWebUserDto.getTenantId();
+        if (!StringUtils.hasText(userTenantId) && StringUtils.hasText(sessionWebUserDto.getUserId())) {
+            com.easypan.entity.po.UserInfo userInfo = loadUserInfo(sessionWebUserDto.getUserId());
+            if (userInfo != null) {
+                userTenantId = userInfo.getTenantId();
+            }
+        }
+        userTenantId = resolveTenantId(userTenantId);
+
+        String requestTenantId = request.getHeader("X-Tenant-Id");
+        if (StringUtils.hasText(requestTenantId) && !userTenantId.equals(requestTenantId.trim())) {
+            logger.warn("Tenant mismatch rejected: userId={}, tenantFromUser={}, tenantFromHeader={}",
+                    sessionWebUserDto.getUserId(), userTenantId, requestTenantId);
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "租户信息不匹配");
+        }
+
+        sessionWebUserDto.setTenantId(userTenantId);
+        TenantContextHolder.setTenantId(userTenantId);
+    }
+
+    private String resolveTenantId(String tenantId) {
+        return StringUtils.hasText(tenantId) ? tenantId : "default";
     }
 
     private void validateParams(Method method, Object[] arguments) {
@@ -182,7 +209,6 @@ public class GlobalOperationAspect {
         }
         int min = verifyParam.min();
         int max = verifyParam.max();
-        // -1 means "no constraint"
         if (min >= 0 && value.length() < min) {
             throw new BusinessException(ResponseCodeEnum.CODE_600);
         }

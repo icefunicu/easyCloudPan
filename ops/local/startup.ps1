@@ -1,10 +1,11 @@
 # EasyCloudPan Local One-Click Startup Script
-# Usage: .\ops\local\startup.ps1 [-NoBrowser] [-AllowDevMode] [-ExposeCaptcha]
+# Usage: .\ops\local\startup.ps1 [-NoBrowser] [-AllowDevMode] [-ExposeCaptcha] [-EnableMailDebug]
 
 param(
     [switch]$NoBrowser,
     [switch]$AllowDevMode,
-    [switch]$ExposeCaptcha
+    [switch]$ExposeCaptcha,
+    [switch]$EnableMailDebug
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,9 +15,9 @@ $EnvFile = "$DockerDir\.env"
 
 function Print-Header {
     param([string]$Title)
-    Write-Host "=" * 74
+    Write-Host ("=" * 74)
     Write-Host $Title
-    Write-Host "=" * 74
+    Write-Host ("=" * 74)
 }
 
 # Check config file
@@ -33,6 +34,35 @@ Write-Host "[INFO] Loading environment variables from $EnvFile..."
 Get-Content $EnvFile | Where-Object { $_ -notmatch '^#' -and $_ -match '=' } | ForEach-Object {
     $parts = $_.Split('=', 2)
     [Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1].Trim(), "Process")
+}
+
+$requiredEnv = @(
+    "POSTGRES_DB",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "REDIS_PASSWORD",
+    "MINIO_ROOT_USER",
+    "MINIO_ROOT_PASSWORD",
+    "MINIO_BUCKET"
+)
+$missingEnv = @()
+foreach ($name in $requiredEnv) {
+    $value = [Environment]::GetEnvironmentVariable($name, "Process")
+    if ([string]::IsNullOrWhiteSpace($value)) {
+        $missingEnv += $name
+    }
+}
+
+if ($missingEnv.Count -gt 0) {
+    Write-Host "[ERROR] Missing required environment variable(s): $($missingEnv -join ', ')" -ForegroundColor Red
+    Write-Host "Please update $EnvFile or run .\ops\local\setup.ps1 first."
+    exit 1
+}
+
+# docker compose parses the full file and may require Grafana password even when only infra services are started.
+if ([string]::IsNullOrWhiteSpace($env:GRAFANA_ADMIN_PASSWORD)) {
+    $env:GRAFANA_ADMIN_PASSWORD = ([Guid]::NewGuid().ToString("N") + "Aa!")
+    Write-Host "[WARN] GRAFANA_ADMIN_PASSWORD is missing in .env. A temporary runtime value has been generated for this session only."
 }
 
 if (-not $AllowDevMode) {
@@ -53,11 +83,45 @@ else {
     $env:CAPTCHA_DEBUG_HEADER = "false"
 }
 
+if ($EnableMailDebug) {
+    $env:SPRING_MAIL_DEBUG = "true"
+    Write-Host "[WARN] SPRING_MAIL_DEBUG is enabled. Jakarta Mail protocol logs will be verbose."
+}
+else {
+    # Keep startup logs concise by default.
+    $env:SPRING_MAIL_DEBUG = "false"
+}
+
+if ([string]::IsNullOrWhiteSpace($env:LOG_ROOT_LEVEL)) {
+    $env:LOG_ROOT_LEVEL = "info"
+}
+
 # Local dev (Windows) should not use the Docker-style PROJECT_FOLDER (e.g. /data/easypan/),
 # otherwise multipart uploads may be written relative to Tomcat's temp dir.
 $projectFolder = ($RepoRoot -replace '\\\\', '/') + '/backend/file/'
 $env:PROJECT_FOLDER = $projectFolder
 Write-Host "[INFO] PROJECT_FOLDER is set to $projectFolder"
+
+if ([string]::IsNullOrWhiteSpace($env:LOG_FILE_DIR)) {
+    $env:LOG_FILE_DIR = "$projectFolder" + "logs"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOG_ARCHIVE_DIR)) {
+    $env:LOG_ARCHIVE_DIR = ($env:LOG_FILE_DIR.TrimEnd('/')) + "/archive"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOG_MAX_FILE_SIZE)) {
+    $env:LOG_MAX_FILE_SIZE = "50MB"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOG_MAX_HISTORY)) {
+    $env:LOG_MAX_HISTORY = "30"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOG_TOTAL_SIZE_CAP)) {
+    $env:LOG_TOTAL_SIZE_CAP = "5GB"
+}
+if ([string]::IsNullOrWhiteSpace($env:LOG_CLEAN_HISTORY_ON_START)) {
+    $env:LOG_CLEAN_HISTORY_ON_START = "false"
+}
+Write-Host "[INFO] LOG_FILE_DIR is set to $($env:LOG_FILE_DIR)"
+Write-Host "[INFO] LOG_ARCHIVE_DIR is set to $($env:LOG_ARCHIVE_DIR)"
 
 # Set Spring Boot properties
 $env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5433/$env:POSTGRES_DB"
@@ -111,9 +175,17 @@ chcp 65001 > `$null
 `$env:CAPTCHA_DEBUG_HEADER='$env:CAPTCHA_DEBUG_HEADER'
 `$env:PROJECT_FOLDER='$projectFolder'
 `$env:DEV_MODE='$env:DEV_MODE'
-`$env:JAVA_TOOL_OPTIONS='-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8'
+`$env:SPRING_MAIL_DEBUG='$env:SPRING_MAIL_DEBUG'
+`$env:LOG_ROOT_LEVEL='$env:LOG_ROOT_LEVEL'
+`$env:LOG_FILE_DIR='$env:LOG_FILE_DIR'
+`$env:LOG_ARCHIVE_DIR='$env:LOG_ARCHIVE_DIR'
+`$env:LOG_MAX_FILE_SIZE='$env:LOG_MAX_FILE_SIZE'
+`$env:LOG_MAX_HISTORY='$env:LOG_MAX_HISTORY'
+`$env:LOG_TOTAL_SIZE_CAP='$env:LOG_TOTAL_SIZE_CAP'
+`$env:LOG_CLEAN_HISTORY_ON_START='$env:LOG_CLEAN_HISTORY_ON_START'
+`$env:MAVEN_OPTS='-Dfile.encoding=UTF-8 -Dconsole.encoding=UTF-8 -Dmail.debug=$env:SPRING_MAIL_DEBUG'
 cd '$RepoRoot\backend'
-mvn spring-boot:run
+mvn -q "-Dmaven.test.skip=true" "-Dcheckstyle.skip=true" "-Dspotbugs.skip=true" spring-boot:run
 "@
 Set-Content -Path $backendScript -Value $backendContent -Encoding UTF8
 
@@ -155,9 +227,11 @@ if (-not $NoBrowser) {
     Start-Process "http://localhost:8080"
 }
 
-Write-Host "=" * 74
+Write-Host ("=" * 74)
 Write-Host "Started." -ForegroundColor Green
 Write-Host "Frontend: http://localhost:8080"
 Write-Host "Backend : http://localhost:7090/api"
 Write-Host "MinIO   : http://localhost:9001"
-Write-Host "=" * 74
+Write-Host "Logs    : $($env:LOG_FILE_DIR)"
+Write-Host "Archive : $($env:LOG_ARCHIVE_DIR)"
+Write-Host ("=" * 74)

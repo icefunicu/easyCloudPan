@@ -2,7 +2,7 @@
   <div class="framework">
     <FrameworkHeader
         ref="headerRef"
-        v-model:mobileMenuOpen="mobileMenuOpen"
+        v-model:mobile-menu-open="mobileMenuOpen"
     />
     <div
       v-if="mobileMenuOpen"
@@ -11,7 +11,7 @@
     ></div>
     <div class="body">
       <FrameworkSider
-          v-model:mobileMenuOpen="mobileMenuOpen"
+          v-model:mobile-menu-open="mobileMenuOpen"
       />
       <div class="body-content">
           <router-view v-slot="{ Component }">

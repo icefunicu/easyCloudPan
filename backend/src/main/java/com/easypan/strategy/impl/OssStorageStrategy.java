@@ -31,8 +31,7 @@ public class OssStorageStrategy implements StorageStrategy {
     @Override
     public void upload(MultipartFile file, String path) {
         try {
-            // S3Component handles PutObjectRequest with RequestBody.fromBytes or fromFile
-            // For MultipartFile, we can use bytes or transfer to a temp file
+            // S3Component 已封装 PutObjectRequest，这里直接按字节上传 MultipartFile。
             s3Component.uploadBytes(path, file.getBytes());
         } catch (IOException e) {
             logger.error("Upload file to OSS failed", e);
@@ -72,15 +71,18 @@ public class OssStorageStrategy implements StorageStrategy {
 
     @Override
     public String getUrl(String path) {
-        // In a real scenario, this might return a presigned URL or a CDN URL.
-        // For now, consistent with existing logic, we might not use this explicitly
-        // if the controller still proxies the stream.
-        // But if we want to redirect, we would return the OSS URL.
+        // 当前与本地存储策略保持一致，返回相对路径交给 Controller 统一处理。
+        // 若未来切换前端直连下载，可改为返回预签名 URL 或 CDN URL。
         return path;
     }
 
     @Override
+    public String generatePresignedUrl(String path, String fileName) {
+        return s3Component.generatePresignedUrl(path, fileName);
+    }
+
+    @Override
     public void init() {
-        // S3Component is already initialized by Spring/Config
+        // S3Component 在 Spring 启动阶段已完成初始化。
     }
 }

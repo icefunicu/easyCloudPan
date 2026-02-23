@@ -6,6 +6,7 @@ import com.easypan.entity.enums.FileStatusEnums;
 import com.easypan.entity.po.FileInfo;
 import com.easypan.exception.BusinessException;
 import com.easypan.mappers.FileInfoMapper;
+import com.easypan.service.MultiLevelCacheService;
 import com.easypan.service.impl.FileInfoServiceImpl;
 import com.mybatisflex.core.query.QueryWrapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class FileInfoServiceTest {
 
     @Mock
     private FileInfoMapper fileInfoMapper;
+
+    @Mock
+    private MultiLevelCacheService multiLevelCacheService;
 
     @InjectMocks
     private FileInfoServiceImpl fileInfoService;
@@ -188,23 +192,25 @@ class FileInfoServiceTest {
     @DisplayName("根据文件ID和用户ID查询文件")
     void testGetFileInfoByFileIdAndUserId() {
         FileInfo file = createTestFile(TEST_FILE_ID, TEST_USER_ID, "test.txt", TEST_FILE_PID);
-        when(fileInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(file);
+        when(multiLevelCacheService.getFileInfo(TEST_FILE_ID, TEST_USER_ID)).thenReturn(file);
 
         FileInfo result = fileInfoService.getFileInfoByFileIdAndUserId(TEST_FILE_ID, TEST_USER_ID);
 
         assertNotNull(result);
         assertEquals(TEST_FILE_ID, result.getFileId());
         assertEquals(TEST_USER_ID, result.getUserId());
+        verify(multiLevelCacheService).getFileInfo(TEST_FILE_ID, TEST_USER_ID);
     }
 
     @Test
     @DisplayName("根据文件ID和用户ID查询文件 - 文件不存在")
     void testGetFileInfoByFileIdAndUserId_NotFound() {
-        when(fileInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(null);
+        when(multiLevelCacheService.getFileInfo(TEST_FILE_ID, TEST_USER_ID)).thenReturn(null);
 
         FileInfo result = fileInfoService.getFileInfoByFileIdAndUserId(TEST_FILE_ID, TEST_USER_ID);
 
         assertNull(result);
+        verify(multiLevelCacheService).getFileInfo(TEST_FILE_ID, TEST_USER_ID);
     }
 
     @Test
@@ -217,6 +223,7 @@ class FileInfoServiceTest {
         Integer result = fileInfoService.updateFileInfoByFileIdAndUserId(updateInfo, TEST_FILE_ID, TEST_USER_ID);
 
         assertEquals(1, result);
+        verify(multiLevelCacheService).evictFileInfo(TEST_FILE_ID, TEST_USER_ID);
         verify(fileInfoMapper).updateByQuery(any(FileInfo.class), any(QueryWrapper.class));
     }
 
@@ -236,7 +243,7 @@ class FileInfoServiceTest {
     @DisplayName("重命名文件 - 成功")
     void testRename_Success() {
         FileInfo existingFile = createTestFile(TEST_FILE_ID, TEST_USER_ID, "old_name.txt", TEST_FILE_PID);
-        when(fileInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(existingFile);
+        when(multiLevelCacheService.getFileInfo(TEST_FILE_ID, TEST_USER_ID)).thenReturn(existingFile);
         when(fileInfoMapper.selectCountByQuery(any(QueryWrapper.class))).thenReturn(0L, 1L);
         when(fileInfoMapper.updateByQuery(any(FileInfo.class), any(QueryWrapper.class))).thenReturn(1);
 
@@ -249,7 +256,7 @@ class FileInfoServiceTest {
     @Test
     @DisplayName("重命名文件 - 文件不存在")
     void testRename_FileNotFound() {
-        when(fileInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(null);
+        when(multiLevelCacheService.getFileInfo(TEST_FILE_ID, TEST_USER_ID)).thenReturn(null);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             fileInfoService.rename(TEST_FILE_ID, TEST_USER_ID, "new_name");
@@ -263,7 +270,7 @@ class FileInfoServiceTest {
     void testRename_SameName() {
         FileInfo existingFile = createTestFile(TEST_FILE_ID, TEST_USER_ID, "same_name", TEST_FILE_PID);
         existingFile.setFolderType(FileFolderTypeEnums.FOLDER.getType());
-        when(fileInfoMapper.selectOneByQuery(any(QueryWrapper.class))).thenReturn(existingFile);
+        when(multiLevelCacheService.getFileInfo(TEST_FILE_ID, TEST_USER_ID)).thenReturn(existingFile);
 
         FileInfo result = fileInfoService.rename(TEST_FILE_ID, TEST_USER_ID, "same_name");
 

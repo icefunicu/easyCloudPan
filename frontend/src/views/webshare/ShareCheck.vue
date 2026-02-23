@@ -52,10 +52,9 @@
 </template>
 
 <script setup>
-import { ref, getCurrentInstance } from "vue";
+import { ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import * as shareService from "@/services/shareService";
-const { proxy } = getCurrentInstance();
 const router = useRouter();
 const route = useRoute();
 
@@ -86,8 +85,6 @@ const checkShare = async () => {
         if (!valid) {
             return;
         }
-        const params = {};
-        Object.assign(params, formData.value);
         const result = await shareService.checkShareCode({
             shareId: shareId,
             code: formData.value.code,

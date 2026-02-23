@@ -9,8 +9,8 @@
           @close="dialogConfig.show = false"
         >
           <el-form
-            class="profile-form"
             ref="formDataRef"
+            class="profile-form"
             :model="formData"
             :rules="rules"
             label-width="80px"
@@ -84,7 +84,7 @@ const submitForm = async () => {
         dialogConfig.value.show = false;
         proxy.Message.success("昵称修改成功");
         
-        // Update store
+        // 同步更新 Store
         const currentInfo = { ...userInfoStore.userInfo };
         currentInfo.nickName = formData.value.nickName;
         userInfoStore.setUserInfo(currentInfo);

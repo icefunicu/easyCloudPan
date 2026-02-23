@@ -14,6 +14,7 @@ import APlayer from "aplayer";
 import "aplayer/dist/APlayer.min.css";
 
 import { ref, onMounted, onUnmounted } from "vue";
+import { toApiPath } from "@/utils/url";
 
 const props = defineProps({
     url: {
@@ -26,11 +27,17 @@ const props = defineProps({
 
 const playerRef = ref<HTMLElement | null>(null);
 const player = ref<APlayer | null>(null);
+
 onMounted(() => {
+    if (!props.url || !playerRef.value) {
+        return;
+    }
+    const audioUrl = toApiPath(props.url);
+
     player.value = new APlayer({
-        container: playerRef.value!,
+        container: playerRef.value,
         audio: {
-            url: `/api/${props.url}`,
+            url: audioUrl,
             name: props.fileName,
             cover: new URL("@/assets/music_icon.png", import.meta.url).href,
             artist: "",

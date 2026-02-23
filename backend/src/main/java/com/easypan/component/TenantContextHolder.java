@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory;
 public class TenantContextHolder {
 
     private static final Logger logger = LoggerFactory.getLogger(TenantContextHolder.class);
-    private static final ThreadLocal<String> TENANT_ID = new ThreadLocal<>();
+    // 使用 InheritableThreadLocal 确保虚拟线程/子线程继承租户上下文
+    private static final InheritableThreadLocal<String> TENANT_ID = new InheritableThreadLocal<>();
     private static final String DEFAULT_TENANT = "default";
 
     /**

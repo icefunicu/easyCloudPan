@@ -227,6 +227,11 @@ docker compose version
 - MinIO `http://localhost:9000/minio/health/live` 返回 200
 - 后端 `http://localhost:7090/api/actuator/health` 返回 200（本地模式若未启动后端可为 WARN）
 
+## 6.4 增量构建建议（最佳实践）
+
+- **建议在日常项目构建与重启中，如果仅仅是修改了 Java 逻辑代码，直接调用 `mvn package -DskipTests`（或对应的打包、编译命令），请尽量避免前置加 `clean` 操作。**
+- Maven 完全支持增量构建，保留 `target` 目录缓存可以使编译效率翻倍，同时也能避免 IDE（例如 VSCode Java 语言服务器）因为监控目录被清空而引发大面积“假阴性”的 `cannot be resolved` 报错。
+
 ---
 
 ## 7. Docker 部署流程（生产基线）
@@ -364,7 +369,7 @@ OpenAPI 分组（`SwaggerConfig`）：
 
 | 结构 | 字段 | 说明 |
 |---|---|---|
-| `SessionWebUserDto` | `userId` `nickName` `admin` `avatar` | 会话用户信息 |
+| `SessionWebUserDto` | `userId` `nickName` `admin` `avatar` `tenantId` | 会话用户信息（含租户标识） |
 | `UserSpaceDto` | `useSpace` `totalSpace` | 用户空间（字节） |
 | `UploadResultDto` | `fileId` `status` | 上传结果，`status`：`uploading` `upload_finish` `upload_seconds` |
 | `PaginationResultVO<T>` | `totalCount` `pageSize` `pageNo` `pageTotal` `list` | 分页结果 |

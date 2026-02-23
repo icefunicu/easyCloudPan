@@ -1,7 +1,7 @@
 <template>
   <div 
-      :class="['left-sider', mobileMenuOpen ? 'open' : '']"
       v-touch:swipe.left="() => emit('update:mobileMenuOpen', false)"
+      :class="['left-sider', mobileMenuOpen ? 'open' : '']"
   >
       <div class="menu-list">
           <template v-for="item in menus" :key="item.menuCode">
@@ -43,7 +43,7 @@ import { ref, watch, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserInfoStore } from "@/stores/userInfoStore";
 
-const props = defineProps({
+defineProps({
   mobileMenuOpen: Boolean
 });
 const emit = defineEmits(['update:mobileMenuOpen']);
@@ -176,7 +176,7 @@ const setMenu = (menuCode, path) => {
 
 watch (
     () => route,
-    (newVal, oldVal) => {
+    (newVal) => {
         if (newVal.meta.menuCode) {
             setMenu(newVal.meta.menuCode, newVal.path);
         }

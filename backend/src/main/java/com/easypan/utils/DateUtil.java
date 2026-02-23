@@ -3,51 +3,55 @@ package com.easypan.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * 日期工具类，提供日期格式化和解析功能.
+ *
+ * <p>使用线程安全的 {@link DateTimeFormatter} 替代 {@link java.text.SimpleDateFormat}，
+ * 彻底消除 ThreadLocal 和 synchronized，在虚拟线程（Project Loom）下无 Pinning 风险。
  */
 public class DateUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(DateUtil.class);
-    private static final Object LOCK_OBJ = new Object();
-    private static Map<String, ThreadLocal<SimpleDateFormat>> sdfMap = new HashMap<String, ThreadLocal<SimpleDateFormat>>();
 
-    private static SimpleDateFormat getSdf(final String pattern) {
-        ThreadLocal<SimpleDateFormat> tl = sdfMap.get(pattern);
-        if (tl == null) {
-            synchronized (LOCK_OBJ) {
-                tl = sdfMap.get(pattern);
-                if (tl == null) {
-                    tl = new ThreadLocal<SimpleDateFormat>() {
-                        @Override
-                        protected SimpleDateFormat initialValue() {
-                            return new SimpleDateFormat(pattern);
-                        }
-                    };
-                    sdfMap.put(pattern, tl);
-                }
-            }
-        }
+    /**
+     * DateTimeFormatter 缓存（线程安全、不可变，无需 ThreadLocal）.
+     */
+    private static final ConcurrentMap<String, DateTimeFormatter> FORMATTER_CACHE = new ConcurrentHashMap<>();
 
-        return tl.get();
+    /**
+     * 获取或创建 DateTimeFormatter 实例.
+     *
+     * @param pattern 日期格式模式
+     * @return 线程安全的 DateTimeFormatter
+     */
+    private static DateTimeFormatter getFormatter(String pattern) {
+        return FORMATTER_CACHE.computeIfAbsent(pattern, DateTimeFormatter::ofPattern);
     }
 
     /**
      * 格式化日期.
      *
-     * @param date 日期对象
+     * @param date    日期对象
      * @param pattern 格式模式
      * @return 格式化后的字符串
      */
     public static String format(Date date, String pattern) {
-        return getSdf(pattern).format(date);
+        if (date == null) {
+            return "";
+        }
+        LocalDateTime ldt = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(date.getTime()), ZoneId.systemDefault());
+        return ldt.format(getFormatter(pattern));
     }
 
     /**
@@ -59,9 +63,17 @@ public class DateUtil {
      */
     public static Date parse(String dateStr, String pattern) {
         try {
-            return getSdf(pattern).parse(dateStr);
-        } catch (ParseException e) {
-            logger.error("日期解析失败: dateStr={}, pattern={}", dateStr, pattern, e);
+            // 尝试用 LocalDateTime 解析（包含时分秒的格式）
+            LocalDateTime ldt = LocalDateTime.parse(dateStr, getFormatter(pattern));
+            return Date.from(ldt.atZone(ZoneId.systemDefault()).toInstant());
+        } catch (Exception e1) {
+            try {
+                // 回退：用 LocalDate 解析（仅日期格式如 yyyy-MM-dd）
+                LocalDate ld = LocalDate.parse(dateStr, getFormatter(pattern));
+                return Date.from(ld.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            } catch (Exception e2) {
+                logger.error("日期解析失败: dateStr={}, pattern={}", dateStr, pattern, e2);
+            }
         }
         return new Date();
     }
@@ -78,3 +90,4 @@ public class DateUtil {
         return calendar.getTime();
     }
 }
+

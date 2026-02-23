@@ -64,6 +64,7 @@
           :fetch="loadDataList"
           :init-fetch="false"
           :options="tableOptions"
+          :skeleton="true"
           @row-selected="rowSelected"
         >
           <template #fileName="{ row }">

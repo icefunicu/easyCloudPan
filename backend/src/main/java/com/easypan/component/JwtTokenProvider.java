@@ -145,7 +145,7 @@ public class JwtTokenProvider {
     public boolean validateToken(String authToken) {
         try {
             if (jwtBlacklistService.isBlacklisted(authToken)) {
-                logger.warn("JWT Token is in blacklist: {}", authToken);
+                logger.warn("JWT Token is in blacklist: {}", maskToken(authToken));
                 return false;
             }
 
@@ -166,5 +166,13 @@ public class JwtTokenProvider {
             logger.error("JWT validation error", ex);
         }
         return false;
+    }
+
+    private String maskToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return "empty";
+        }
+        int prefixLength = Math.min(8, token.length());
+        return token.substring(0, prefixLength) + "***";
     }
 }

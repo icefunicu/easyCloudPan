@@ -114,10 +114,17 @@ const router = createRouter({
   routes: routes
 })
 
-import request, { cancelAllPendingRequests } from "@/utils/Request";
+import { cancelAllPendingRequests } from "@/utils/Request";
+import { logger } from "@/utils/logger";
 
 router.beforeEach((to, from, next) => {
   cancelAllPendingRequests();
+
+  // 开发环境下打印路由导航日志
+  if (import.meta.env.DEV) {
+    logger.route(from.fullPath, to.fullPath, (to.name as string) || undefined);
+  }
+
   const userInfoStore = useUserInfoStore();
   const userInfo = userInfoStore.userInfo;
   if (to.meta.needLogin != null && to.meta.needLogin && userInfo == null) {
@@ -129,6 +136,24 @@ router.beforeEach((to, from, next) => {
     });
     return;
   }
+
+  // T6: JWT 过期预检 — 解析 Token 的 exp 字段，若已过期则提前跳转登录
+  if (to.meta.needLogin && userInfo?.token) {
+    try {
+      const payload = JSON.parse(atob(userInfo.token.split('.')[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        userInfoStore.clearUserInfo();
+        next({
+          path: "/login",
+          query: { redirectUrl: to.fullPath },
+        });
+        return;
+      }
+    } catch {
+      // Token 解析失败则放行，由后端 401/901 统一拦截
+    }
+  }
+
   next();
 })
 

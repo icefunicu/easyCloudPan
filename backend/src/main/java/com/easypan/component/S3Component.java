@@ -6,6 +6,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
@@ -28,6 +31,7 @@ import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -42,8 +46,34 @@ public class S3Component {
     @Resource
     private S3Client s3Client;
 
+    @Resource
+    private S3Presigner s3Presigner;
+
     @Value("${minio.bucketName}")
     private String bucketName;
+
+    /**
+     * 生成带时效的预签名下载链接.
+     *
+     * @param key      S3 对象键
+     * @param fileName 下载时客户端指定的文件名
+     * @return 预签名URL字符串
+     */
+    public String generatePresignedUrl(String key, String fileName) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .responseContentDisposition("attachment;filename=\"" + fileName + "\"")
+                .build();
+
+        GetObjectPresignRequest getObjectPresignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofHours(2)) // 2小时有效期
+                .getObjectRequest(getObjectRequest)
+                .build();
+
+        PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner.presignGetObject(getObjectPresignRequest);
+        return presignedGetObjectRequest.url().toString();
+    }
 
     /**
      * 上传文件.

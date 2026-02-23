@@ -61,5 +61,9 @@ public interface StorageStrategy {
 
     String getUrl(String path);
 
+    default String generatePresignedUrl(String path, String fileName) {
+        return null;
+    }
+
     void init();
 }

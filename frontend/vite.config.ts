@@ -19,15 +19,14 @@ export default defineConfig(({ mode }): UserConfig => {
       vue(),
       AutoImport({
         imports: ['vue', 'vue-router', 'pinia'],
-        resolvers: [ElementPlusResolver()],
+        resolvers: [ElementPlusResolver({ importStyle: 'css' })],
         dts: 'src/auto-imports.d.ts',
       }),
       Components({
-        // Keep full Element Plus CSS import for now, avoid per-component CSS duplication.
-        resolvers: [ElementPlusResolver({ importStyle: false })],
+        resolvers: [ElementPlusResolver({ importStyle: 'css' })],
         dts: 'src/components.d.ts',
       }),
-      ElementPlus({ useSource: true }),
+      ElementPlus(),
       viteCompression({
         verbose: true,
         disable: false,
@@ -70,10 +69,11 @@ export default defineConfig(({ mode }): UserConfig => {
             '**/assets/preview-*.css',
             '**/assets/media-vendor-*.js',
             '**/assets/media-vendor-*.css',
+            '**/assets/hls-vendor-*.js',
+            '**/assets/hls-vendor-*.css',
             '**/assets/vendor-*.js',
             '**/assets/element-plus-*.js',
             '**/assets/element-plus-*.css',
-            '**/hls.min.js',
           ],
           runtimeCaching: [
             {
@@ -205,9 +205,14 @@ export default defineConfig(({ mode }): UserConfig => {
             }
 
             if (
-              normalizedId.includes('/dplayer/') ||
-              normalizedId.includes('/aplayer/') ||
               normalizedId.includes('/hls.js/')
+            ) {
+              return 'hls-vendor' // HLS runtime
+            }
+
+            if (
+              normalizedId.includes('/dplayer/') ||
+              normalizedId.includes('/aplayer/')
             ) {
               return 'media-vendor' // Media player related
             }

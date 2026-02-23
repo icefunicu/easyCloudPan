@@ -106,6 +106,9 @@ public class FileInfoServiceImpl implements FileInfoService {
     @Resource
     private com.easypan.service.UploadProgressService uploadProgressService;
 
+    @Resource
+    private com.easypan.service.QuickUploadService quickUploadService;
+
     @Override
     public List<FileInfo> findListByParam(FileInfoQuery param) {
         QueryWrapper qw = QueryWrapperBuilder.build(param);
@@ -561,7 +564,7 @@ public class FileInfoServiceImpl implements FileInfoService {
             }
             String fileSuffix = StringTools.getFileSuffix(fileInfo.getFileName());
             String month = DateUtil.format(fileInfo.getCreateTime(), DateTimePatternEnum.YYYYMM.getPattern());
-            String targetFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_FILE;
+            String targetFolderName = appConfig.getFileRootPath();
             File targetFolder = new File(targetFolderName + "/" + month);
             if (!targetFolder.exists() && !targetFolder.mkdirs()) {
                 logger.error("Failed to create target folder: {}", targetFolder.getAbsolutePath());
@@ -621,8 +624,8 @@ public class FileInfoServiceImpl implements FileInfoService {
             fileInfoMapper.updateFileStatusWithOldStatus(fileId, webUserDto.getUserId(), updateInfo,
                     FileStatusEnums.TRANSFER.getStatus());
 
-            // transferFile() reads FileInfo via MultiLevelCacheService (L1/L2),
-            // so we must evict here to avoid stale "transcoding" status for up to 1 hour.
+            // transferFile() 通过 MultiLevelCacheService（L1/L2）读取 FileInfo，
+            // 这里必须主动失效缓存，避免“转码中”状态最长缓存 1 小时导致展示滞后.
             try {
                 multiLevelCacheService.evictFileInfo(fileId, webUserDto.getUserId());
             } catch (Exception e) {
@@ -669,8 +672,11 @@ public class FileInfoServiceImpl implements FileInfoService {
                         java.nio.file.StandardOpenOption.READ)) {
                     long size = inChannel.size();
                     long position = 0L;
+                    // T21: 限制单次 transferTo 大小为 8MB，避免大文件资源耗尽
+                    final long TRANSFER_CHUNK_SIZE = 8L * 1024 * 1024;
                     while (position < size) {
-                        long transferred = inChannel.transferTo(position, size - position, outChannel);
+                        long count = Math.min(TRANSFER_CHUNK_SIZE, size - position);
+                        long transferred = inChannel.transferTo(position, count, outChannel);
                         if (transferred <= 0) {
                             break;
                         }
@@ -938,7 +944,7 @@ public class FileInfoServiceImpl implements FileInfoService {
         this.fileInfoMapper.updateFileDelFlagBatch(fileInfo, userId, null, delFileIdList,
                 FileDelFlagEnums.RECYCLE.getFlag());
 
-        // Batch update renamed files (avoid N+1)
+        // 批量更新重命名结果，避免 N+1 写入
         Date updateTime = new Date();
         List<FileInfo> renameList = new ArrayList<>();
         for (FileInfo item : fileInfoList) {
@@ -985,7 +991,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     null);
         }
 
-        // For folder hard delete we also need descendant rows for storage cleanup and cache eviction.
+        // 目录硬删除时还需要包含所有后代记录，用于存储清理与缓存失效.
         List<FileInfo> deleteInfoList = fileInfoList;
         if (!folderIds.isEmpty()) {
             List<FileInfo> descendants = this.fileInfoMapper.selectDescendantFiles(folderIds, userId, null);
@@ -1028,6 +1034,15 @@ public class FileInfoServiceImpl implements FileInfoService {
             } catch (Exception e) {
                 logger.warn("Failed to evict file cache after delete: fileId={}, userId={}", item.getFileId(), userId,
                         e);
+            }
+
+            // T17: 删除文件时清除 MD5→fileId 缓存，避免秒传引用已删除文件
+            if (!StringTools.isEmpty(item.getFileMd5())) {
+                try {
+                    quickUploadService.clearMd5Cache(item.getFileMd5());
+                } catch (Exception e) {
+                    logger.warn("清除 MD5 缓存失败: fileMd5={}", item.getFileMd5(), e);
+                }
             }
 
             if (FileFolderTypeEnums.FILE.getType().equals(item.getFolderType()) && item.getFilePath() != null) {
@@ -1132,7 +1147,7 @@ public class FileInfoServiceImpl implements FileInfoService {
             idMapping.put(root.getFileId(), newFileId);
 
             FileInfo newRoot = copyFileInfo(root, newFileId, myFolderId, currentUserId, curDate);
-            // Rename if conflict in target folder
+            // 目标目录同名时自动重命名
             FileInfo existing = currentFileMap.get(newRoot.getFileName());
             if (existing != null) {
                 newRoot.setFileName(StringTools.rename(newRoot.getFileName()));
@@ -1165,7 +1180,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                         folderQueue.add(child.getFileId());
                     }
 
-                    // Batch Insert Check
+                    // 批量插入前校验
                     if (batchInsertList.size() >= 1000) {
                         fileInfoMapper.insertBatch(batchInsertList);
                         batchInsertList.clear();
@@ -1181,7 +1196,9 @@ public class FileInfoServiceImpl implements FileInfoService {
 
         // 12. Update User Space (already pre-checked, safe to update)
         if (totalSize > 0) {
-            updateUserSpace(new SessionWebUserDto(null, currentUserId, null, null), totalSize);
+            SessionWebUserDto currentUser = new SessionWebUserDto();
+            currentUser.setUserId(currentUserId);
+            updateUserSpace(currentUser, totalSize);
         }
     }
 
@@ -1244,5 +1261,41 @@ public class FileInfoServiceImpl implements FileInfoService {
             return true;
         }
         return isSubFolder(rootFilePid, current.getFilePid(), userId);
+    }
+
+    /**
+     * 定时清理孤儿分片任务.
+     * 每天凌晨2点执行，清理超过 24 小时未完成更新的残片文件夹。
+     */
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 2 * * ?")
+    public void cleanOrphanedChunks() {
+        logger.info("开始执行定时清理孤儿残片任务...");
+        String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
+        File tempDir = new File(tempFolderName);
+        if (!tempDir.exists() || !tempDir.isDirectory()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long expireTime = 24L * 60 * 60 * 1000; // 24小时
+
+        File[] userChunkDirs = tempDir.listFiles();
+        if (userChunkDirs != null) {
+            for (File userChunkDir : userChunkDirs) {
+                if (userChunkDir.isDirectory()) {
+                    // 如果该目录最后修改时间超过 24 小时，且没有子文件正在被写入，认为已废弃
+                    if (now - userChunkDir.lastModified() > expireTime) {
+                        try {
+                            // 由于目录名称格式是 {userId}{fileId}，此处可以直接物理删除，因为正常上传完成后这个目录会被转码方法重构或清理
+                            FileUtils.deleteDirectory(userChunkDir);
+                            logger.info("已清理逾期未完成的大文件临时残片目录: {}", userChunkDir.getAbsolutePath());
+                        } catch (IOException e) {
+                            logger.warn("清理孤儿残片目录失败: {}", userChunkDir.getAbsolutePath(), e);
+                        }
+                    }
+                }
+            }
+        }
+        logger.info("定时清理孤儿残片任务执行完毕.");
     }
 }

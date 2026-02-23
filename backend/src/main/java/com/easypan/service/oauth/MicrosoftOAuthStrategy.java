@@ -26,7 +26,7 @@ public class MicrosoftOAuthStrategy implements OAuthProviderStrategy {
 
     @Override
     public String buildAuthorizationUrl(String state) {
-        // common tenant allows both personal and work accounts
+        // Microsoft 的 common tenant 同时支持个人账号与组织账号。
         return String.format(
                 "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=%s&response_type=code&redirect_uri=%s&response_mode=query&scope=User.Read&state=%s",
                 appConfig.getMicrosoftClientId(), appConfig.getMicrosoftRedirectUri(), state);
@@ -74,14 +74,12 @@ public class MicrosoftOAuthStrategy implements OAuthProviderStrategy {
         OAuthUserInfo userInfo = new OAuthUserInfo();
         userInfo.setProviderId((String) userInfoMap.get("id"));
         userInfo.setNickname((String) userInfoMap.get("displayName"));
-        userInfo.setEmail((String) userInfoMap.get("userPrincipalName")); // often email or UPN
+        userInfo.setEmail((String) userInfoMap.get("userPrincipalName")); // 通常为邮箱或 UPN
         if (userInfoMap.containsKey("mail") && userInfoMap.get("mail") != null) {
             userInfo.setEmail((String) userInfoMap.get("mail"));
         }
 
-        // Avatar requires another call in MS Graph, skipping for simplicity in this
-        // MVP.
-        // Or setting a default.
+        // 头像需要额外调用 MS Graph 接口，当前版本先不拉取。
         userInfo.setAvatarUrl(null);
 
         return userInfo;

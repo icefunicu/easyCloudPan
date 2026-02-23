@@ -82,18 +82,20 @@ export async function qqLogin(callbackUrl?: string): Promise<string | null> {
 
 export async function qqLoginCallback(
   params: QQLoginCallbackParams
-): Promise<{ userInfo: SessionWebUserDto; redirectUrl: string } | null> {
+): Promise<{ userInfo: SessionWebUserDto; redirectUrl: string; token: string; refreshToken: string } | null> {
   const result = (await request({
     url: api.qqloginCallback,
     params,
     showLoading: false,
-  })) as ResponseVO<{ userInfo: unknown; callbackUrl?: unknown }> | null
+  })) as ResponseVO<{ userInfo: unknown; callbackUrl?: unknown; token?: string; refreshToken?: string }> | null
   if (result && result.code === 200) {
     const redirectUrlRaw = result.data.callbackUrl
     const redirectUrl = typeof redirectUrlRaw === 'string' && redirectUrlRaw ? redirectUrlRaw : '/'
     return {
       userInfo: adaptSessionWebUser(result.data.userInfo),
       redirectUrl,
+      token: (result.data.token as string) || '',
+      refreshToken: (result.data.refreshToken as string) || '',
     }
   }
   return null

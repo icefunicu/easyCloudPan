@@ -1,7 +1,7 @@
 <template>
   <el-config-provider :locale="locale" :message="config">
     <div class="app-shell">
-      <router-view v-slot="{ Component, route }">
+      <router-view v-slot="{ Component }">
         <transition name="route-sculpt" mode="out-in">
           <component :is="Component" class="route-page" />
         </transition>
@@ -111,4 +111,3 @@ const config = reactive({
   }
 }
 </style>
-

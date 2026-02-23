@@ -26,6 +26,7 @@
         :fetch="loadDataList"
         :init-fetch="true"
         :options="tableOptions"
+        :skeleton="true"
         @row-selected="rowSelected"
       >
         <template #fileName="{ row }">
@@ -141,7 +142,7 @@ const cancelShowOp = (row) => {
 // 恢复
 const revert = (row) => {
     proxy.Confirm(`你确定要还原【${row.fileName}】吗?`, async () => {
-        // Optimistic UI
+        // 先行更新（Optimistic UI）
         const index = tableData.value.list.findIndex(item => item.fileId === row.fileId);
         if (index !== -1) {
             tableData.value.list.splice(index, 1);
@@ -149,7 +150,7 @@ const revert = (row) => {
 
         const result = await recycleService.recoverFile(row.fileId);
         if (!result) {
-            loadDataList(); // Revert
+            loadDataList(); // 失败时回滚
             return;
         }
     });
@@ -158,14 +159,14 @@ const revert = (row) => {
 const revertBatch = () => {
     if (selectIdList.value.length == 0) return;
     proxy.Confirm(`你确定要还原这些文件吗?`, async () => {
-        // Optimistic UI
+        // 先行更新（Optimistic UI）
         const ids = selectIdList.value;
         const backupList = [...tableData.value.list];
         tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.fileId));
 
         const result = await recycleService.recoverFile(selectIdList.value.join(","));
         if (!result) {
-            tableData.value.list = backupList; // Revert
+            tableData.value.list = backupList; // 回滚
             return;
         }
         selectIdList.value = [];
@@ -177,7 +178,7 @@ const revertBatch = () => {
 const emit = defineEmits(["reload"]);
 const delFile = (row) => {
     proxy.Confirm(`你确定要删除【${row.fileName}】吗? 删除后无法恢复`, async () => {
-        // Optimistic UI
+        // 先行更新（Optimistic UI）
         const index = tableData.value.list.findIndex(item => item.fileId === row.fileId);
         if (index !== -1) {
             tableData.value.list.splice(index, 1);
@@ -185,7 +186,7 @@ const delFile = (row) => {
 
         const result = await recycleService.delFile(row.fileId);
         if (!result) {
-            loadDataList(); // Revert
+            loadDataList(); // 失败时回滚
             return;
         }
         emit("reload");
@@ -195,7 +196,7 @@ const delFile = (row) => {
 const delBatch = () => {
     if (selectIdList.value.length == 0) return;
     proxy.Confirm(`你确定要删除这些文件吗? 删除后无法恢复`, async () => {
-        // Optimistic UI
+        // 先行更新（Optimistic UI）
         const ids = selectIdList.value;
         const backupList = [...tableData.value.list];
         tableData.value.list = tableData.value.list.filter(item => !ids.includes(item.fileId));

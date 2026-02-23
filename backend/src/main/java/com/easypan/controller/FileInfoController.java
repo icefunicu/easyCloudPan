@@ -22,11 +22,14 @@ import com.easypan.utils.StringTools;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,6 +40,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 文件信息控制器类.
@@ -49,6 +54,10 @@ public class FileInfoController extends CommonFileController {
 
     @Resource
     private FileOperationService fileOperationService;
+
+    @Resource
+    @Qualifier("virtualThreadExecutor")
+    private AsyncTaskExecutor virtualThreadExecutor;
 
     /**
      * 根据条件分页查询.
@@ -153,6 +162,7 @@ public class FileInfoController extends CommonFileController {
      */
     @RequestMapping("/uploadFile")
     @GlobalInterceptor(checkParams = true)
+    @com.easypan.annotation.RateLimit(key = "upload", time = 60, count = 30)
     @Operation(summary = "Upload File", description = "Upload file with chunk support")
     public ResponseVO<UploadResultDto> uploadFile(HttpSession session,
             String fileId,
@@ -257,6 +267,55 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
+     * SSE: 获取转码状态流.
+     */
+    @RequestMapping(value = "/transferStatusSse", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GlobalInterceptor(checkParams = true)
+    public SseEmitter getTransferStatusSse(
+            HttpSession session,
+            @VerifyParam(required = true) String fileId) {
+        SseEmitter emitter = new SseEmitter(30L * 60 * 1000);
+        AtomicBoolean running = new AtomicBoolean(true);
+        emitter.onCompletion(() -> running.set(false));
+        emitter.onTimeout(() -> running.set(false));
+        emitter.onError(ex -> running.set(false));
+
+        final SessionWebUserDto webUserDto = getUserInfoFromSession(session);
+        virtualThreadExecutor.execute(() -> {
+            try {
+                int pollCount = 0;
+                final int maxPollCount = 900; // 30min / 2s
+                while (running.get() && pollCount < maxPollCount) {
+                    FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, webUserDto.getUserId());
+                    if (fileInfo == null) {
+                        emitter.send(SseEmitter.event()
+                                .data("{\"status\": 1}"));
+                        break;
+                    }
+                    Integer status = fileInfo.getStatus();
+                    emitter.send(SseEmitter.event()
+                            .data("{\"status\": " + status + "}"));
+
+                    if (status == 2 || status == 1) {
+                        break;
+                    }
+                    pollCount++;
+                    TimeUnit.SECONDS.sleep(2);
+                }
+                if (running.get()) {
+                    emitter.complete();
+                }
+            } catch (Exception e) {
+                if (running.get()) {
+                    emitter.completeWithError(e);
+                }
+            }
+        });
+
+        return emitter;
+    }
+
+    /**
      * 获取单个文件信息.
      *
      * @param session HTTP 会话
@@ -303,6 +362,7 @@ public class FileInfoController extends CommonFileController {
      * @param fileId   文件ID
      */
     @RequestMapping("/ts/getVideoInfo/{fileId}")
+    @GlobalInterceptor
     @Operation(summary = "Get Video Info", description = "Get video m3u8 or ts file")
     public void getVideoInfo(HttpServletResponse response, HttpSession session,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
@@ -318,6 +378,7 @@ public class FileInfoController extends CommonFileController {
      * @param fileId   文件ID
      */
     @RequestMapping("/getFile/{fileId}")
+    @GlobalInterceptor
     @Operation(summary = "Get File", description = "Get file content")
     public void getFile(HttpServletResponse response, HttpSession session,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {

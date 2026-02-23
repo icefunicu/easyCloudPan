@@ -1,3 +1,11 @@
+﻿interface VerifyRule {
+  message: string
+}
+
+type VerifyCallback = (error?: Error) => void
+
+type VerifyHandler = (rule: VerifyRule, value: unknown, callback: VerifyCallback) => void
+
 const regs = {
   email: /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/,
   number: /^([0]|[1-9][0-9]*)$/,
@@ -5,22 +13,23 @@ const regs = {
   shareCode: /^[A-Za-z0-9]+$/,
 }
 
-const verify = (rule: any, value: any, reg: RegExp, callback: (e?: Error) => void) => {
-  if (value) {
-    if (reg.test(value)) {
-      callback()
-    } else {
-      callback(new Error(rule.message))
-    }
-  } else {
+const verify = (rule: VerifyRule, value: unknown, reg: RegExp, callback: VerifyCallback) => {
+  if (value === null || value === undefined || value === '') {
     callback()
+    return
+  }
+
+  if (reg.test(String(value))) {
+    callback()
+  } else {
+    callback(new Error(rule.message))
   }
 }
 
 const getPasswordError = (value: string): string | null => {
   if (!value) return null
   if (value.length < 8) {
-    return '密码长度至少8位'
+    return '密码长度至少 8 位'
   }
   if (!/\d/.test(value)) {
     return '密码必须包含数字'
@@ -29,34 +38,37 @@ const getPasswordError = (value: string): string | null => {
     return '密码必须包含字母'
   }
   if (!/[~!@#$%^&*_]/.test(value)) {
-    return '密码必须包含特殊字符(~!@#$%^&*_)'
+    return '密码必须包含特殊字符（~!@#$%^&*_）'
   }
   if (!/^[\da-zA-Z~!@#$%^&*_]+$/.test(value)) {
-    return '密码只能包含数字、字母和特殊字符(~!@#$%^&*_)'
+    return '密码只能包含数字、字母和特殊字符（~!@#$%^&*_）'
   }
   return null
 }
 
+const email: VerifyHandler = (rule, value, callback) => verify(rule, value, regs.email, callback)
+const number: VerifyHandler = (rule, value, callback) => verify(rule, value, regs.number, callback)
+
+const password: VerifyHandler = (_rule, value, callback) => {
+  const passwordValue = String(value ?? '')
+  if (!passwordValue) {
+    callback()
+    return
+  }
+
+  const error = getPasswordError(passwordValue)
+  if (error) {
+    callback(new Error(error))
+    return
+  }
+  callback()
+}
+
+const shareCode: VerifyHandler = (rule, value, callback) => verify(rule, value, regs.shareCode, callback)
+
 export default {
-  email: (rule: any, value: any, callback: any) => {
-    return verify(rule, value, regs.email, callback)
-  },
-  number: (rule: any, value: any, callback: any) => {
-    return verify(rule, value, regs.number, callback)
-  },
-  password: (rule: any, value: any, callback: any) => {
-    if (!value) {
-      callback()
-      return
-    }
-    const error = getPasswordError(value)
-    if (error) {
-      callback(new Error(error))
-    } else {
-      callback()
-    }
-  },
-  shareCode: (rule: any, value: any, callback: any) => {
-    return verify(rule, value, regs.shareCode, callback)
-  },
+  email,
+  number,
+  password,
+  shareCode,
 }

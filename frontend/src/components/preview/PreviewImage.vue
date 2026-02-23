@@ -1,43 +1,34 @@
-<template>
-    <div class="image-viewer"></div>
-    <el-image-viewer
-      v-if="previewImgIndex != null"
-      :initial-index="previewImgIndex"
-      hide-on-click-modal
-      :url-list="imageList"
-      @close="closeImgViewer"
-    >
-    </el-image-viewer>
+﻿<template>
+  <div class="image-viewer"></div>
+  <el-image-viewer
+    v-if="previewImgIndex != null"
+    :initial-index="previewImgIndex"
+    hide-on-click-modal
+    :url-list="imageList"
+    @close="closeImgViewer"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref } from 'vue'
 
 defineProps({
-    imageList: {
-        type: Array as () => string[],
-    },
-});
+  imageList: {
+    type: Array as () => string[],
+  },
+})
 
-const previewImgIndex = ref<number | null>(null);
+const previewImgIndex = ref<number | null>(null)
+
 const show = (index: number) => {
-    // stopScroll();
-    previewImgIndex.value = index;
-};
-defineExpose({ show });
+  previewImgIndex.value = index
+}
+
+defineExpose({ show })
 
 const closeImgViewer = () => {
-    // startScroll();
-    previewImgIndex.value = null;
-};
-
-// const stopScroll = () => {
-//     document.body.style.overflow = "hidden";
-// };
-
-// const startScroll = () => {
-//     document.body.style.overflow = "auto";
-// };
+  previewImgIndex.value = null
+}
 </script>
 
 <style lang="scss" scoped>

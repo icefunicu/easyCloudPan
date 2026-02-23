@@ -44,10 +44,10 @@ public class S3Config {
     private int socketTimeout;
 
     /**
-     * 创建 S3 客户端 Bean，配置为虚拟线程兼容模式.
-     *
-     * @return 配置好的 S3Client 实例
-     */
+         * 创建 S3 客户端 Bean，配置为虚拟线程兼容模式.
+         *
+         * @return 配置好的 S3Client 实例
+         */
     @Bean
     public S3Client s3Client() {
         log.info("配置 S3 客户端以支持虚拟线程: {}", virtualThreadsEnabled);
@@ -67,6 +67,22 @@ public class S3Config {
                         .maxConnections(maxConnections)
                         .connectionTimeout(Duration.ofMillis(connectionTimeout))
                         .socketTimeout(Duration.ofMillis(socketTimeout)))
+                .build();
+    }
+
+    /**
+         * 创建 S3 预签名客户端 Bean，用于生成带时效的直连下载链接.
+         *
+         * @return 配置好的 S3Presigner 实例
+         */
+    @Bean
+    public software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner() {
+        log.info("配置 S3 预签名客户端");
+        return software.amazon.awssdk.services.s3.presigner.S3Presigner.builder()
+                .endpointOverride(URI.create(endpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
+                .region(Region.US_EAST_1)
                 .build();
     }
 }

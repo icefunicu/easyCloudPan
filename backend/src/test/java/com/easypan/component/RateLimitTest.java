@@ -5,8 +5,7 @@ import com.easypan.aspect.RateLimitAspect;
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
-import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,24 +15,41 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import java.lang.reflect.Method;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RateLimitTest {
+
+    private static class TestController {
+        @RateLimit(key = "testKey", time = 60, count = 5)
+        public void limitedEndpoint() {
+        }
+    }
 
     @InjectMocks
     private RateLimitAspect rateLimitAspect;
 
     @Mock
-    private RedisUtils<Integer> redisUtils;
+    private org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
 
     @Mock
-    private JoinPoint joinPoint;
+    private ProceedingJoinPoint joinPoint;
 
     @Mock
     private MethodSignature signature;
@@ -41,21 +57,15 @@ class RateLimitTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpSession session;
-
-    @Mock
-    private RateLimit rateLimit;
-
     @BeforeEach
-    void setUp() {
-        // Mock RequestContextHolder
+    void setUp() throws Throwable {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        when(request.getSession()).thenReturn(session);
+        when(request.getRequestURI()).thenReturn("/api/file/loadDataList");
+        when(request.getRemoteAddr()).thenReturn("127.0.0.1");
 
-        // Mock JoinPoint signature
+        Method method = TestController.class.getDeclaredMethod("limitedEndpoint");
         when(joinPoint.getSignature()).thenReturn(signature);
-        when(signature.getMethod()).thenReturn(this.getClass().getMethods()[0]); // Just any method
+        when(signature.getMethod()).thenReturn(method);
     }
 
     @AfterEach
@@ -65,29 +75,29 @@ class RateLimitTest {
 
     @Test
     @DisplayName("Test Rate Limit within limit")
-    void testDoBefore_WithinLimit() {
-        when(rateLimit.key()).thenReturn("testKey");
-        when(rateLimit.time()).thenReturn(60);
-        when(rateLimit.count()).thenReturn(5);
-        when(redisUtils.increment(anyString(), anyLong())).thenReturn(1L);
+    void testInterceptorWithinLimit() throws Throwable {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(anyString(), anyLong())).thenReturn(1L);
+        when(joinPoint.proceed()).thenReturn(null);
 
-        assertDoesNotThrow(() -> rateLimitAspect.doBefore(joinPoint, rateLimit));
+        assertDoesNotThrow(() -> rateLimitAspect.interceptor(joinPoint));
 
-        verify(redisUtils, times(1)).increment(anyString(), anyLong());
-        verify(redisUtils, times(1)).expire(anyString(), anyLong());
+        verify(valueOperations, times(1)).increment(anyString(), anyLong());
+        verify(stringRedisTemplate, times(1)).expire(anyString(), anyLong(), org.mockito.ArgumentMatchers.any(TimeUnit.class));
+        verify(joinPoint, times(1)).proceed();
     }
 
     @Test
     @DisplayName("Test Rate Limit exceeded")
-    void testDoBefore_Exceeded() {
-        when(rateLimit.key()).thenReturn("testKey");
-        when(rateLimit.time()).thenReturn(60);
-        when(rateLimit.count()).thenReturn(5);
-        when(redisUtils.increment(anyString(), anyLong())).thenReturn(6L);
+    void testInterceptorExceeded() throws Throwable {
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(anyString(), anyLong())).thenReturn(6L);
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> rateLimitAspect.doBefore(joinPoint, rateLimit));
+        BusinessException exception = assertThrows(BusinessException.class, () -> rateLimitAspect.interceptor(joinPoint));
 
-        assertEquals(ResponseCodeEnum.CODE_905.getCode(), exception.getCode());
+        assertEquals(ResponseCodeEnum.CODE_600.getCode(), exception.getCode());
+        verify(joinPoint, never()).proceed();
     }
 }

@@ -460,7 +460,7 @@
     }
 }
 
-// Loading skeleton for file list
+// 文件列表加载骨架屏
 .file-list-loading {
     padding: 8px 0;
 
@@ -608,7 +608,7 @@
         }
     }
 
-    // Mobile file grid improvements
+    // 移动端网格视图优化
     .file-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -645,20 +645,20 @@
         }
     }
 
-    // Hide desktop-only elements
+    // 隐藏仅桌面端元素
     .hidden-mobile {
         display: none !important;
     }
 }
 
-// Tablet breakpoint
+// 平板断点
 @media screen and (max-width: 1024px) and (min-width: 769px) {
     .file-grid {
         grid-template-columns: repeat(3, 1fr);
     }
 }
 
-// Small mobile
+// 小屏手机断点
 @media screen and (max-width: 480px) {
     .file-grid {
         grid-template-columns: 1fr;
@@ -700,7 +700,7 @@
     }
 }
 
-// Keyframe animations
+// 关键帧动画
 @keyframes fileItemFadeIn {
     from {
         opacity: 0;

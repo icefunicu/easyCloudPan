@@ -1,31 +1,33 @@
-
-import { ref } from 'vue';
-
-type Callback = (payload?: any) => void;
+﻿type EventPayload = unknown
+type Callback = (payload?: EventPayload) => void
 
 class EventBus {
-    private events: Record<string, Callback[]>;
+  private events: Record<string, Callback[]>
 
-    constructor() {
-        this.events = {};
-    }
+  constructor() {
+    this.events = {}
+  }
 
-    on(eventName: string, callback: Callback) {
-        if (!this.events[eventName]) {
-            this.events[eventName] = [];
-        }
-        this.events[eventName].push(callback);
+  on(eventName: string, callback: Callback) {
+    if (!this.events[eventName]) {
+      this.events[eventName] = []
     }
+    this.events[eventName].push(callback)
+  }
 
-    off(eventName: string, callback: Callback) {
-        if (!this.events[eventName]) return;
-        this.events[eventName] = this.events[eventName].filter((cb) => cb !== callback);
+  off(eventName: string, callback: Callback) {
+    if (!this.events[eventName]) {
+      return
     }
+    this.events[eventName] = this.events[eventName].filter((cb) => cb !== callback)
+  }
 
-    emit(eventName: string, payload?: any) {
-        if (!this.events[eventName]) return;
-        this.events[eventName].forEach((callback) => callback(payload));
+  emit(eventName: string, payload?: EventPayload) {
+    if (!this.events[eventName]) {
+      return
     }
+    this.events[eventName].forEach((callback) => callback(payload))
+  }
 }
 
-export default new EventBus();
+export default new EventBus()

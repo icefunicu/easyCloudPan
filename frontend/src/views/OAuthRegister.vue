@@ -9,15 +9,15 @@
       </p>
 
       <div class="user-preview">
-        <el-avatar :size="64" :src="avatarUrl" v-if="avatarUrl">
+        <el-avatar v-if="avatarUrl" :size="64" :src="avatarUrl">
           <span>{{ nickname?.charAt(0) || '?' }}</span>
         </el-avatar>
-        <el-avatar :size="64" v-else>
+        <el-avatar v-else :size="64">
           <span>{{ nickname?.charAt(0) || '?' }}</span>
         </el-avatar>
         <div class="user-info">
           <div class="nickname">{{ nickname || '新用户' }}</div>
-          <div class="email-hint" v-if="email">{{ email }}</div>
+          <div v-if="email" class="email-hint">{{ email }}</div>
         </div>
       </div>
 

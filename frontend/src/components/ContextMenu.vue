@@ -66,16 +66,16 @@ const show = (event: MouseEvent, item: Record<string, unknown>) => {
   event.preventDefault();
   currentItem.value = item;
   
-  // Calculate position to avoid overflow
+  // 计算菜单位置，避免越界
   let x = event.clientX;
   let y = event.clientY;
   
-  // Adjust if near right edge
+  // 靠近右侧边缘时左移
   if (x + 180 > window.innerWidth) {
     x = window.innerWidth - 190;
   }
   
-  // Adjust if near bottom edge
+  // 靠近底部边缘时上移
   if (y + 280 > window.innerHeight) {
     y = window.innerHeight - 290;
   }
@@ -96,14 +96,14 @@ const handleAction = (action: string) => {
   hide();
 };
 
-// Close on click outside
+// 点击空白区域关闭菜单
 const handleClickOutside = (event: MouseEvent) => {
   if (menuRef.value && !menuRef.value.contains(event.target as Node)) {
     hide();
   }
 };
 
-// Close on escape key
+// 按下 Esc 关闭菜单
 const handleKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Escape') {
     hide();
@@ -175,7 +175,7 @@ defineExpose({
   background: rgba(194, 204, 216, 0.6);
 }
 
-// Animation
+// 动画
 .context-menu-enter-active,
 .context-menu-leave-active {
   transition: all 0.15s ease;

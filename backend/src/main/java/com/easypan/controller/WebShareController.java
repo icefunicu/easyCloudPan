@@ -24,6 +24,7 @@ import com.easypan.service.ShareAccessLogService;
 import com.easypan.service.UserInfoService;
 import com.easypan.utils.CopyTools;
 import com.easypan.utils.StringTools;
+import com.easypan.annotation.RateLimit;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -111,7 +112,8 @@ public class WebShareController extends CommonFileController {
      */
     @RequestMapping("/getShareLoginInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO<ShareInfoVO> getShareLoginInfo(HttpSession session, @VerifyParam(required = true) String shareId) {
+    public ResponseVO<ShareInfoVO> getShareLoginInfo(HttpSession session,
+            @VerifyParam(required = true) String shareId) {
         SessionShareDto shareSessionDto = getSessionShareFromSession(session, shareId);
         if (shareSessionDto == null) {
             return getSuccessResponseVO(null);
@@ -145,7 +147,7 @@ public class WebShareController extends CommonFileController {
      * @param session HTTP 会话
      * @param request HTTP 请求
      * @param shareId 分享ID
-     * @param code 分享码
+     * @param code    分享码
      * @return 响应对象
      */
     @RequestMapping("/checkShareCode")
@@ -156,17 +158,17 @@ public class WebShareController extends CommonFileController {
         String visitorId = getVisitorId(session);
         String visitorIp = getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        
+
         try {
             SessionShareDto shareSessionDto = fileShareService.checkShareCode(shareId, code);
             session.setAttribute(Constants.SESSION_SHARE_KEY + shareId, shareSessionDto);
-            
-            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent, 
+
+            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent,
                     ACCESS_TYPE_CHECK_CODE, true, null);
             customMetrics.incrementShareAccess();
             return getSuccessResponseVO(null);
         } catch (BusinessException e) {
-            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent, 
+            shareAccessLogService.logAccessAsync(shareId, null, visitorId, visitorIp, userAgent,
                     ACCESS_TYPE_CHECK_CODE, false, e.getMessage());
             throw e;
         }
@@ -204,7 +206,7 @@ public class WebShareController extends CommonFileController {
      *
      * @param session HTTP 会话
      * @param shareId 分享ID
-     * @param path 路径
+     * @param path    路径
      * @return 目录信息列表
      */
     @RequestMapping("/getFolderInfo")
@@ -220,50 +222,86 @@ public class WebShareController extends CommonFileController {
      * 获取文件.
      *
      * @param response HTTP 响应
-     * @param session HTTP 会话
-     * @param request HTTP 请求
-     * @param shareId 分享ID
-     * @param fileId 文件ID
+     * @param session  HTTP 会话
+     * @param request  HTTP 请求
+     * @param shareId  分享ID
+     * @param fileId   文件ID
      */
     @RequestMapping("/getFile/{shareId}/{fileId}")
+    @RateLimit(time = 1, count = 20)
     public void getFile(HttpServletResponse response, HttpSession session, HttpServletRequest request,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+        checkReferer(request);
         SessionShareDto shareSessionDto = checkShare(session, shareId);
-        
+
         String visitorId = getVisitorId(session);
         String visitorIp = getClientIp(request);
         String userAgent = request.getHeader("User-Agent");
-        shareAccessLogService.logAccessAsync(shareId, fileId, visitorId, visitorIp, userAgent, 
+        shareAccessLogService.logAccessAsync(shareId, fileId, visitorId, visitorIp, userAgent,
                 ACCESS_TYPE_VIEW, true, null);
-        
+
         super.getFile(response, fileId, shareSessionDto.getShareUserId());
     }
 
+    /**
+     * 获取图片.
+     *
+     * @param session     HTTP 会话
+     * @param request     HTTP 请求
+     * @param response    HTTP 响应
+     * @param shareId     分享ID
+     * @param imageFolder 图片文件夹
+     * @param imageName   图片名称
+     */
     @RequestMapping("/getImage/{shareId}/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public void getImage(HttpSession session, HttpServletResponse response,
+    @RateLimit(time = 1, count = 30)
+    public void getImage(HttpSession session, HttpServletRequest request, HttpServletResponse response,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
             @PathVariable("imageFolder") String imageFolder,
             @PathVariable("imageName") String imageName) {
+        checkReferer(request);
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         super.getImage(response, imageFolder, imageName, shareSessionDto.getShareUserId());
     }
 
+    /**
+     * 获取视频.
+     *
+     * @param response HTTP 响应
+     * @param request  HTTP 请求
+     * @param session  HTTP 会话
+     * @param shareId  分享ID
+     * @param fileId   文件ID
+     */
     @RequestMapping("/ts/getVideoInfo/{shareId}/{fileId}")
-    public void getVideoInfo(HttpServletResponse response,
+    @RateLimit(time = 1, count = 100)
+    public void getVideoInfo(HttpServletResponse response, HttpServletRequest request,
             HttpSession session,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+        checkReferer(request);
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         super.getFile(response, fileId, shareSessionDto.getShareUserId());
     }
 
+    /**
+     * 创建下载链接.
+     *
+     * @param session HTTP 会话
+     * @param request HTTP 请求
+     * @param shareId 分享ID
+     * @param fileId  文件ID
+     * @return 下载链接
+     */
     @RequestMapping("/createDownloadUrl/{shareId}/{fileId}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
-    public ResponseVO<String> createDownloadUrl(HttpSession session,
+    @RateLimit(time = 1, count = 5)
+    public ResponseVO<String> createDownloadUrl(HttpSession session, HttpServletRequest request,
             @PathVariable("shareId") @VerifyParam(required = true) String shareId,
             @PathVariable("fileId") @VerifyParam(required = true) String fileId) {
+        checkReferer(request);
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         return super.createDownloadUrl(fileId, shareSessionDto.getShareUserId());
     }
@@ -271,9 +309,9 @@ public class WebShareController extends CommonFileController {
     /**
      * 下载文件.
      *
-     * @param request HTTP 请求
+     * @param request  HTTP 请求
      * @param response HTTP 响应
-     * @param code 下载码
+     * @param code     下载码
      * @throws Exception 异常
      */
     @RequestMapping("/download/{code}")
@@ -286,10 +324,10 @@ public class WebShareController extends CommonFileController {
     /**
      * 保存分享文件到自己的网盘.
      *
-     * @param session HTTP 会话
-     * @param shareId 分享ID
+     * @param session      HTTP 会话
+     * @param shareId      分享ID
      * @param shareFileIds 分享文件ID列表
-     * @param myFolderId 目标文件夹ID
+     * @param myFolderId   目标文件夹ID
      * @return 响应对象
      */
     @RequestMapping("/saveShare")
@@ -334,5 +372,16 @@ public class WebShareController extends CommonFileController {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    private void checkReferer(HttpServletRequest request) {
+        String referer = request.getHeader("Referer");
+        // 如果存在 Referer 则拦截陌生域，白名单可以后期提至配置中心
+        if (!StringTools.isEmpty(referer)) {
+            if (!referer.contains("localhost") && !referer.contains("127.0.0.1")
+                    && !referer.contains("easycloudpan.com")) {
+                throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请求非法，触发防盗链拦截");
+            }
+        }
     }
 }

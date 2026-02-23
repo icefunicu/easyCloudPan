@@ -59,7 +59,7 @@ public class MultiLevelCacheService {
             return cached;
         }
 
-        // Check for null marker (cache penetration protection)
+        // 检查空值标记（防止缓存穿透）
         if (redisUtils.isNullMarker(redisKey)) {
             log.debug("L2 Null Marker Hit: {}", cacheKey);
             return null;
@@ -73,7 +73,7 @@ public class MultiLevelCacheService {
             redisUtils.setex(redisKey, cached, 3600); // 1小时
             fileInfoCache.put(cacheKey, cached);
         } else {
-            // Cache null marker to prevent cache penetration
+            // 缓存空值标记，防止缓存穿透
             log.debug("L3 DB Miss, caching null marker: {}", cacheKey);
             redisUtils.setNullMarker(redisKey, NULL_CACHE_TTL);
         }

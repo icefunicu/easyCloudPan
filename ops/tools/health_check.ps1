@@ -4,6 +4,36 @@
 $ErrorActionPreference = "Continue"
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $DockerDir = "$RepoRoot\ops\docker"
+$envFile = Join-Path $DockerDir ".env"
+
+function Get-ConfigValue {
+    param([string]$Name, [string]$DefaultValue = "")
+
+    $value = [Environment]::GetEnvironmentVariable($Name, "Process")
+    if (-not [string]::IsNullOrWhiteSpace($value)) {
+        return $value
+    }
+
+    if (Test-Path $envFile) {
+        $line = Get-Content $envFile | Where-Object { $_ -match "^\s*$([Regex]::Escape($Name))\s*=" } | Select-Object -First 1
+        if ($line) {
+            $parts = $line -split '=', 2
+            if ($parts.Count -eq 2 -and -not [string]::IsNullOrWhiteSpace($parts[1])) {
+                return $parts[1].Trim()
+            }
+        }
+    }
+
+    return $DefaultValue
+}
+
+$RedisPassword = Get-ConfigValue -Name "REDIS_PASSWORD"
+$PostgresUser = Get-ConfigValue -Name "POSTGRES_USER" -DefaultValue "postgres"
+$PostgresDb = Get-ConfigValue -Name "POSTGRES_DB" -DefaultValue "easypan"
+
+if ([string]::IsNullOrWhiteSpace($RedisPassword)) {
+    Write-Host "[WARN] REDIS_PASSWORD is empty. Redis check will use unauthenticated ping." -ForegroundColor Yellow
+}
 
 function Print-Header {
     param([string]$Title)
@@ -29,7 +59,7 @@ Pop-Location
 # Check PostgreSQL
 Write-Host "`n[2/5] Checking PostgreSQL database..."
 try {
-    $result = docker exec easypan-postgres pg_isready -U postgres -d easypan 2>&1
+    $result = docker exec easypan-postgres pg_isready -U $PostgresUser -d $PostgresDb 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[OK] PostgreSQL is running" -ForegroundColor Green
     } else {
@@ -44,7 +74,11 @@ try {
 # Check Redis
 Write-Host "`n[3/5] Checking Redis..."
 try {
-    $result = docker exec easypan-redis redis-cli -a password123 ping 2>&1
+    if ([string]::IsNullOrWhiteSpace($RedisPassword)) {
+        $result = docker exec easypan-redis redis-cli ping 2>&1
+    } else {
+        $result = docker exec easypan-redis redis-cli -a $RedisPassword ping 2>&1
+    }
     if ($result -match "PONG") {
         Write-Host "[OK] Redis is running" -ForegroundColor Green
     } else {

@@ -20,6 +20,10 @@
   
 <script setup>
 import { createDownloadCode } from "@/services";
+import { resolveDownloadTarget } from "@/utils/url";
+import { getCurrentInstance } from "vue";
+
+const { proxy } = getCurrentInstance();
 
 const props = defineProps({
     createDownloadUrl: {
@@ -34,11 +38,15 @@ const props = defineProps({
 });
 
 const download = async () => {
-    const code = await createDownloadCode(props.createDownloadUrl);
-    if (!code) {
+    const codeOrUrl = await createDownloadCode(props.createDownloadUrl);
+    if (!codeOrUrl) {
         return;
     }
-    window.location.href = props.downloadUrl + "/" + code;
+    const target = resolveDownloadTarget(props.downloadUrl, codeOrUrl);
+    if (!target) {
+        return;
+    }
+    window.location.href = target;
 };
 </script>
 
