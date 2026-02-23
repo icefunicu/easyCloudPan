@@ -5,12 +5,132 @@
     flex-direction: column;
 }
 
+/* 悬浮操作岛 (Floating Action Bar) */
+.floating-action-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
+    pointer-events: none;
+
+    .fab-inner {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(220, 227, 232, 0.6);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(20px) saturate(140%);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+        transition: transform 0.25s ease-out, box-shadow 0.25s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+        }
+    }
+
+    .fab-divider {
+        width: 1px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.3);
+        margin: 0 4px;
+    }
+
+    .fab-btn-wrap {
+        display: inline-flex;
+    }
+
+    .fab-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 40px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease-out;
+        overflow: hidden;
+        position: relative;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        &:hover:not(:disabled) {
+            &::before {
+                opacity: 1;
+            }
+
+            transform: translateY(-1px);
+        }
+
+        &:active:not(:disabled) {
+            transform: translateY(1px) scale(0.96);
+        }
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .iconfont {
+            font-size: 18px;
+            margin: 0;
+        }
+
+        &.primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: #fff;
+            box-shadow: 0 6px 16px rgba(47, 109, 140, 0.3);
+
+            &:hover:not(:disabled) {
+                box-shadow: 0 10px 24px rgba(47, 109, 140, 0.4);
+            }
+        }
+
+        &.danger {
+            color: #d32f2f;
+
+            &:hover:not(:disabled) {
+                background: rgba(211, 47, 47, 0.1);
+            }
+        }
+
+        &.warning {
+            color: #ed6c02;
+
+            &:hover:not(:disabled) {
+                background: rgba(237, 108, 2, 0.1);
+            }
+        }
+    }
+}
+
 .top {
     margin-top: 4px;
     padding: 10px 12px 12px;
     border-radius: 14px;
-    border: 1px solid rgba(194, 204, 220, 0.88);
-    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     box-shadow: var(--shadow-xs);
 
     .top-op {
@@ -79,30 +199,31 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    border-radius: 16px;
-    border: 1px solid rgba(194, 204, 220, 0.86);
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: var(--shadow-xs);
-    padding: 8px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(220, 227, 232, 0.5) inset;
+    padding: 10px;
 
     .file-item {
         position: relative;
-        min-height: 52px;
+        min-height: 60px;
         display: flex;
         align-items: center;
-        padding: 8px 0;
-        border-radius: 10px;
-        transition: var(--transition-fast), background 0.15s ease;
-        animation: fileItemFadeIn 0.3s ease backwards;
-
-        @for $i from 1 through 20 {
-            &:nth-child(#{$i}) {
-                animation-delay: #{$i * 0.02}s;
-            }
-        }
+        padding: 10px;
+        border-radius: 16px;
+        margin-bottom: 4px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease-out;
+        overflow: hidden;
 
         &:hover {
-            background: rgba(31, 79, 104, 0.04);
+            background: rgba(6, 167, 255, 0.04);
+            border-color: rgba(6, 167, 255, 0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            z-index: 10;
         }
 
         .file-name {
@@ -236,8 +357,8 @@
             padding: 0 6px;
             z-index: 2;
             transition: var(--transition-fast);
-            background: linear-gradient(270deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.92) 62%, rgba(255, 255, 255, 0) 100%);
-            backdrop-filter: blur(3px);
+            background: linear-gradient(270deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.65) 62%, rgba(255, 255, 255, 0) 100%);
+            backdrop-filter: blur(16px);
 
             .iconfont {
                 margin: 0;
@@ -288,8 +409,9 @@
     justify-content: center;
     padding: 20px;
     border-radius: 16px;
-    border: 1px dashed rgba(170, 183, 197, 0.9);
-    background: rgba(255, 255, 255, 0.82);
+    border: 1px dashed var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
     animation: fadeInUp 0.4s ease;
 
     .no-data-inner {
@@ -341,13 +463,13 @@
 // Loading skeleton for file list
 .file-list-loading {
     padding: 8px 0;
-    
+
     .skeleton-item {
         display: flex;
         align-items: center;
         padding: 12px 0;
         gap: 12px;
-        
+
         .skeleton-icon {
             width: 32px;
             height: 32px;
@@ -356,13 +478,13 @@
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite;
         }
-        
+
         .skeleton-content {
             flex: 1;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            
+
             .skeleton-title {
                 height: 14px;
                 width: 60%;
@@ -371,7 +493,7 @@
                 background-size: 200% 100%;
                 animation: shimmer 1.5s infinite;
             }
-            
+
             .skeleton-meta {
                 height: 10px;
                 width: 30%;
@@ -382,9 +504,10 @@
             }
         }
     }
-    
+
     @for $i from 1 through 10 {
         .skeleton-item:nth-child(#{$i}) {
+
             .skeleton-icon,
             .skeleton-title,
             .skeleton-meta {
@@ -398,6 +521,7 @@
     0% {
         background-position: 200% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
@@ -408,6 +532,7 @@
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -419,6 +544,7 @@
         opacity: 0;
         transform: translateX(-8px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -430,6 +556,7 @@
         padding: 10px;
 
         .top-op {
+
             .btn,
             .el-button {
                 margin: 0;
@@ -480,36 +607,36 @@
             }
         }
     }
-    
+
     // Mobile file grid improvements
     .file-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
         padding: 4px;
-        
+
         .grid-item {
             margin-bottom: 0;
             padding: 10px 8px;
             border-radius: 12px;
-            
+
             .grid-icon {
                 height: 60px;
             }
-            
+
             .grid-name {
                 font-size: 12px;
                 margin-top: 6px;
             }
-            
+
             .grid-meta {
                 font-size: 10px;
             }
-            
+
             .grid-op {
                 padding: 4px 6px;
                 gap: 4px;
-                
+
                 .iconfont {
                     font-size: 10px;
                     padding: 4px 6px;
@@ -517,7 +644,7 @@
             }
         }
     }
-    
+
     // Hide desktop-only elements
     .hidden-mobile {
         display: none !important;
@@ -535,23 +662,23 @@
 @media screen and (max-width: 480px) {
     .file-grid {
         grid-template-columns: 1fr;
-        
+
         .grid-item {
             display: flex;
             align-items: center;
             padding: 8px 10px;
-            
+
             .grid-check {
                 position: static;
                 margin-right: 10px;
             }
-            
+
             .grid-icon {
                 width: 40px;
                 height: 40px;
                 flex-shrink: 0;
             }
-            
+
             .grid-name {
                 flex: 1;
                 margin: 0 10px;
@@ -559,11 +686,11 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
-            
+
             .grid-meta {
                 display: none;
             }
-            
+
             .grid-op {
                 position: static;
                 opacity: 1;
@@ -579,6 +706,7 @@
         opacity: 0;
         transform: translateY(8px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -590,9 +718,9 @@
         opacity: 0;
         transform: translateY(16px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
-

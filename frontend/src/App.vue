@@ -1,11 +1,9 @@
 <template>
   <el-config-provider :locale="locale" :message="config">
     <div class="app-shell">
-      <div class="ambient ambient-a"></div>
-      <div class="ambient ambient-b"></div>
       <router-view v-slot="{ Component, route }">
         <transition name="route-sculpt" mode="out-in">
-          <component :is="Component" :key="route.fullPath" class="route-page" />
+          <component :is="Component" class="route-page" />
         </transition>
       </router-view>
     </div>

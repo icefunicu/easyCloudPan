@@ -2,40 +2,6 @@
   <div class="main">
       <div class="top">
           <div class="top-op">
-              <div class="btn">
-                <el-upload
-                  :show-file-list="false"
-                  :with-credentials="true"
-                  :multiple="true"
-                  :http-request="addFile"
-                  :accept="fileAccept"
-                >
-                    <el-button type="primary">
-                      <span class="iconfont icon-upload"></span>
-                      上传
-                    </el-button>
-                </el-upload>
-              </div>
-              <el-button type="success" @click="newFolder">
-                <span class="iconfont icon-folder-add"></span>
-                新建文件夹
-              </el-button>
-              <el-button
-                type="danger"
-                :disabled="selectFileIdList.length == 0"
-                @click="delFileBatch"
-              >
-                <span class="iconfont icon-del"></span>
-                批量删除
-              </el-button>
-              <el-button
-                type="warning"
-                :disabled="selectFileIdList.length == 0"
-                @click="moveFolderBatch"
-              >
-                <span class="iconfont icon-move"></span>
-                批量移动
-              </el-button>
               <div class="search-panel">
                 <!-- 搜索文件 -->
                 <el-input
@@ -43,6 +9,7 @@
                   clearable
                   placeholder="请输入文件名搜索"
                   @keyup.enter="search"
+                  class="glass-input"
                 >
                     <template #suffix>
                         <i class="iconfont icon-search" @click="search"></i>
@@ -284,6 +251,39 @@
           </div>
         </div>
       </div>
+      
+      <!-- 悬浮操作岛 (Floating Action Bar) -->
+      <div class="floating-action-bar">
+          <div class="fab-inner">
+              <el-upload
+                  class="fab-btn-wrap"
+                  :show-file-list="false"
+                  :with-credentials="true"
+                  :multiple="true"
+                  :http-request="addFile"
+                  :accept="fileAccept"
+              >
+                  <button class="fab-btn primary" title="上传文件">
+                      <span class="iconfont icon-upload"></span>
+                      <span class="fab-text">上传</span>
+                  </button>
+              </el-upload>
+              <div class="fab-divider"></div>
+              <button class="fab-btn" title="新建文件夹" @click="newFolder">
+                  <span class="iconfont icon-folder-add"></span>
+                  <span class="fab-text">新建</span>
+              </button>
+              <button class="fab-btn danger" title="批量删除" :disabled="selectFileIdList.length == 0" @click="delFileBatch">
+                  <span class="iconfont icon-del"></span>
+                  <span class="fab-text">删除</span>
+              </button>
+              <button class="fab-btn warning" title="批量移动" :disabled="selectFileIdList.length == 0" @click="moveFolderBatch">
+                  <span class="iconfont icon-move"></span>
+                  <span class="fab-text">移动</span>
+              </button>
+          </div>
+      </div>
+
       <FolderSelect
         ref="folderSelectRef"
         @folder-select="moveFolderDone"
@@ -303,9 +303,10 @@ import ShareFile from "./ShareFile.vue";
 import BatchToolbar from "@/components/BatchToolbar.vue";
 import AdvancedSearch from "@/components/AdvancedSearch.vue";
 import ContextMenu from "@/components/ContextMenu.vue";
-import { ref, getCurrentInstance, nextTick, computed, onMounted, onUnmounted } from "vue";
+import { ref, getCurrentInstance, nextTick, computed, onMounted, onUnmounted, watch } from "vue";
 import * as fileService from "@/services/fileService";
 import EventBus from '@/utils/EventBus';
+import { useSWR } from "@/composables/useSWR";
 
 const { proxy } = getCurrentInstance();
 
@@ -406,26 +407,62 @@ const fileNameFuzzy = ref();
 const showLoading = ref(true);
 const isLoading = ref(false);
 const category = ref();
-const loadDataList = async () => {
-    isLoading.value = true;
-    const params = {
-        pageNo: tableData.value.pageNo,
-        pageSize: tableData.value.pageSize,
+
+// 根据参数快照触发 SWR
+const loadParamsString = computed(() => {
+    return JSON.stringify({
+        pageNo: tableData.value.pageNo || 1,
+        pageSize: tableData.value.pageSize || 15,
         fileNameFuzzy: fileNameFuzzy.value,
         filePid: currentFolder.value.fileId,
-        category: category.value,
-    };
-    if (params.category !== "all") {
-        delete params.filePid;
+        category: category.value
+    });
+});
+
+const { data: swrData, isLoading: swrIsLoading, revalidate } = useSWR(
+    () => `/api/loadDataList?params=${loadParamsString.value}`,
+    async () => {
+        const params = {
+            pageNo: tableData.value.pageNo,
+            pageSize: tableData.value.pageSize,
+            fileNameFuzzy: fileNameFuzzy.value,
+            filePid: currentFolder.value.fileId,
+            category: category.value,
+        };
+        if (params.category !== "all") {
+            delete params.filePid;
+        }
+        return await fileService.loadDataList(params, showLoading.value);
+    },
+    { dedupingInterval: 1500 }
+);
+
+watch(swrIsLoading, (loading) => {
+    isLoading.value = loading;
+    if (!tableData.value.list || tableData.value.list.length === 0 || showLoading.value) {
+        tableData.value.loading = loading;
     }
-    const result = await fileService.loadDataList(params, showLoading.value);
-    isLoading.value = false;
+    // 请求完毕后立刻撤除全局遮罩，让后续交互走静默刷新
+    if (!loading) showLoading.value = false;
+});
+
+watch(swrData, (result) => {
     if (!result) {
+        tableData.value.loading = false;
         return;
     }
-    tableData.value = result;
+    tableData.value.list = result.list;
+    tableData.value.totalCount = result.totalCount;
+    tableData.value.pageNo = result.pageNo;
+    tableData.value.pageSize = result.pageSize;
+    tableData.value.loading = false;
+
     const currentIds = new Set((tableData.value.list || []).map(item => item.fileId));
     selectFileIdList.value = selectFileIdList.value.filter(id => currentIds.has(id));
+});
+
+const loadDataList = () => {
+    revalidate({ force: true });
 };
 
 // 展示操作按钮

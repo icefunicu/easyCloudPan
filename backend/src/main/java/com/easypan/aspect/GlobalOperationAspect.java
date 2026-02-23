@@ -18,6 +18,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
  * 全局操作切面，用于处理登录校验和参数校验.
@@ -78,12 +79,66 @@ public class GlobalOperationAspect {
         return result;
     }
 
+    @jakarta.annotation.Resource
+    private com.easypan.component.JwtTokenProvider jwtTokenProvider;
+
+    @jakarta.annotation.Resource
+    private com.easypan.service.JwtBlacklistService jwtBlacklistService;
+
+    @jakarta.annotation.Resource
+    private com.easypan.component.RedisComponent redisComponent;
+
+    @jakarta.annotation.Resource
+    private com.easypan.service.UserInfoService userInfoService;
+
     private void checkLogin(boolean checkAdmin) {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
                 .getRequest();
-        HttpSession session = request.getSession();
-        SessionWebUserDto sessionWebUserDto = (SessionWebUserDto) session
-                .getAttribute(com.easypan.entity.constants.Constants.SESSION_KEY);
+
+        SessionWebUserDto sessionWebUserDto = null;
+        String bearerToken = request.getHeader("Authorization");
+        String token = null;
+
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            token = bearerToken.substring(7);
+        } else {
+            token = bearerToken;
+        }
+
+        if (token != null && jwtTokenProvider.validateToken(token) && !jwtBlacklistService.isBlacklisted(token)) {
+            String userId = jwtTokenProvider.getUserIdFromJWT(token);
+            // 这里为了保证无状态且及时响应空间变化，可以根据 userId 从数据库/Redis中拼装出 Dto。
+            // 但原本系统里可能并没有直接获取 SessionWebUserDto 的原子方法，为了快速修补并解耦，我们从 DB 新查或缓存存取.
+            com.easypan.entity.po.UserInfo userInfo = userInfoService.getUserInfoByUserId(userId);
+            if (userInfo != null) {
+                // Spring Context aware bean fetcher or AppConfig instance injection
+                com.easypan.entity.config.AppConfig appConfig = WebApplicationContextUtils
+                        .getRequiredWebApplicationContext(request.getServletContext())
+                        .getBean(com.easypan.entity.config.AppConfig.class);
+
+                sessionWebUserDto = new SessionWebUserDto();
+                sessionWebUserDto.setUserId(userInfo.getUserId());
+                sessionWebUserDto.setNickName(userInfo.getNickName());
+                sessionWebUserDto.setAdmin(
+                        org.apache.commons.lang3.ArrayUtils.contains(
+                                appConfig.getAdminEmails().split(","),
+                                userInfo.getEmail()));
+                sessionWebUserDto.setAvatar(userInfo.getQqAvatar());
+            }
+        }
+
+        // 临时降级回 Session 兜底，以防旧前端的纯 cookie 会话报错
+        if (sessionWebUserDto == null) {
+            HttpSession session = request.getSession();
+            sessionWebUserDto = (SessionWebUserDto) session
+                    .getAttribute(com.easypan.entity.constants.Constants.SESSION_KEY);
+        }
+
+        // 把最终的有效用户态挂载到 Request Attribute，供 Controller 通过 ABaseController 获取
+        if (sessionWebUserDto != null) {
+            request.setAttribute(com.easypan.entity.constants.Constants.SESSION_KEY, sessionWebUserDto);
+        }
+
         if (sessionWebUserDto == null) {
             throw new BusinessException(ResponseCodeEnum.CODE_901);
         }
@@ -135,7 +190,8 @@ public class GlobalOperationAspect {
             throw new BusinessException(ResponseCodeEnum.CODE_600);
         }
         if (verifyParam.regex() != null && verifyParam.regex() != com.easypan.entity.enums.VerifyRegexEnum.NO) {
-            if (!value.matches(verifyParam.regex().getRegex())) {
+            java.util.regex.Pattern pattern = verifyParam.regex().getPattern();
+            if (pattern != null && !pattern.matcher(value).matches()) {
                 throw new BusinessException(ResponseCodeEnum.CODE_600);
             }
         }

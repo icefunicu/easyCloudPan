@@ -16,15 +16,23 @@ public enum VerifyRegexEnum {
     MONEY("^[0-9]+(.[0-9]{1,2})?$", "金额");
 
     private String regex;
+    private java.util.regex.Pattern pattern;
     private String desc;
 
     VerifyRegexEnum(String regex, String desc) {
         this.regex = regex;
+        if (regex != null && !regex.isEmpty()) {
+            this.pattern = java.util.regex.Pattern.compile(regex);
+        }
         this.desc = desc;
     }
 
     public String getRegex() {
         return regex;
+    }
+
+    public java.util.regex.Pattern getPattern() {
+        return pattern;
     }
 
     public String getDesc() {

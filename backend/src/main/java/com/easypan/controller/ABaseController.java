@@ -6,13 +6,17 @@ import com.easypan.entity.dto.SessionWebUserDto;
 import com.easypan.entity.enums.ResponseCodeEnum;
 import com.easypan.entity.vo.PaginationResultVO;
 import com.easypan.entity.vo.ResponseVO;
+import com.easypan.exception.BusinessException;
 import com.easypan.utils.CopyTools;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -35,7 +39,7 @@ public class ABaseController {
     /**
      * 获取成功响应.
      *
-     * @param t 响应数据
+     * @param t   响应数据
      * @param <T> 数据类型
      * @return 响应对象
      */
@@ -53,8 +57,8 @@ public class ABaseController {
      *
      * @param result 原始分页结果
      * @param classz 目标类型
-     * @param <S> 源类型
-     * @param <T> 目标类型
+     * @param <S>    源类型
+     * @param <T>    目标类型
      * @return 转换后的分页结果
      */
     protected <S, T> PaginationResultVO<T> convert2PaginationVO(PaginationResultVO<S> result, Class<T> classz) {
@@ -74,7 +78,16 @@ public class ABaseController {
      * @return 用户信息
      */
     protected SessionWebUserDto getUserInfoFromSession(HttpSession session) {
-        SessionWebUserDto sessionWebUserDto = (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
+        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes())
+                .getRequest();
+        SessionWebUserDto sessionWebUserDto = (SessionWebUserDto) request.getAttribute(Constants.SESSION_KEY);
+        if (sessionWebUserDto == null) {
+            // 兼容可能尚未挂载的情况（例如非鉴权接口直接请求时）
+            sessionWebUserDto = (SessionWebUserDto) session.getAttribute(Constants.SESSION_KEY);
+        }
+        if (sessionWebUserDto == null) {
+            throw new BusinessException(ResponseCodeEnum.CODE_901);
+        }
         return sessionWebUserDto;
     }
 

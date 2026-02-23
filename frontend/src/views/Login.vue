@@ -1,6 +1,6 @@
 <template>
   <div class="login-body">
-    <div class="bg"></div>
+    <div class="bg-aurora"></div>
     <div class="login-shell">
       <div class="brand-panel">
         <div class="brand-icon">
@@ -497,8 +497,25 @@ const qqLogin = async () => {
     background: linear-gradient(110deg, rgba(120, 145, 164, 0.08) 0%, rgba(120, 145, 164, 0) 64%);
   }
 
-  .bg {
-    display: none;
+  .bg-aurora {
+    position: absolute;
+    inset: -20%;
+    z-index: 0;
+    pointer-events: none;
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(135, 206, 235, 0.45) 0%, transparent 40%),
+      radial-gradient(circle at 80% 20%, rgba(255, 182, 193, 0.4) 0%, transparent 40%),
+      radial-gradient(circle at 50% 80%, rgba(144, 238, 144, 0.35) 0%, transparent 50%),
+      radial-gradient(circle at 90% 90%, rgba(0, 191, 255, 0.3) 0%, transparent 50%);
+    background-size: 200% 200%;
+    filter: blur(60px);
+    animation: auroraMovement 25s ease-in-out infinite alternate;
+  }
+
+  @keyframes auroraMovement {
+    0% { transform: scale(1) translate(0, 0); }
+    50% { transform: scale(1.1) translate(5%, 5%); }
+    100% { transform: scale(1.05) translate(-5%, -2%); }
   }
 
   .login-shell {
@@ -512,13 +529,14 @@ const qqLogin = async () => {
   }
 
   .brand-panel {
-    padding: 34px;
-    border-radius: 28px;
-    background:
-      linear-gradient(155deg, rgba(31, 79, 104, 0.94) 0%, rgba(39, 95, 124, 0.92) 62%, rgba(55, 123, 156, 0.9) 100%);
-    color: #f6fffe;
-    box-shadow: var(--shadow-xl);
-    border: 1px solid rgba(255, 255, 255, 0.24);
+    padding: 40px;
+    border-radius: 32px;
+    background: rgba(31, 79, 104, 0.45);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    color: #ffffff;
+    box-shadow: 0 24px 48px rgba(18, 35, 49, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     position: relative;
     overflow: hidden;
 
@@ -579,12 +597,13 @@ const qqLogin = async () => {
   }
 
   .login-register {
-    padding: 34px;
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(194, 204, 216, 0.82);
-    box-shadow: var(--shadow-lg);
+    padding: 40px;
+    border-radius: 32px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(36px);
+    -webkit-backdrop-filter: blur(36px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: var(--shadow-xl);
     min-height: 100%;
   }
 

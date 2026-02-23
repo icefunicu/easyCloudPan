@@ -181,8 +181,9 @@ const STATUS = {
   },
 }
 
-const chunkSize = 1024 * 1024 * 5
-const uploadWindowSize = 3
+//将文件分块，设置每个分块的大小为 10MB，而不是写死的 5MB 以提升大文件的并发传输效能
+const chunkSize = 10 * 1024 * 1024
+const maxConcurrentUploads = 3
 const fileList = ref([])
 const delList = ref([])
 

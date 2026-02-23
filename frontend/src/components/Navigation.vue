@@ -209,6 +209,7 @@ watch(
     min-height: 40px;
     flex-wrap: wrap;
     color: var(--text-secondary);
+    transition: border-color 0.2s ease-out;
     
     .all-file {
         font-weight: 700;
@@ -219,19 +220,21 @@ watch(
     .link {
         color: var(--primary);
         cursor: pointer;
-        transition: var(--transition-fast);
+        transition: all 0.15s ease-out;
+        padding: 2px 6px;
+        border-radius: 6px;
         
         &:hover {
             color: var(--primary-dark);
-            text-decoration: underline;
-            text-underline-offset: 3px;
+            background: rgba(6, 167, 255, 0.08);
         }
     }
     
     .icon-right {
         color: var(--text-light);
-        padding: 0 7px;
+        padding: 0 5px;
         font-size: 11px;
+        opacity: 0.4;
     }
     
     .text {
