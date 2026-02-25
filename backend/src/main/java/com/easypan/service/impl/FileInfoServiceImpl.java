@@ -60,7 +60,7 @@ import static com.easypan.entity.po.table.FileInfoTableDef.FILE_INFO;
 import static com.easypan.entity.po.table.UserInfoTableDef.USER_INFO;
 
 /**
- * 文件信息服务实现类.
+ * 文件信息服务实现类。
  */
 @Service("fileInfoService")
 public class FileInfoServiceImpl implements FileInfoService {
@@ -324,23 +324,23 @@ public class FileInfoServiceImpl implements FileInfoService {
         Boolean uploadSuccess = true;
         try {
             if (chunkIndex == 0) {
-                // ... 省略文件类型校验逻辑，保持不变 ...
+                // 首片执行文件类型校验（扩展名 + 文件内容）。
                 String fileSuffix = StringTools.getFileSuffix(fileName);
 
                 if (com.easypan.utils.FileTypeValidator.isDangerousFileType(fileSuffix)) {
                     throw new BusinessException("不允许上传可执行文件类型");
                 }
 
-                logger.info("📤 开始上传文件: userId={}, fileId={}, fileName={}, chunks={}",
+                logger.info("开始上传文件: userId={}, fileId={}, fileName={}, chunks={}",
                         webUserDto.getUserId(), fileId, fileName, chunks);
 
                 try (InputStream inputStream = file.getInputStream()) {
                     if (!com.easypan.utils.FileTypeValidator.validateFileType(inputStream, fileSuffix)) {
-                        logger.warn("File type validation failed: fileName={}, suffix={}", fileName, fileSuffix);
+                        logger.warn("文件类型校验失败: fileName={}, suffix={}", fileName, fileSuffix);
                         throw new BusinessException("文件类型不匹配，请上传正确的文件");
                     }
                 } catch (IOException e) {
-                    logger.error("Error validating file type", e);
+                    logger.error("文件类型校验异常", e);
                     throw new BusinessException("文件类型校验失败");
                 }
             }
@@ -391,14 +391,14 @@ public class FileInfoServiceImpl implements FileInfoService {
 
             File newFile = new File(tempFileFolder.getPath() + "/" + chunkIndex);
 
-            // [IO操作] 写文件，不在事务中
+            // 文件写入是 IO 操作，不放在事务中执行。
             if (!(newFile.exists() && newFile.length() == file.getSize())) {
                 file.transferTo(newFile);
                 if (newFile.length() != file.getSize()) {
                     throw new BusinessException("分片大小校验失败，请重试上传");
                 }
                 redisComponent.saveFileTempSize(webUserDto.getUserId(), fileId, file.getSize());
-                // 更新上传进度
+                // 记录上传进度，用于断点续传与前端展示。
                 uploadProgressService.updateProgress(webUserDto.getUserId(), fileId, chunkIndex, chunks);
             }
 
@@ -407,7 +407,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                 return resultDto;
             }
 
-            // 最后一个分片上传完成，调用事务方法保存元数据
+            // 最后一个分片上传完成，进入事务保存元数据。
             return fileInfoService.completeUploadAndSave(webUserDto, fileId, filePid, fileMd5, fileName,
                     currentUserFolderName, curDate);
 
@@ -432,7 +432,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     /**
-     * 处理秒传入库 (事务方法).
+     * 处理秒传入库（事务方法）。
      */
     @Transactional(rollbackFor = Exception.class)
     public UploadResultDto processInstantUpload(SessionWebUserDto webUserDto, String fileId, String filePid,
@@ -456,13 +456,13 @@ public class FileInfoServiceImpl implements FileInfoService {
         resultDto.setStatus(UploadStatusEnums.UPLOAD_SECONDS.getCode());
         updateUserSpace(webUserDto, dbFileSize);
 
-        logger.info("⚡ 秒传成功: userId={}, fileId={}, fileName={}, md5={}",
+        logger.info("秒传成功: userId={}, fileId={}, fileName={}, md5={}",
                 webUserDto.getUserId(), fileId, fileName, fileMd5);
         return resultDto;
     }
 
     /**
-     * 完成上传并保存元数据 (事务方法).
+     * 完成上传并保存元数据（事务方法）。
      */
     @Transactional(rollbackFor = Exception.class)
     public UploadResultDto completeUploadAndSave(SessionWebUserDto webUserDto, String fileId, String filePid,
@@ -502,9 +502,9 @@ public class FileInfoServiceImpl implements FileInfoService {
 
         resultDto.setStatus(UploadStatusEnums.UPLOAD_FINISH.getCode());
 
-        logger.info("✅ 文件元数据保存完成: userId={}, fileId={}", webUserDto.getUserId(), fileId);
+        logger.info("文件元数据保存完成: userId={}, fileId={}", webUserDto.getUserId(), fileId);
 
-        // 利用 Spring 的事务同步机制，在事务提交后触发转码
+        // 使用事务同步机制，在事务提交后触发转码。
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -539,7 +539,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     /**
-     * 异步转码文件.
+     * 异步转码文件。
      *
      * @param fileId     文件ID
      * @param webUserDto 用户会话信息
@@ -579,7 +579,7 @@ public class FileInfoServiceImpl implements FileInfoService {
 
             fileTypeEnum = FileTypeEnums.getFileTypeBySuffix(fileSuffix);
 
-            logger.info("🔄 转码开始: fileId={}, userId={}, fileType={}",
+            logger.info("开始转码文件: fileId={}, userId={}, fileType={}",
                     fileId, webUserDto.getUserId(), fileTypeEnum);
 
             if (FileTypeEnums.VIDEO == fileTypeEnum) {
@@ -609,10 +609,10 @@ public class FileInfoServiceImpl implements FileInfoService {
                 storageStrategy.upload(coverFile, cover);
             }
         } catch (RuntimeException e) {
-            logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
+            logger.error("文件转码失败: fileId={}, userId={}", fileId, webUserDto.getUserId(), e);
             transferSuccess = false;
         } catch (Exception e) {
-            logger.error("文件转码失败，文件Id:{},userId:{}", fileId, webUserDto.getUserId(), e);
+            logger.error("文件转码失败: fileId={}, userId={}", fileId, webUserDto.getUserId(), e);
             transferSuccess = false;
         } finally {
             FileInfo updateInfo = new FileInfo();
@@ -625,11 +625,11 @@ public class FileInfoServiceImpl implements FileInfoService {
                     FileStatusEnums.TRANSFER.getStatus());
 
             // transferFile() 通过 MultiLevelCacheService（L1/L2）读取 FileInfo，
-            // 这里必须主动失效缓存，避免“转码中”状态最长缓存 1 小时导致展示滞后.
+            // 这里必须主动失效缓存，避免“转码中”状态在缓存中滞留。
             try {
                 multiLevelCacheService.evictFileInfo(fileId, webUserDto.getUserId());
             } catch (Exception e) {
-                logger.warn("Failed to evict file cache after transfer: fileId={}, userId={}",
+                logger.warn("转码后清理文件缓存失败: fileId={}, userId={}",
                         fileId, webUserDto.getUserId(), e);
             }
 
@@ -640,7 +640,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                 FileUtils.deleteQuietly(new File(tsFolderName));
             }
 
-            logger.info("🏁 转码完成: fileId={}, userId={}, success={}",
+            logger.info("转码流程结束: fileId={}, userId={}, success={}",
                     fileId, webUserDto.getUserId(), transferSuccess);
         }
     }
@@ -672,7 +672,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                         java.nio.file.StandardOpenOption.READ)) {
                     long size = inChannel.size();
                     long position = 0L;
-                    // T21: 限制单次 transferTo 大小为 8MB，避免大文件资源耗尽
+                    // 限制单次 transferTo 为 8MB，避免大文件合并时资源峰值过高。
                     final long TRANSFER_CHUNK_SIZE = 8L * 1024 * 1024;
                     while (position < size) {
                         long count = Math.min(TRANSFER_CHUNK_SIZE, size - position);
@@ -688,7 +688,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                 }
             }
         } catch (Exception e) {
-            logger.error("NIO 合并文件:{}失败", fileName, e);
+            logger.error("NIO 合并文件失败: {}", fileName, e);
             throw new BusinessException("合并文件" + fileName + "出错了");
         } finally {
             if (delSource && dir.exists()) {
@@ -798,7 +798,7 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     /**
-     * 更改文件所属文件夹.
+     * 更改文件所属文件夹。
      *
      * @param fileIds 文件ID列表
      * @param filePid 目标父文件夹ID
@@ -831,13 +831,13 @@ public class FileInfoServiceImpl implements FileInfoService {
                         .and(FILE_INFO.FILE_ID.in((Object[]) fileIdArray)));
 
         List<FileInfo> updateList = new ArrayList<>();
-        Date curDate = new Date(); // 统一更新时间
+        Date curDate = new Date(); // 统一更新时间，便于排序与审计。
 
         for (FileInfo item : selectFileList) {
             FileInfo rootFileInfo = dbFileNameMap.get(item.getFileName());
             FileInfo updateInfo = new FileInfo();
-            updateInfo.setFileId(item.getFileId()); // 必须设置主键用于更新
-            updateInfo.setUserId(userId); // 确保安全性，虽然 updateBatch 可能不检查
+            updateInfo.setFileId(item.getFileId()); // 主键用于定位更新目标。
+            updateInfo.setUserId(userId); // 保留用户范围，避免跨用户误更新。
 
             if (rootFileInfo != null) {
                 String fileName = StringTools.rename(item.getFileName());
@@ -849,14 +849,8 @@ public class FileInfoServiceImpl implements FileInfoService {
         }
 
         if (!updateList.isEmpty()) {
-            // 使用 Mybatis-Flex 的批量更新
-            // 注意：需要确保 FileInfoMapper 继承了 BaseMapper 并且支持 updateBatch
-            // 这里我们假设 updateBatch 是可用的，或者根据 ServiceImpl 提供的 updateBatch 方法
-            // 实际上 FileInfoService 接口继承了 IService<FileInfo>，它有 updateBatch 方法
-            // 但这里我们在 Service 内部，可以直接调用 Mapper 或者自身的 updateBatch (如果不涉及切面)
-            // 为了安全起见，我们使用 mapper 的 updateBatch，或者循环构建 updateWrapper (如果不支持 batch)
-
-            // 检查：com.mybatisflex.core.BaseMapper 有 updateBatch(Collection<T> entities)
+            // 批量更新移动结果，减少逐条更新带来的数据库往返。
+            // 这里直接使用 Mapper 的 updateBatch，避免额外包装层开销。
             this.fileInfoMapper.updateBatch(updateList);
         }
     }
@@ -991,7 +985,7 @@ public class FileInfoServiceImpl implements FileInfoService {
                     null);
         }
 
-        // 目录硬删除时还需要包含所有后代记录，用于存储清理与缓存失效.
+        // 目录硬删除时需要包含后代记录，用于统一清理存储与缓存。
         List<FileInfo> deleteInfoList = fileInfoList;
         if (!folderIds.isEmpty()) {
             List<FileInfo> descendants = this.fileInfoMapper.selectDescendantFiles(folderIds, userId, null);
@@ -1032,11 +1026,11 @@ public class FileInfoServiceImpl implements FileInfoService {
             try {
                 multiLevelCacheService.evictFileInfo(item.getFileId(), userId);
             } catch (Exception e) {
-                logger.warn("Failed to evict file cache after delete: fileId={}, userId={}", item.getFileId(), userId,
+                logger.warn("删除后清理文件缓存失败: fileId={}, userId={}", item.getFileId(), userId,
                         e);
             }
 
-            // T17: 删除文件时清除 MD5→fileId 缓存，避免秒传引用已删除文件
+            // 删除文件时同步清理 MD5 缓存，避免秒传命中已删除文件。
             if (!StringTools.isEmpty(item.getFileMd5())) {
                 try {
                     quickUploadService.clearMd5Cache(item.getFileMd5());
@@ -1264,12 +1258,12 @@ public class FileInfoServiceImpl implements FileInfoService {
     }
 
     /**
-     * 定时清理孤儿分片任务.
-     * 每天凌晨2点执行，清理超过 24 小时未完成更新的残片文件夹。
+     * 定时清理孤儿分片任务。
+     * 每天凌晨 2 点执行，清理超过 24 小时未完成更新的分片目录。
      */
     @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 2 * * ?")
     public void cleanOrphanedChunks() {
-        logger.info("开始执行定时清理孤儿残片任务...");
+        logger.info("开始执行孤儿分片清理任务");
         String tempFolderName = appConfig.getProjectFolder() + Constants.FILE_FOLDER_TEMP;
         File tempDir = new File(tempFolderName);
         if (!tempDir.exists() || !tempDir.isDirectory()) {
@@ -1283,19 +1277,19 @@ public class FileInfoServiceImpl implements FileInfoService {
         if (userChunkDirs != null) {
             for (File userChunkDir : userChunkDirs) {
                 if (userChunkDir.isDirectory()) {
-                    // 如果该目录最后修改时间超过 24 小时，且没有子文件正在被写入，认为已废弃
+                    // 目录最后修改时间超过 24 小时，视为异常中断遗留目录。
                     if (now - userChunkDir.lastModified() > expireTime) {
                         try {
-                            // 由于目录名称格式是 {userId}{fileId}，此处可以直接物理删除，因为正常上传完成后这个目录会被转码方法重构或清理
+                            // 目录名称格式为 {userId}{fileId}，过期后可直接删除。
                             FileUtils.deleteDirectory(userChunkDir);
-                            logger.info("已清理逾期未完成的大文件临时残片目录: {}", userChunkDir.getAbsolutePath());
+                            logger.info("已删除过期分片目录: {}", userChunkDir.getAbsolutePath());
                         } catch (IOException e) {
-                            logger.warn("清理孤儿残片目录失败: {}", userChunkDir.getAbsolutePath(), e);
+                            logger.warn("删除过期分片目录失败: {}", userChunkDir.getAbsolutePath(), e);
                         }
                     }
                 }
             }
         }
-        logger.info("定时清理孤儿残片任务执行完毕.");
+        logger.info("孤儿分片清理任务执行完毕");
     }
 }

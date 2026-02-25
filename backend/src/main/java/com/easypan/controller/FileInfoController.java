@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * 文件信息控制器类.
+ * 閺傚洣娆㈡穱鈩冧紖閹貉冨煑閸ｃ劎琚?
  */
 @Component
 @RestController("fileInfoController")
@@ -60,12 +60,12 @@ public class FileInfoController extends CommonFileController {
     private AsyncTaskExecutor virtualThreadExecutor;
 
     /**
-     * 根据条件分页查询.
+     * 閺嶈宓侀弶鈥叉閸掑棝銆夐弻銉嚄.
      *
-     * @param session  HTTP 会话
-     * @param query    查询参数
-     * @param category 分类
-     * @return 分页结果
+     * @param session  HTTP 娴兼俺鐦?
+     * @param query    閺屻儴顕楅崣鍌涙殶
+     * @param category 閸掑棛琚?
+     * @return 閸掑棝銆夌紒鎾寸亯
      */
     @RequestMapping("/loadDataList")
     @GlobalInterceptor(checkParams = true)
@@ -84,13 +84,13 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 游标分页查询（性能优于 OFFSET 分页）.
-     * 适用于大数据量场景，避免深分页性能问题.
+     * 濞撳憡鐖ｉ崚鍡涖€夐弻銉嚄閿涘牊鈧嗗厴娴兼ü绨?OFFSET 閸掑棝銆夐敍?
+     * 闁倻鏁ゆ禍搴°亣閺佺増宓侀柌蹇撴簚閺咁垽绱濋柆鍨帳濞ｅ崬鍨庢い鍨偓褑鍏橀梻顕€顣?
      *
-     * @param session  HTTP 会话
-     * @param cursor   游标
-     * @param pageSize 每页大小
-     * @return 分页结果
+     * @param session  HTTP 娴兼俺鐦?
+     * @param cursor   濞撳憡鐖?
+     * @param pageSize 濮ｅ繘銆夋径褍鐨?
+     * @return 閸掑棝銆夌紒鎾寸亯
      */
     @RequestMapping("/loadDataListCursor")
     @GlobalInterceptor(checkParams = true)
@@ -109,15 +109,15 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 游标分页查询（支持目录和分类过滤）.
-     * 推荐用于文件列表加载，性能优于传统 OFFSET 分页.
+     * 濞撳憡鐖ｉ崚鍡涖€夐弻銉嚄閿涘牊鏁幐浣烘窗瑜版洖鎷伴崚鍡欒鏉╁洦鎶ら敍?
+     * 閹恒劏宕橀悽銊ょ艾閺傚洣娆㈤崚妤勩€冮崝鐘烘祰閿涘本鈧嗗厴娴兼ü绨导鐘电埠 OFFSET 閸掑棝銆?
      *
-     * @param session  HTTP 会话
-     * @param filePid  父目录ID（可选）
-     * @param category 文件分类（可选）
-     * @param cursor   游标
-     * @param pageSize 每页大小
-     * @return 分页结果
+     * @param session  HTTP 娴兼俺鐦?
+     * @param filePid  閻栧墎娲拌ぐ鏃綝閿涘牆褰查柅澶涚礆
+     * @param category 閺傚洣娆㈤崚鍡欒閿涘牆褰查柅澶涚礆
+     * @param cursor   濞撳憡鐖?
+     * @param pageSize 濮ｅ繘銆夋径褍鐨?
+     * @return 閸掑棝銆夌紒鎾寸亯
      */
     @RequestMapping("/loadDataListCursorV2")
     @GlobalInterceptor(checkParams = true)
@@ -148,17 +148,17 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 上传文件.
+     * 娑撳﹣绱堕弬鍥︽.
      *
-     * @param session    HTTP 会话
-     * @param fileId     文件ID
-     * @param file       文件
-     * @param fileName   文件名
-     * @param filePid    父目录ID
-     * @param fileMd5    文件MD5
-     * @param chunkIndex 分片索引
-     * @param chunks     总分片数
-     * @return 上传结果
+     * @param session    HTTP 娴兼俺鐦?
+     * @param fileId     閺傚洣娆D
+     * @param file       閺傚洣娆?
+     * @param fileName   閺傚洣娆㈤崥?
+     * @param filePid    閻栧墎娲拌ぐ鏃綝
+     * @param fileMd5    閺傚洣娆D5
+     * @param chunkIndex 閸掑棛澧栫槐銏犵穿
+     * @param chunks     閹鍨庨悧鍥ㄦ殶
+     * @return 娑撳﹣绱剁紒鎾寸亯
      */
     @RequestMapping("/uploadFile")
     @GlobalInterceptor(checkParams = true)
@@ -180,12 +180,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取已上传分片信息（用于断点续传）.
+     * 閼惧嘲褰囧韫瑐娴肩姴鍨庨悧鍥︿繆閹垽绱欓悽銊ょ艾閺傤厾鍋ｇ紒顓濈炊閿?
      *
-     * @param session HTTP 会话
-     * @param fileId  文件ID
-     * @param filePid 父目录ID
-     * @return 已上传分片列表
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileId  閺傚洣娆D
+     * @param filePid 閻栧墎娲拌ぐ鏃綝
+     * @return 瀹歌弓绗傛导鐘插瀻閻楀洤鍨悰?
      */
     @RequestMapping("/uploadedChunks")
     @GlobalInterceptor(checkParams = true)
@@ -226,11 +226,11 @@ public class FileInfoController extends CommonFileController {
     private com.easypan.service.UploadProgressService uploadProgressService;
 
     /**
-     * 获取上传进度.
+     * 閼惧嘲褰囨稉濠佺炊鏉╂稑瀹?
      *
-     * @param session HTTP 会话
-     * @param fileId  文件ID
-     * @return 进度信息
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileId  閺傚洣娆D
+     * @return 鏉╂稑瀹虫穱鈩冧紖
      */
     @RequestMapping("/getUploadProgress")
     @GlobalInterceptor(checkParams = true)
@@ -244,11 +244,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 查询文件转码状态.
+     * 閺屻儴顕楅弬鍥︽鏉烆剛鐖滈悩鑸碘偓?
      *
-     * @param session HTTP 会话
-     * @param fileId  文件ID
-     * @return 包含 status 字段的响应
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileId  閺傚洣娆D
+     * @return 閸栧懎鎯?status 鐎涙顔岄惃鍕惙鎼?
      */
     @RequestMapping("/transferStatus")
     @GlobalInterceptor(checkParams = true)
@@ -258,7 +258,7 @@ public class FileInfoController extends CommonFileController {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, webUserDto.getUserId());
         if (fileInfo == null) {
-            throw new BusinessException("文件不存在");
+            throw new BusinessException("File not found");
         }
         com.easypan.entity.dto.FileTransferStatusDto dto = new com.easypan.entity.dto.FileTransferStatusDto();
         dto.setFileId(fileId);
@@ -267,7 +267,7 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * SSE: 获取转码状态流.
+     * SSE: 閼惧嘲褰囨潪顒傜垳閻樿埖鈧焦绁?
      */
     @RequestMapping(value = "/transferStatusSse", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     @GlobalInterceptor(checkParams = true)
@@ -316,11 +316,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取单个文件信息.
+     * 閼惧嘲褰囬崡鏇氶嚋閺傚洣娆㈡穱鈩冧紖.
      *
-     * @param session HTTP 会话
-     * @param fileId  文件ID
-     * @return 文件信息
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileId  閺傚洣娆D
+     * @return 閺傚洣娆㈡穱鈩冧紖
      */
     @RequestMapping("/getFileInfo/{fileId}")
     @GlobalInterceptor(checkParams = true)
@@ -331,18 +331,18 @@ public class FileInfoController extends CommonFileController {
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         FileInfo fileInfo = fileInfoService.getFileInfoByFileIdAndUserId(fileId, webUserDto.getUserId());
         if (fileInfo == null) {
-            throw new BusinessException("文件不存在");
+            throw new BusinessException("File not found");
         }
         return getSuccessResponseVO(CopyTools.copy(fileInfo, FileInfoVO.class));
     }
 
     /**
-     * 获取图片.
+     * 閼惧嘲褰囬崶鍓у.
      *
-     * @param session     HTTP 会话
-     * @param response    HTTP 响应
-     * @param imageFolder 图片文件夹
-     * @param imageName   图片名称
+     * @param session     HTTP 娴兼俺鐦?
+     * @param response    HTTP 閸濆秴绨?
+     * @param imageFolder 閸ュ墽澧栭弬鍥︽婢?
+     * @param imageName   閸ュ墽澧栭崥宥囆?
      */
     @RequestMapping("/getImage/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkLogin = true)
@@ -355,11 +355,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 根据视频id获取视频分片.
+     * 閺嶈宓佺憴鍡涱暥id閼惧嘲褰囩憴鍡涱暥閸掑棛澧?
      *
-     * @param response HTTP 响应
-     * @param session  HTTP 会话
-     * @param fileId   文件ID
+     * @param response HTTP 閸濆秴绨?
+     * @param session  HTTP 娴兼俺鐦?
+     * @param fileId   閺傚洣娆D
      */
     @RequestMapping("/ts/getVideoInfo/{fileId}")
     @GlobalInterceptor
@@ -371,11 +371,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 根据文件id获取文件.
+     * 閺嶈宓侀弬鍥︽id閼惧嘲褰囬弬鍥︽.
      *
-     * @param response HTTP 响应
-     * @param session  HTTP 会话
-     * @param fileId   文件ID
+     * @param response HTTP 閸濆秴绨?
+     * @param session  HTTP 娴兼俺鐦?
+     * @param fileId   閺傚洣娆D
      */
     @RequestMapping("/getFile/{fileId}")
     @GlobalInterceptor
@@ -387,12 +387,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 新建文件夹.
+     * 閺傛澘缂撻弬鍥︽婢?
      *
-     * @param session  HTTP 会话
-     * @param filePid  父目录ID
-     * @param fileName 文件名
-     * @return 文件信息
+     * @param session  HTTP 娴兼俺鐦?
+     * @param filePid  閻栧墎娲拌ぐ鏃綝
+     * @param fileName 閺傚洣娆㈤崥?
+     * @return 閺傚洣娆㈡穱鈩冧紖
      */
     @RequestMapping("/newFoloder")
     @GlobalInterceptor(checkParams = true)
@@ -406,11 +406,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 获取文件夹信息.
+     * 閼惧嘲褰囬弬鍥︽婢堕€涗繆閹?
      *
-     * @param session HTTP 会话
-     * @param path    路径
-     * @return 文件夹列表
+     * @param session HTTP 娴兼俺鐦?
+     * @param path    鐠侯垰绶?
+     * @return 閺傚洣娆㈡径鐟板灙鐞?
      */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkParams = true)
@@ -421,12 +421,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 重命名.
+     * 闁插秴鎳￠崥?
      *
-     * @param session  HTTP 会话
-     * @param fileId   文件ID
-     * @param fileName 新文件名
-     * @return 文件信息
+     * @param session  HTTP 娴兼俺鐦?
+     * @param fileId   閺傚洣娆D
+     * @param fileName 閺傜増鏋冩禒璺烘倳
+     * @return 閺傚洣娆㈡穱鈩冧紖
      */
     @RequestMapping("/rename")
     @GlobalInterceptor(checkParams = true)
@@ -440,12 +440,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 加载所有文件.
+     * 閸旂姾娴囬幍鈧張澶嬫瀮娴?
      *
-     * @param session        HTTP 会话
-     * @param filePid        父目录ID
-     * @param currentFileIds 当前文件ID列表
-     * @return 文件列表
+     * @param session        HTTP 娴兼俺鐦?
+     * @param filePid        閻栧墎娲拌ぐ鏃綝
+     * @param currentFileIds 瑜版挸澧犻弬鍥︽ID閸掓銆?
+     * @return 閺傚洣娆㈤崚妤勩€?
      */
     @RequestMapping("/loadAllFolder")
     @GlobalInterceptor(checkParams = true)
@@ -467,12 +467,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 更改文件目录.
+     * 閺囧瓨鏁奸弬鍥︽閻╊喖缍?
      *
-     * @param session HTTP 会话
-     * @param fileIds 文件ID列表
-     * @param filePid 目标目录ID
-     * @return 响应对象
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileIds 閺傚洣娆D閸掓銆?
+     * @param filePid 閻╊喗鐖ｉ惄顔肩秿ID
+     * @return 閸濆秴绨茬€电钖?
      */
     @RequestMapping("/changeFileFolder")
     @GlobalInterceptor(checkParams = true)
@@ -486,11 +486,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 创建下载链接.
+     * 閸掓稑缂撴稉瀣祰闁剧偓甯?
      *
-     * @param session HTTP 会话
-     * @param fileId  文件ID
-     * @return 下载码
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileId  閺傚洣娆D
+     * @return 娑撳娴囬惍?
      */
     @RequestMapping("/createDownloadUrl/{fileId}")
     @GlobalInterceptor(checkParams = true)
@@ -501,12 +501,12 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 下载.
+     * 娑撳娴?
      *
-     * @param request  HTTP 请求
-     * @param response HTTP 响应
-     * @param code     下载码
-     * @throws Exception 异常
+     * @param request  HTTP 鐠囬攱鐪?
+     * @param response HTTP 閸濆秴绨?
+     * @param code     娑撳娴囬惍?
+     * @throws Exception 瀵倸鐖?
      */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -517,11 +517,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 删除文件.
+     * 閸掔娀娅庨弬鍥︽.
      *
-     * @param session HTTP 会话
-     * @param fileIds 文件ID列表
-     * @return 响应对象
+     * @param session HTTP 娴兼俺鐦?
+     * @param fileIds 閺傚洣娆D閸掓銆?
+     * @return 閸濆秴绨茬€电钖?
      */
     @RequestMapping("/delFile")
     @GlobalInterceptor(checkParams = true)
@@ -533,11 +533,11 @@ public class FileInfoController extends CommonFileController {
     }
 
     /**
-     * 批量下载.
+     * 閹靛綊鍣烘稉瀣祰.
      *
-     * @param response HTTP 响应
-     * @param session  HTTP 会话
-     * @param fileIds  文件ID列表
+     * @param response HTTP 閸濆秴绨?
+     * @param session  HTTP 娴兼俺鐦?
+     * @param fileIds  閺傚洣娆D閸掓銆?
      */
     @RequestMapping("/batchDownload/{fileIds}")
     @GlobalInterceptor(checkParams = true)
@@ -545,12 +545,15 @@ public class FileInfoController extends CommonFileController {
     public void batchDownload(HttpServletResponse response, HttpSession session,
             @PathVariable("fileIds") @VerifyParam(required = true) String fileIds) {
         try {
+            SessionWebUserDto webUserDto = getUserInfoFromSession(session);
             response.setContentType("application/zip");
             response.setHeader("Content-Disposition", "attachment; filename=\"download.zip\"");
             fileOperationService.downloadMultipleFiles(
-                    Arrays.asList(fileIds.split(",")), response.getOutputStream());
+                    webUserDto.getUserId(),
+                    Arrays.asList(fileIds.split(",")),
+                    response.getOutputStream());
         } catch (IOException e) {
-            throw new BusinessException("文件下载失败，请重试");
+            throw new BusinessException("Download failed, please retry");
         }
     }
 }

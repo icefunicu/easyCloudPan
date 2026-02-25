@@ -25,7 +25,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 公共文件控制器类.
@@ -59,9 +61,16 @@ public class CommonFileController extends ABaseController {
         infoQuery.setUserId(userId);
         infoQuery.setFolderType(FileFolderTypeEnums.FOLDER.getType());
         infoQuery.setFileIdArray(pathArray);
-        String orderBy = "field(file_id,\"" + StringUtils.join(pathArray, "\",\"") + "\")";
-        infoQuery.setOrderBy(orderBy);
         List<FileInfo> fileInfoList = fileInfoService.findListByParam(infoQuery);
+
+        Map<String, Integer> orderMap = new HashMap<>(pathArray.length);
+        for (int i = 0; i < pathArray.length; i++) {
+            orderMap.putIfAbsent(pathArray[i], i);
+        }
+        fileInfoList.sort((left, right) -> Integer.compare(
+                orderMap.getOrDefault(left.getFileId(), Integer.MAX_VALUE),
+                orderMap.getOrDefault(right.getFileId(), Integer.MAX_VALUE)));
+
         return getSuccessResponseVO(CopyTools.copyList(fileInfoList, FolderVO.class));
     }
 

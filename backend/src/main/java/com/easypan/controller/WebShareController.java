@@ -28,6 +28,8 @@ import com.easypan.annotation.RateLimit;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,7 +39,7 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * Web分享控制器类，处理分享文件的Web访问操作.
+ * Web閸掑棔闊╅幒褍鍩楅崳銊ц閿涘苯顦╅悶鍡楀瀻娴滎偅鏋冩禒鍓佹畱Web鐠佸潡妫堕幙宥勭稊.
  */
 @RestController("webShareController")
 @RequestMapping("/showShare")
@@ -62,10 +64,10 @@ public class WebShareController extends CommonFileController {
     private CustomMetrics customMetrics;
 
     /**
-     * 通过分享ID获取分享文件信息.
+     * 闁俺绻冮崚鍡曢煩ID閼惧嘲褰囬崚鍡曢煩閺傚洣娆㈡穱鈩冧紖.
      *
-     * @param shareId 分享ID
-     * @return 分享信息
+     * @param shareId 閸掑棔闊㊣D
+     * @return 閸掑棔闊╂穱鈩冧紖
      */
     private ShareInfoVO getShareInfoCommon(String shareId) {
         FileShare share = fileShareService.getFileShareByShareId(shareId);
@@ -86,11 +88,11 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 校验分享是否失效.
+     * 閺嶏繝鐛欓崚鍡曢煩閺勵垰鎯佹径杈ㄦ櫏.
      *
-     * @param session HTTP 会话
-     * @param shareId 分享ID
-     * @return 分享会话信息
+     * @param session HTTP 娴兼俺鐦?
+     * @param shareId 閸掑棔闊㊣D
+     * @return 閸掑棔闊╂导姘崇樈娣団剝浼?
      */
     private SessionShareDto checkShare(HttpSession session, String shareId) {
         SessionShareDto shareSessionDto = getSessionShareFromSession(session, shareId);
@@ -104,11 +106,11 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取分享登录信息.
+     * 閼惧嘲褰囬崚鍡曢煩閻ц缍嶆穱鈩冧紖.
      *
-     * @param session HTTP 会话
-     * @param shareId 分享ID
-     * @return 分享登录信息
+     * @param session HTTP 娴兼俺鐦?
+     * @param shareId 閸掑棔闊㊣D
+     * @return 閸掑棔闊╅惂璇茬秿娣団剝浼?
      */
     @RequestMapping("/getShareLoginInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -119,8 +121,8 @@ public class WebShareController extends CommonFileController {
             return getSuccessResponseVO(null);
         }
         ShareInfoVO shareInfoVO = getShareInfoCommon(shareId);
-        // 判断是否是当前用户分享的文件
-        SessionWebUserDto userDto = getUserInfoFromSession(session);
+        // 閸掋倖鏌囬弰顖氭儊閺勵垰缍嬮崜宥囨暏閹村嘲鍨庢禍顐ゆ畱閺傚洣娆?
+        SessionWebUserDto userDto = getCurrentUserOptional(session);
         if (userDto != null && userDto.getUserId().equals(shareSessionDto.getShareUserId())) {
             shareInfoVO.setCurrentUser(true);
         } else {
@@ -130,10 +132,10 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取分享信息.
+     * 閼惧嘲褰囬崚鍡曢煩娣団剝浼?
      *
-     * @param shareId 分享ID
-     * @return 分享信息
+     * @param shareId 閸掑棔闊㊣D
+     * @return 閸掑棔闊╂穱鈩冧紖
      */
     @RequestMapping("/getShareInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -142,13 +144,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 校验分享码.
+     * 閺嶏繝鐛欓崚鍡曢煩閻?
      *
-     * @param session HTTP 会话
-     * @param request HTTP 请求
-     * @param shareId 分享ID
-     * @param code    分享码
-     * @return 响应对象
+     * @param session HTTP 娴兼俺鐦?
+     * @param request HTTP 鐠囬攱鐪?
+     * @param shareId 閸掑棔闊㊣D
+     * @param code    閸掑棔闊╅惍?
+     * @return 閸濆秴绨茬€电钖?
      */
     @RequestMapping("/checkShareCode")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -175,12 +177,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取文件列表.
+     * 閼惧嘲褰囬弬鍥︽閸掓銆?
      *
-     * @param session HTTP 会话
-     * @param shareId 分享ID
-     * @param filePid 文件父ID
-     * @return 文件列表
+     * @param session HTTP 娴兼俺鐦?
+     * @param shareId 閸掑棔闊㊣D
+     * @param filePid 閺傚洣娆㈤悥绂滵
+     * @return 閺傚洣娆㈤崚妤勩€?
      */
     @RequestMapping("/loadFileList")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -202,12 +204,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取目录信息.
+     * 閼惧嘲褰囬惄顔肩秿娣団剝浼?
      *
-     * @param session HTTP 会话
-     * @param shareId 分享ID
-     * @param path    路径
-     * @return 目录信息列表
+     * @param session HTTP 娴兼俺鐦?
+     * @param shareId 閸掑棔闊㊣D
+     * @param path    鐠侯垰绶?
+     * @return 閻╊喖缍嶆穱鈩冧紖閸掓銆?
      */
     @RequestMapping("/getFolderInfo")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -219,13 +221,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取文件.
+     * 閼惧嘲褰囬弬鍥︽.
      *
-     * @param response HTTP 响应
-     * @param session  HTTP 会话
-     * @param request  HTTP 请求
-     * @param shareId  分享ID
-     * @param fileId   文件ID
+     * @param response HTTP 閸濆秴绨?
+     * @param session  HTTP 娴兼俺鐦?
+     * @param request  HTTP 鐠囬攱鐪?
+     * @param shareId  閸掑棔闊㊣D
+     * @param fileId   閺傚洣娆D
      */
     @RequestMapping("/getFile/{shareId}/{fileId}")
     @RateLimit(time = 1, count = 20)
@@ -245,14 +247,14 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取图片.
+     * 閼惧嘲褰囬崶鍓у.
      *
-     * @param session     HTTP 会话
-     * @param request     HTTP 请求
-     * @param response    HTTP 响应
-     * @param shareId     分享ID
-     * @param imageFolder 图片文件夹
-     * @param imageName   图片名称
+     * @param session     HTTP 娴兼俺鐦?
+     * @param request     HTTP 鐠囬攱鐪?
+     * @param response    HTTP 閸濆秴绨?
+     * @param shareId     閸掑棔闊㊣D
+     * @param imageFolder 閸ュ墽澧栭弬鍥︽婢?
+     * @param imageName   閸ュ墽澧栭崥宥囆?
      */
     @RequestMapping("/getImage/{shareId}/{imageFolder}/{imageName}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -267,13 +269,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 获取视频.
+     * 閼惧嘲褰囩憴鍡涱暥.
      *
-     * @param response HTTP 响应
-     * @param request  HTTP 请求
-     * @param session  HTTP 会话
-     * @param shareId  分享ID
-     * @param fileId   文件ID
+     * @param response HTTP 閸濆秴绨?
+     * @param request  HTTP 鐠囬攱鐪?
+     * @param session  HTTP 娴兼俺鐦?
+     * @param shareId  閸掑棔闊㊣D
+     * @param fileId   閺傚洣娆D
      */
     @RequestMapping("/ts/getVideoInfo/{shareId}/{fileId}")
     @RateLimit(time = 1, count = 100)
@@ -287,13 +289,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 创建下载链接.
+     * 閸掓稑缂撴稉瀣祰闁剧偓甯?
      *
-     * @param session HTTP 会话
-     * @param request HTTP 请求
-     * @param shareId 分享ID
-     * @param fileId  文件ID
-     * @return 下载链接
+     * @param session HTTP 娴兼俺鐦?
+     * @param request HTTP 鐠囬攱鐪?
+     * @param shareId 閸掑棔闊㊣D
+     * @param fileId  閺傚洣娆D
+     * @return 娑撳娴囬柧鐐复
      */
     @RequestMapping("/createDownloadUrl/{shareId}/{fileId}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -307,12 +309,12 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 下载文件.
+     * 娑撳娴囬弬鍥︽.
      *
-     * @param request  HTTP 请求
-     * @param response HTTP 响应
-     * @param code     下载码
-     * @throws Exception 异常
+     * @param request  HTTP 鐠囬攱鐪?
+     * @param response HTTP 閸濆秴绨?
+     * @param code     娑撳娴囬惍?
+     * @throws Exception 瀵倸鐖?
      */
     @RequestMapping("/download/{code}")
     @GlobalInterceptor(checkLogin = false, checkParams = true)
@@ -322,13 +324,13 @@ public class WebShareController extends CommonFileController {
     }
 
     /**
-     * 保存分享文件到自己的网盘.
+     * 娣囨繂鐡ㄩ崚鍡曢煩閺傚洣娆㈤崚鎷屽殰瀹歌京娈戠純鎴犳磸.
      *
-     * @param session      HTTP 会话
-     * @param shareId      分享ID
-     * @param shareFileIds 分享文件ID列表
-     * @param myFolderId   目标文件夹ID
-     * @return 响应对象
+     * @param session      HTTP 娴兼俺鐦?
+     * @param shareId      閸掑棔闊㊣D
+     * @param shareFileIds 閸掑棔闊╅弬鍥︽ID閸掓銆?
+     * @param myFolderId   閻╊喗鐖ｉ弬鍥︽婢剁D
+     * @return 閸濆秴绨茬€电钖?
      */
     @RequestMapping("/saveShare")
     @GlobalInterceptor(checkParams = true)
@@ -339,7 +341,7 @@ public class WebShareController extends CommonFileController {
         SessionShareDto shareSessionDto = checkShare(session, shareId);
         SessionWebUserDto webUserDto = getUserInfoFromSession(session);
         if (shareSessionDto.getShareUserId().equals(webUserDto.getUserId())) {
-            throw new BusinessException("自己分享的文件无法保存到自己的网盘");
+            throw new BusinessException("Cannot save your own shared file to your own drive");
         }
         fileInfoService.saveShare(shareSessionDto.getFileId(), shareFileIds, myFolderId,
                 shareSessionDto.getShareUserId(), webUserDto.getUserId());
@@ -347,8 +349,25 @@ public class WebShareController extends CommonFileController {
     }
 
     private String getVisitorId(HttpSession session) {
-        SessionWebUserDto userDto = getUserInfoFromSession(session);
+        SessionWebUserDto userDto = getCurrentUserOptional(session);
         return userDto != null ? userDto.getUserId() : null;
+    }
+
+    private SessionWebUserDto getCurrentUserOptional(HttpSession session) {
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            Object requestUser = requestAttributes.getRequest().getAttribute(Constants.SESSION_KEY);
+            if (requestUser instanceof SessionWebUserDto dto) {
+                return dto;
+            }
+        }
+        if (session != null) {
+            Object sessionUser = session.getAttribute(Constants.SESSION_KEY);
+            if (sessionUser instanceof SessionWebUserDto dto) {
+                return dto;
+            }
+        }
+        return null;
     }
 
     private String getClientIp(HttpServletRequest request) {
@@ -376,11 +395,11 @@ public class WebShareController extends CommonFileController {
 
     private void checkReferer(HttpServletRequest request) {
         String referer = request.getHeader("Referer");
-        // 如果存在 Referer 则拦截陌生域，白名单可以后期提至配置中心
+        // 婵″倹鐏夌€涙ê婀?Referer 閸掓瑦瀚ら幋顏堟閻㈢喎鐓欓敍宀€娅ч崥宥呭礋閸欘垯浜掗崥搴㈡埂閹绘劘鍤﹂柊宥囩枂娑擃厼绺?
         if (!StringTools.isEmpty(referer)) {
             if (!referer.contains("localhost") && !referer.contains("127.0.0.1")
                     && !referer.contains("easycloudpan.com")) {
-                throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "请求非法，触发防盗链拦截");
+                throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "Illegal request, blocked by anti-hotlink rule");
             }
         }
     }

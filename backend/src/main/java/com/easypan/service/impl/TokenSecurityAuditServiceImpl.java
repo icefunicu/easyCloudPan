@@ -34,7 +34,7 @@ public class TokenSecurityAuditServiceImpl implements TokenSecurityAuditService 
 
     @Override
     public void recordTokenUsage(String userId, String token, String ipAddress, String userAgent) {
-        log.info("[TOKEN_AUDIT] Token usage recorded: userId={}, ip={}, userAgent={}",
+        log.debug("[TOKEN_AUDIT] Token usage recorded: userId={}, ip={}, userAgent={}",
                 userId, ipAddress, userAgent);
     }
 

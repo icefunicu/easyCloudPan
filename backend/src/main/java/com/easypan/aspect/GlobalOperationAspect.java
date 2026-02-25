@@ -21,7 +21,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 /**
- * 全局拦截切面，负责登录态校验与参数校验.
+ * 鍏ㄥ眬鎷︽埅鍒囬潰锛岃礋璐ｇ櫥褰曟€佹牎楠屼笌鍙傛暟鏍￠獙.
  */
 @Aspect
 @Component
@@ -34,11 +34,11 @@ public class GlobalOperationAspect {
     }
 
     /**
-     * 执行全局拦截，统一处理登录校验与参数校验.
+     * 鎵ц鍏ㄥ眬鎷︽埅锛岀粺涓€澶勭悊鐧诲綍鏍￠獙涓庡弬鏁版牎楠?
      *
-     * @param point AOP 切点上下文
-     * @return 原始方法执行结果
-     * @throws Throwable 透传执行过程中抛出的异常
+     * @param point AOP 鍒囩偣涓婁笅鏂?
+     * @return 鍘熷鏂规硶鎵ц缁撴灉
+     * @throws Throwable 閫忎紶鎵ц杩囩▼涓姏鍑虹殑寮傚父
      */
     @Around("requestInterceptor()")
     public Object interceptorDo(ProceedingJoinPoint point) throws Throwable {
@@ -68,8 +68,8 @@ public class GlobalOperationAspect {
         long duration = System.currentTimeMillis() - startTime;
         if (duration > 1000) {
             logger.warn("Slow API {}.{} cost {}ms", target.getClass().getSimpleName(), methodName, duration);
-        } else if (logger.isInfoEnabled()) {
-            logger.info("API {}.{} cost {}ms", target.getClass().getSimpleName(), methodName, duration);
+        } else if (logger.isDebugEnabled()) {
+            logger.debug("API {}.{} cost {}ms", target.getClass().getSimpleName(), methodName, duration);
         }
         return result;
     }
@@ -163,7 +163,7 @@ public class GlobalOperationAspect {
         if (StringUtils.hasText(requestTenantId) && !userTenantId.equals(requestTenantId.trim())) {
             logger.warn("Tenant mismatch rejected: userId={}, tenantFromUser={}, tenantFromHeader={}",
                     sessionWebUserDto.getUserId(), userTenantId, requestTenantId);
-            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "租户信息不匹配");
+            throw new BusinessException(ResponseCodeEnum.CODE_600.getCode(), "Tenant info mismatch");
         }
 
         sessionWebUserDto.setTenantId(userTenantId);

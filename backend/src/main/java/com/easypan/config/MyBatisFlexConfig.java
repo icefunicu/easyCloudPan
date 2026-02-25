@@ -8,8 +8,8 @@ import org.springframework.context.annotation.Configuration;
 import jakarta.annotation.PostConstruct;
 
 /**
- * MyBatis-Flex 全局配置.
- * 开启 SQL 审计功能，并以人性化格式输出每条 SQL 的执行耗时和完整语句.
+ * MyBatis-Flex 鍏ㄥ眬閰嶇疆.
+ * 寮€鍚?SQL 瀹¤鍔熻兘锛屽苟杈撳嚭姣忔潯 SQL 鐨勬墽琛岃€楁椂鍜屽畬鏁磋鍙?
  */
 @Configuration
 public class MyBatisFlexConfig {
@@ -17,24 +17,20 @@ public class MyBatisFlexConfig {
     private static final Logger logger = LoggerFactory.getLogger("com.easypan.sql");
 
     /**
-     * 初始化 MyBatis-Flex SQL 审计收集器.
-     * 在应用启动时自动开启 SQL 审计，将每条 SQL 的耗时与完整语句以 Emoji 格式输出到日志.
+     * 鍒濆鍖?MyBatis-Flex SQL 瀹¤鏀堕泦鍣?
      */
     @PostConstruct
     public void init() {
-        // 开启 SQL 审计功能
         AuditManager.setAuditEnable(true);
 
-        // 设置 SQL 审计收集器，实现人性化日志输出
         AuditManager.setMessageCollector(auditMessage -> {
             long elapsedTime = auditMessage.getElapsedTime();
             String sql = auditMessage.getFullSql();
 
-            // 格式化输出
             if (elapsedTime > 1000) {
-                logger.warn("🐢 [Slow SQL] 耗时: {}ms | SQL: {}", elapsedTime, sql);
-            } else {
-                logger.info("⚡ [DB] 耗时: {}ms | SQL: {}", elapsedTime, sql);
+                logger.warn("[Slow SQL] cost={}ms, sql={}", elapsedTime, sql);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("[SQL] cost={}ms, sql={}", elapsedTime, sql);
             }
         });
     }

@@ -4,6 +4,7 @@
 ![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-6DB33F)
 ![Vue](https://img.shields.io/badge/Vue-3-42B883)
+![React](https://img.shields.io/badge/React-19-149eca)
 
 EasyCloudPan 是一个前后端分离的网盘系统，提供本地开发一键启动和 Docker 全栈部署能力，数据库结构由 Flyway 管理。
 
@@ -75,6 +76,7 @@ EasyCloudPan 是一个前后端分离的网盘系统，提供本地开发一键�
 
 - 后端：Java 21, Spring Boot, MyBatis-Flex, Flyway
 - 前端：Vue 3, Vite, Element Plus
+- 新前端（重构版）：React 19, Vite 7, TypeScript, Ant Design, TanStack Query, Zustand
 - 基础设施：PostgreSQL 15, Redis 7, MinIO
 - 容器编排：Docker Compose
 
@@ -117,6 +119,21 @@ docker compose version
 - 前端：`http://localhost:8080`
 - 后端：`http://localhost:7090/api`
 - MinIO Console：`http://localhost:9001`
+
+### 方式 C：运行新前端（`frontend-react`）
+
+在后端和依赖容器已启动后，单独运行：
+
+```powershell
+cd frontend-react
+npm install
+npm run dev
+```
+
+默认访问地址：
+
+- 新前端：`http://localhost:5176`
+- API 代理：`/api -> http://localhost:7090`
 
 ### 方式 B：Docker 全栈部署
 
@@ -180,6 +197,7 @@ copy ops\docker\.env.example ops\docker\.env
 easyCloudPan/
 ├── backend/                    # Spring Boot 后端
 ├── frontend/                   # Vue 前端
+├── frontend-react/             # React 重构前端（新目录，不影响旧前端）
 ├── database/                   # 数据库迁移说明（不存放初始化 SQL）
 ├── docs/                       # 补充文档
 ├── scripts/                    # 运维/校验脚本
@@ -302,12 +320,6 @@ docker compose ps
      input="your_password" password=%JASYPT_ENCRYPTOR_PASSWORD% algorithm=PBEWithMD5AndDES
    ```
 
-## 项目优化
-
-本项目经过全面性能和安全优化，详细优化方案请参考：
-- **需求文档**：`.kiro/specs/easypan-optimization/requirements.md`
-- **设计文档**：`.kiro/specs/easypan-optimization/design.md`
-- **任务列表**：`.kiro/specs/easypan-optimization/tasks.md`
 
 ### 优化亮点
 1. **数据库优化**：新增 5 个复合索引，查询性能提升 50-80%
