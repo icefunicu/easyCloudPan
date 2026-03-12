@@ -108,3 +108,5 @@ ARTIFACTS/
 # Local debug logs (do not commit)
 error.md
 front-error.md
+
+.trae/

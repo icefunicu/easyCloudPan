@@ -28,7 +28,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getCheckCodeUrl, login, qqLogin, register, resetPwd, sendEmailCode } from '@/services/account-service'
 import { oauthLogin } from '@/services/oauth-service'
 import { useAuthStore } from '@/store/auth-store'
-import { isEmail, passwordError } from '@/lib/validators'
+import { isEmail, passwordError, getPasswordStrength } from '@/lib/validators'
 import './auth.css'
 
 const { Title, Text } = Typography
@@ -246,9 +246,10 @@ export const LoginPage = () => {
     }
 
     if (values.rememberMe) {
-      localStorage.setItem('easycloudpan_login_email', values.email)
+      // 使用 sessionStorage 而不是 localStorage 提高安全性
+      sessionStorage.setItem('easycloudpan_login_email', values.email)
     } else {
-      localStorage.removeItem('easycloudpan_login_email')
+      sessionStorage.removeItem('easycloudpan_login_email')
     }
 
     setUser({
@@ -393,7 +394,7 @@ export const LoginPage = () => {
               <Form<LoginForm>
                 form={loginForm}
                 layout="vertical"
-                initialValues={{ email: localStorage.getItem('easycloudpan_login_email') || '', rememberMe: true }}
+                initialValues={{ email: sessionStorage.getItem('easycloudpan_login_email') || '', rememberMe: true }}
                 onValuesChange={authError ? clearAuthError : undefined}
                 onFinish={handleLogin}
               >
@@ -489,12 +490,38 @@ export const LoginPage = () => {
                 <Form.Item shouldUpdate noStyle>
                   {() => {
                     const pwd = registerForm.getFieldValue('registerPassword') || ''
-                    let score = 0
-                    if (pwd.length >= 8) score += 25
-                    if (/[a-z]/.test(pwd)) score += 25
-                    if (/[A-Z]/.test(pwd)) score += 25
-                    if (/\d/.test(pwd)) score += 25
-                    return pwd ? <Progress percent={score} size="small" showInfo={false} /> : null
+                    if (!pwd) return null
+                    
+                    const strength = getPasswordStrength(pwd)
+                    const strengthColors = {
+                      weak: '#ff4d4f',    // 红色
+                      medium: '#faad14',  // 黄色
+                      strong: '#52c41a'   // 绿色
+                    }
+                    
+                    const strengthLabels = {
+                      weak: '弱',
+                      medium: '中等',
+                      strong: '强'
+                    }
+                    
+                    return (
+                      <div style={{ marginBottom: '16px' }}>
+                        <Progress 
+                          percent={strength === 'weak' ? 33 : strength === 'medium' ? 66 : 100} 
+                          size="small" 
+                          showInfo={false}
+                          strokeColor={strengthColors[strength]}
+                        />
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: strengthColors[strength], 
+                          marginTop: '4px' 
+                        }}>
+                          密码强度: {strengthLabels[strength]}
+                        </div>
+                      </div>
+                    )
                   }}
                 </Form.Item>
 

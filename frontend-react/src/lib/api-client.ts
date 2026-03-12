@@ -377,7 +377,12 @@ export const request = async <T = unknown>(options: RequestOptions): Promise<T |
       errorCallback(payload.msg)
     }
     if (showError && payload.msg) {
-      message.error(payload.msg)
+      // 更友好的错误消息显示
+      message.open({
+        type: 'error',
+        content: payload.msg,
+        duration: 3, // 错误消息显示3秒
+      })
     }
     return null
   } finally {
@@ -432,7 +437,12 @@ export const requestSuccess = async (options: RequestOptions): Promise<boolean> 
       errorCallback(payload.msg)
     }
     if (showError && payload.msg) {
-      message.error(payload.msg)
+      // 更友好的错误消息显示
+      message.open({
+        type: 'error',
+        content: payload.msg,
+        duration: 3, // 错误消息显示3秒
+      })
     }
     return false
   } finally {

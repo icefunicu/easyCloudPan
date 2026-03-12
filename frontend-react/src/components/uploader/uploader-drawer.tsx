@@ -28,18 +28,19 @@ interface UploadTask {
   chunkLoadedMap: Record<number, number>
   status:
     | 'init'
-    | 'uploading'
-    | 'upload_finish'
-    | 'upload_seconds'
-    | 'fail'
-    | 'retrying'
-    | 'network_error'
-    | 'auth_error'
-    | 'server_error'
-    | 'emptyfile'
-    | 'transferring'
-    | 'transfer_done'
-    | 'transfer_fail'
+  | 'uploading'
+  | 'upload_finish'
+  | 'upload_seconds'
+  | 'fail'
+  | 'retrying'
+  | 'network_error'
+  | 'auth_error'
+  | 'server_error'
+  | 'emptyfile'
+  | 'transferring'
+  | 'transfer_done'
+  | 'transfer_fail'
+  | 'cancelled'
   errorMsg?: string
   worker?: Worker
   transferSource?: EventSource
@@ -67,6 +68,7 @@ const statusMeta: Record<string, { color: string; text: string }> = {
   transferring: { color: 'warning', text: '转码中' },
   transfer_done: { color: 'success', text: '转码完成' },
   transfer_fail: { color: 'error', text: '转码失败' },
+  cancelled: { color: 'default', text: '已取消' },
 }
 
 const createUploadFileId = (): string => {
